@@ -8,84 +8,311 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Dotenv\Dotenv;
 
 /**
- * Environment configuration service that supports both .env and .env.yaml formats
+ * Environment configuration service with multi-format support.
+ *
+ * Loading priority (highest to lowest):
+ *   1. System environment variables ($_ENV, $_SERVER)
+ *   2. .env file (legacy KEY=VALUE format)
+ *   3. .env.yaml (primary YAML configuration)
+ *   4. .env.dist (template defaults)
+ *
+ * Variable substitution syntax:
+ *   ${VAR}            - Reference another variable
+ *   ${VAR:-default}   - Use default if VAR is not set
+ *   ${VAR:?error}     - Throw error if VAR is not set
  */
 class EnvironmentConfig
 {
     private array $envVars = [];
+    private string $projectRoot;
+    private bool $loaded = false;
 
-    public function __construct(string $environmentFile = null)
+    public function __construct(?string $projectRoot = null)
     {
-        $this->loadEnvironment($environmentFile ?? getcwd() . '/.env');
+        $this->projectRoot = $projectRoot ?? getcwd();
+        $this->load();
     }
 
-    private function loadEnvironment(string $filePath): void
+    /**
+     * Load environment configuration from all sources with proper priority.
+     */
+    private function load(): void
     {
-        if (!file_exists($filePath)) {
-            // Try with .env.dist as fallback
-            $filePath = getcwd() . '/.env.dist';
-            if (!file_exists($filePath)) {
-                throw new \RuntimeException('Environment file not found: ' . $filePath);
+        if ($this->loaded) {
+            return;
+        }
+
+        $vars = [];
+
+        // 1. Load .env.dist as template defaults (lowest priority)
+        $distPath = $this->projectRoot . '/.env.dist';
+        if (file_exists($distPath)) {
+            $vars = array_merge($vars, $this->parseEnvFile($distPath));
+        }
+
+        // 2. Load .env.yaml as primary configuration
+        $yamlPath = $this->projectRoot . '/.env.yaml';
+        if (file_exists($yamlPath)) {
+            $yamlVars = $this->parseYamlFile($yamlPath);
+            $vars = array_merge($vars, $yamlVars);
+        }
+
+        // 3. Load .env as legacy override
+        $envPath = $this->projectRoot . '/.env';
+        if (file_exists($envPath)) {
+            $envVars = $this->parseEnvFile($envPath);
+            $vars = array_merge($vars, $envVars);
+        }
+
+        // 4. Merge with system environment variables (highest priority)
+        $vars = array_merge($vars, $_ENV, $_SERVER);
+
+        // Resolve variable substitutions
+        $this->envVars = $this->resolveVariables($vars);
+
+        // Populate $_ENV for backward compatibility with legacy code
+        foreach ($this->envVars as $key => $value) {
+            if (is_scalar($value)) {
+                $_ENV[$key] = $value;
             }
         }
 
-        // Load traditional .env file first
-        $dotenv = new Dotenv();
-        $dotenv->bootEnv($filePath);
+        $this->loaded = true;
+    }
 
-        // Then try to load YAML format if file has .yaml extension or contains YAML
-        if (pathinfo($filePath, PATHINFO_EXTENSION) === 'yaml' || pathinfo($filePath, PATHINFO_EXTENSION) === 'yml') {
-            $yamlContent = Yaml::parseFile($filePath);
-            if (is_array($yamlContent)) {
-                $this->envVars = array_merge($this->envVars, $yamlContent);
+    /**
+     * Parse a traditional .env file (KEY=VALUE format).
+     */
+    private function parseEnvFile(string $filePath): array
+    {
+        $vars = [];
+        $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            // Skip comments
+            if ($line === '' || $line[0] === '#') {
+                continue;
             }
-        } else {
-            // Check if the file contains YAML frontmatter or mixed format
-            $fileContent = file_get_contents($filePath);
-            if (strpos($fileContent, '---') === 0 && strpos($fileContent, '...') !== false) {
-                // Extract YAML between --- markers
-                $parts = explode('---', $fileContent);
-                if (count($parts) >= 3) {
-                    $yamlContent = Yaml::parse($parts[1]);
-                    if (is_array($yamlContent)) {
-                        $this->envVars = array_merge($this->envVars, $yamlContent);
-                    }
+
+            // Parse KEY=VALUE
+            if (strpos($line, '=') !== false) {
+                [$key, $value] = explode('=', $line, 2);
+                $key = trim($key);
+                $value = trim($value);
+
+                // Remove surrounding quotes
+                if ((str_starts_with($value, '"') && str_ends_with($value, '"'))
+                    || (str_starts_with($value, "'") && str_ends_with($value, "'"))
+                ) {
+                    $value = substr($value, 1, -1);
                 }
+
+                $vars[$key] = $value;
             }
         }
 
-        // Always populate from $_ENV as fallback (Dotenv already did this)
-        $this->envVars = array_merge($this->envVars, $_ENV);
+        return $vars;
     }
 
-    public function get(string $key, $default = null)
+    /**
+     * Parse a YAML configuration file.
+     */
+    private function parseYamlFile(string $filePath): array
     {
-        return $this->envVars[$key] ?? $_ENV[$key] ?? $default;
+        $content = Yaml::parseFile($filePath, Yaml::PARSE_CONSTANT);
+
+        if (!is_array($content)) {
+            return [];
+        }
+
+        $vars = [];
+
+        // Flatten nested structures into dot-notation keys
+        $this->flattenArray($content, '', $vars);
+
+        return $vars;
     }
 
+    /**
+     * Recursively flatten a nested array into dot-notation keys.
+     */
+    private function flattenArray(array $array, string $prefix, array &$result): void
+    {
+        foreach ($array as $key => $value) {
+            $fullKey = $prefix === '' ? $key : $prefix . '.' . $key;
+
+            if (is_array($value)) {
+                $this->flattenArray($value, $fullKey, $result);
+            } else {
+                $result[$fullKey] = $value;
+            }
+        }
+    }
+
+    /**
+     * Resolve variable substitutions in all values.
+     *
+     * Supports:
+     *   ${VAR}            - Direct reference
+     *   ${VAR:-default}   - Default value if VAR is not set
+     *   ${VAR:?error}     - Throw error if VAR is not set
+     */
+    private function resolveVariables(array $vars, int $depth = 0): array
+    {
+        if ($depth > 10) {
+            throw new \RuntimeException('Circular variable reference detected in environment configuration');
+        }
+
+        $resolved = [];
+
+        foreach ($vars as $key => $value) {
+            if (is_string($value)) {
+                $resolved[$key] = $this->resolveValue($value, $vars, $depth);
+            } else {
+                $resolved[$key] = $value;
+            }
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Resolve a single value with variable substitution.
+     */
+    private function resolveValue(string $value, array $vars, int $depth): mixed
+    {
+        // Match ${...} patterns
+        $pattern = '/\$\{([^}]+)\}/';
+
+        return preg_replace_callback($pattern, function ($matches) use ($vars, $depth) {
+            $expression = $matches[1];
+
+            // Check for default value syntax: ${VAR:-default}
+            if (strpos($expression, ':-') !== false) {
+                [$varName, $default] = explode(':-', $expression, 2);
+                return $this->getVarValue($varName, $vars, $default, $depth);
+            }
+
+            // Check for required syntax: ${VAR:?error}
+            if (strpos($expression, ':?') !== false) {
+                [$varName, $error] = explode(':?', $expression, 2);
+                $value = $this->getVarValue($varName, $vars, null, $depth);
+                if ($value === null || $value === '') {
+                    throw new \RuntimeException("Environment variable '{$varName}' is required: {$error}");
+                }
+                return $value;
+            }
+
+            // Simple variable reference: ${VAR}
+            return $this->getVarValue($expression, $vars, null, $depth);
+        }, $value);
+    }
+
+    /**
+     * Get the value of a variable, resolving it recursively.
+     */
+    private function getVarValue(string $varName, array $vars, mixed $default, int $depth): mixed
+    {
+        // Check system environment first
+        if (isset($_ENV[$varName]) && $_ENV[$varName] !== '') {
+            return $_ENV[$varName];
+        }
+
+        // Check loaded variables
+        if (isset($vars[$varName])) {
+            $value = $vars[$varName];
+
+            // If the value itself contains variable references, resolve them
+            if (is_string($value) && preg_match('/\$\{[^}]+\}/', $value)) {
+                return $this->resolveValue($value, $vars, $depth + 1);
+            }
+
+            return $value;
+        }
+
+        // Return default if provided
+        if ($default !== null) {
+            // Check if default itself contains variable references
+            if (is_string($default) && preg_match('/\$\{[^}]+\}/', $default)) {
+                return $this->resolveValue($default, $vars, $depth + 1);
+            }
+            return $default;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get a configuration value by key.
+     *
+     * Supports both dot-notation (database.host) and flat keys (DB_HOST).
+     */
+    public function get(string $key, mixed $default = null): mixed
+    {
+        // Check exact key match
+        if (array_key_exists($key, $this->envVars)) {
+            return $this->envVars[$key];
+        }
+
+        // Check system environment
+        if (isset($_ENV[$key])) {
+            return $_ENV[$key];
+        }
+
+        return $default;
+    }
+
+    /**
+     * Check if a configuration key exists.
+     */
     public function has(string $key): bool
     {
-        return isset($this->envVars[$key]) || isset($_ENV[$key]);
+        return array_key_exists($key, $this->envVars) || isset($_ENV[$key]);
     }
 
+    /**
+     * Get all configuration values.
+     */
     public function all(): array
     {
-        return array_merge($this->envVars, $_ENV);
+        return $this->envVars;
     }
 
+    /**
+     * Get a required configuration value (throws if not set).
+     */
+    public function require(string $key, ?string $message = null): mixed
+    {
+        $value = $this->get($key);
+
+        if ($value === null || $value === '') {
+            throw new \RuntimeException($message ?? "Required environment variable '{$key}' is not set");
+        }
+
+        return $value;
+    }
+
+    /**
+     * Get database connection parameters.
+     */
     public function getDatabaseParams(): array
     {
         return [
-            'driver' => 'pdo_mysql',
+            'driver' => $this->get('DB_DRIVER', 'pdo_mysql'),
             'host' => $this->get('DB_HOST', 'localhost'),
             'port' => $this->get('DB_PORT', '3306'),
             'dbname' => $this->get('DB_NAME', 'app'),
             'user' => $this->get('DB_USER', 'root'),
             'password' => $this->get('DB_PASSWORD', ''),
-            'charset' => 'utf8mb4',
+            'charset' => $this->get('DB_CHARSET', 'utf8mb4'),
         ];
     }
 
+    /**
+     * Get database parameters for testing (SQLite in-memory).
+     */
     public function getDatabaseParamsForTesting(): array
     {
         return [
@@ -94,14 +321,61 @@ class EnvironmentConfig
         ];
     }
 
+    /**
+     * Check if debug mode is enabled.
+     */
     public function isDebug(): bool
     {
         $debug = $this->get('APP_DEBUG', false);
         return is_string($debug) ? ($debug === 'true' || $debug === '1') : (bool) $debug;
     }
 
+    /**
+     * Get the application environment.
+     */
     public function getAppEnv(): string
     {
-        return $this->get('APP_ENV', 'dev');
+        return (string) $this->get('APP_ENV', 'dev');
+    }
+
+    /**
+     * Get Memcached configuration for rate limiting.
+     */
+    public function getMemcachedConfig(): array
+    {
+        return [
+            'host' => $this->get('MEMCACHED_HOST', 'localhost'),
+            'port' => (int) $this->get('MEMCACHED_PORT', '11211'),
+            'enabled' => $this->isMemcachedEnabled(),
+        ];
+    }
+
+    /**
+     * Check if Memcached is enabled.
+     */
+    public function isMemcachedEnabled(): bool
+    {
+        return extension_loaded('memcached')
+            && $this->get('CACHE_DRIVER', 'array') === 'memcached';
+    }
+
+    /**
+     * Get rate limiting configuration.
+     */
+    public function getRateLimitConfig(): array
+    {
+        return [
+            'enabled' => (bool) $this->get('RATE_LIMIT_ENABLED', true),
+            'max_requests' => (int) $this->get('RATE_LIMIT_MAX_REQUESTS', 60),
+            'window_seconds' => (int) $this->get('RATE_LIMIT_WINDOW', 60),
+        ];
+    }
+
+    /**
+     * Get the project root path.
+     */
+    public function getProjectRoot(): string
+    {
+        return $this->projectRoot;
     }
 }
