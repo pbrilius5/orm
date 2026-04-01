@@ -38,17 +38,17 @@ bin/console oryx:fixtures:load --seed=42
 php -S localhost:8080 -t public
 ```
 
-Open http://localhost:8080 — you should see the home page with users and API links.
+Open [http://localhost:8080](http://localhost:8080) — you should see the home page with users and API links.
 
 ### What you get
 
 | URL | What |
 |-----|------|
-| `http://localhost:8080/` | MVC home page (PHP templates) |
-| `http://localhost:8080/users` | User list with CRUD |
-| `http://localhost:8080/api/users` | HAL+JSON API collection |
-| `http://localhost:8080/api/users/1` | Single user resource |
-| `http://localhost:8080/api/users?include=posts,group` | With embedded relations |
+| [http://localhost:8080/](http://localhost:8080/) | MVC home page (PHP templates) |
+| [http://localhost:8080/users](http://localhost:8080/users) | User list with CRUD |
+| [http://localhost:8080/api/users](http://localhost:8080/api/users) | HAL+JSON API collection |
+| [http://localhost:8080/api/users/1](http://localhost:8080/api/users/1) | Single user resource |
+| [http://localhost:8080/api/users?include=posts,group](http://localhost:8080/api/users?include=posts,group) | With embedded relations |
 
 ### Switch to MySQL
 
@@ -153,11 +153,11 @@ composer serve
 
 | URL | Pattern | Entry |
 |-----|---------|-------|
-| `http://localhost:8080/` | MVC | Vanilla HTML |
-| `http://localhost:8080/users` | MVC | Vanilla HTML |
-| `http://localhost:8080/api/users` | ADR | HAL+JSON |
-| `http://localhost:8080/api/users/1` | ADR | HAL+JSON |
-| `http://localhost:8080/manifest.json` | PWA | JSON Manifest |
+| [http://localhost:8080/](http://localhost:8080/) | MVC | Vanilla HTML |
+| [http://localhost:8080/users](http://localhost:8080/users) | MVC | Vanilla HTML |
+| [http://localhost:8080/api/users](http://localhost:8080/api/users) | ADR | HAL+JSON |
+| [http://localhost:8080/api/users/1](http://localhost:8080/api/users/1) | ADR | HAL+JSON |
+| [http://localhost:8080/manifest.json](http://localhost:8080/manifest.json) | PWA | JSON Manifest |
 
 ### Testing
 
@@ -748,6 +748,21 @@ curl -X PATCH http://localhost:8000/api/users/1 \
 
 # Delete
 curl -X DELETE http://localhost:8000/api/users/1
+```
+
+### 7.7 Maršrutų struktūra
+
+```
+src/
+├── App/Kernel.php              # tik inicializacija + middleware
+├── Routing/
+│   ├── AdrRoutes.php          # API maršrutai
+│   └── MvcRoutes.php          # MVC maršrutai
+├── Action/User/                # ADR veiksmai
+│   ├── ListAction.php
+│   └── ...
+└── Controller/                 # MVC kontroleriai
+    └── UserController.php
 ```
 
 ### 7.7 Maršrutų struktūra
