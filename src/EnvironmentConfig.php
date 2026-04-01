@@ -299,6 +299,11 @@ class EnvironmentConfig
      */
     public function getDatabaseParams(): array
     {
+        $path = $this->get('database.path', 'var/data/orm.db');
+        if (!str_starts_with($path, '/')) {
+            $path = $this->projectRoot . '/' . $path;
+        }
+
         return [
             'driver' => $this->get('database.driver', 'pdo_sqlite'),
             'host' => $this->get('database.host', 'localhost'),
@@ -307,7 +312,7 @@ class EnvironmentConfig
             'user' => $this->get('database.user', 'root'),
             'password' => $this->get('database.password', ''),
             'charset' => $this->get('database.charset', 'utf8mb4'),
-            'path' => $this->get('database.path', 'var/data/orm.db'),
+            'path' => $path,
         ];
     }
 
