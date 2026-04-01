@@ -72,6 +72,29 @@ class MvcApplication
             }
             return new Response($this->view->render('users/show', ['user' => $user]));
         });
+
+        $this->router->get('/users/{id}/delete', function (Request $req, array $params) {
+            $this->controllers['user']->delete((int) $params['id']);
+            header('Location: /users');
+            exit;
+        });
+
+        $this->router->get('/users/{id}/edit', function (Request $req, array $params) {
+            $user = $this->controllers['user']->show((int) $params['id']);
+            if (!$user) {
+                return new Response('User not found', 404);
+            }
+            return new Response($this->view->render('users/edit', ['user' => $user]));
+        });
+
+        $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
+            $user = $this->controllers['user']->update((int) $params['id'], $req->all());
+            if (!$user) {
+                return new Response('User not found', 404);
+            }
+            header('Location: /users');
+            exit;
+        });
     }
 
     public function run(): void
