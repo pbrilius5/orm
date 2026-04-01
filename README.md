@@ -9,11 +9,31 @@
 6. [League Factory Muffin Fixtures](#6-league-factory-muffin-fixtures)
 7. [PSR Middleware Security](#7-psr-middleware-security)
 8. [HAL+JSON API](#8-haljson-api)
-9. [Running the Application](#9-running-the-application)
+9. [Environment Configuration](#9-environment-configuration)
+10. [Running the Application](#10-running-the-application)
 
 ---
 
 ## 1. Installation
+
+### Setup Checklist
+
+- [ ] Clone the repository
+- [ ] Install dependencies with `composer install`
+- [ ] Copy `.env.dist` to `.env` (or create `.env.yaml`)
+- [ ] Configure database credentials
+- [ ] Run `composer serve` to start the development server
+- [ ] Run `composer test` to verify everything works
+
+### Requirements
+
+- [x] PHP 8.2+
+- [x] MariaDB/MySQL or SQLite
+- [x] Extensions: mbstring, intl, pdo_mysql
+- [ ] Optional: memcached extension for distributed rate limiting
+- [ ] Optional: redis extension (alternative to memcached)
+
+### Quick Start
 
 ```bash
 git clone <repository>
@@ -21,16 +41,43 @@ cd oryx-orm
 composer install
 ```
 
-**Requirements:**
-- PHP 8.2+
-- MariaDB/MySQL or SQLite
-- Extensions: mbstring, intl, pdo_mysql
-- Optional: memcached extension for distributed rate limiting
+### Environment Configuration
 
-**Environment:**
+Choose one of the following approaches:
+
+**Option A: Traditional .env file**
 ```bash
-cp .env.example .env
+cp .env.dist .env
 # Edit .env with your database credentials
+```
+
+**Option B: YAML configuration (recommended)**
+```bash
+cp .env.yaml .env.yaml.local  # optional local override
+# Edit .env.yaml with your configuration
+```
+
+**Loading Priority (highest to lowest):**
+1. System environment variables (`$_ENV`, `$_SERVER`)
+2. `.env` file (legacy KEY=VALUE format)
+3. `.env.yaml` (primary YAML configuration)
+4. `.env.dist` (template defaults)
+
+**Variable Substitution Syntax:**
+```yaml
+# Simple reference
+DB_HOST: ${DB_HOST:-localhost}
+
+# With default value
+DB_PORT: ${DB_PORT:-3306}
+
+# Required variable (throws error if not set)
+DB_PASSWORD: ${DB_PASSWORD:?Database password is required}
+
+# Nested references
+database:
+  host: ${DB_HOST:-localhost}
+  port: ${DB_PORT:-3306}
 ```
 
 ---
@@ -1216,9 +1263,165 @@ private function register(): void
 
 ---
 
-## 9. Running the Application
+## 9. Environment Configuration
 
-### 9.1 Development Server
+### 9.1 Configuration Files
+
+The application supports multiple configuration formats with intelligent loading priority.
+
+**File Structure:**
+```
+.env.dist          # Template defaults (committed to VCS)
+.env               # Legacy override (optional, gitignored)
+.env.yaml          # Primary YAML config (recommended)
+.env.yaml.local    # Local overrides (optional, gitignored)
+```
+
+### 9.2 Loading Priority
+
+Configuration values are resolved in this order (highest priority wins):
+
+1. **System environment variables** - `$_ENV`, `$_SERVER`
+2. **`.env` file** - Legacy KEY=VALUE format (backward compatibility)
+3. **`.env.yaml`** - Primary YAML configuration
+4. **`.env.dist`** - Template defaults (lowest priority)
+
+### 9.3 YAML Configuration Format
+
+The `.env.yaml` file supports both flat and nested structures:
+
+```yaml
+# ─────────────────────────────────────────────
+# Database Configuration
+# ─────────────────────────────────────────────
+database:
+  host: ${DB_HOST:-localhost}
+  port: ${DB_PORT:-3306}
+  name: ${DB_NAME:-orm_db}
+  user: ${DB_USER:-root}
+  password: ${DB_PASSWORD:-}
+  charset: ${DB_CHARSET:-utf8mb4}
+
+# ─────────────────────────────────────────────
+# Application Settings
+# ─────────────────────────────────────────────
+app:
+  env: ${APP_ENV:-dev}
+  debug: ${APP_DEBUG:-true}
+  secret: ${APP_SECRET:-change-me-in-production}
+
+# ─────────────────────────────────────────────
+# ORM / Doctrine Settings
+# ─────────────────────────────────────────────
+orm:
+  auto_generate_proxy: ${ORM_AUTO_GENERATE_PROXY:-false}
+  proxy_dir: ${ORM_PROXY_DIR:-/tmp/orm/proxies}
+  proxy_namespace: ${ORM_PROXY_NAMESPACE:-Oryx\\ORM\\Proxy}
+```
+
+### 9.4 Variable Substitution Syntax
+
+The YAML configuration supports powerful variable substitution:
+
+| Syntax | Description | Example |
+|--------|-------------|---------|
+| `${VAR}` | Direct variable reference | `${DB_HOST}` |
+| `${VAR:-default}` | Use default if not set | `${DB_HOST:-localhost}` |
+| `${VAR:?error}` | Throw error if not set | `${DB_PASSWORD:?Required}` |
+| `${nested.key}` | Reference nested value | `${database.host}` |
+
+**Examples:**
+```yaml
+# Simple reference with default
+DB_HOST: ${DB_HOST:-localhost}
+
+# Required variable with custom error message
+DB_PASSWORD: ${DB_PASSWORD:?Database password is required for production}
+
+# Cross-references between sections
+app.database_url: "mysql://${database.user}:${database.password}@${database.host}:${database.port}/${database.name}"
+```
+
+### 9.5 Backward Compatibility
+
+The `.env` file continues to work alongside `.env.yaml`:
+
+```bash
+# Traditional .env format
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=orm_db
+DB_USER=root
+DB_PASSWORD=secret
+```
+
+Values from `.env` override `.env.yaml` defaults, allowing gradual migration.
+
+### 9.6 Using EnvironmentConfig in Code
+
+```php
+use App\EnvironmentConfig;
+
+$config = new EnvironmentConfig();
+
+// Get a value with default
+$host = $config->get('DB_HOST', 'localhost');
+
+// Get database connection parameters
+$params = $config->getDatabaseParams();
+
+// Check debug mode
+if ($config->isDebug()) {
+    // Development mode
+}
+
+// Get Memcached configuration
+$memcached = $config->getMemcachedConfig();
+
+// Get rate limiting configuration
+$rateLimit = $config->getRateLimitConfig();
+
+// Require a value (throws exception if not set)
+$secret = $config->require('APP_SECRET', 'Application secret is required');
+```
+
+### 9.7 Environment Variables Reference
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `DB_HOST` | Database hostname | `localhost` | No |
+| `DB_PORT` | Database port | `3306` | No |
+| `DB_NAME` | Database name | `orm_db` | No |
+| `DB_USER` | Database username | `root` | No |
+| `DB_PASSWORD` | Database password | (empty) | No |
+| `DB_CHARSET` | Database charset | `utf8mb4` | No |
+| `DB_DRIVER` | Database driver | `pdo_mysql` | No |
+| `APP_ENV` | Application environment | `dev` | No |
+| `APP_DEBUG` | Enable debug mode | `true` | No |
+| `APP_SECRET` | Application secret key | `change-me-in-production` | No |
+| `ORM_AUTO_GENERATE_PROXY` | Auto-generate Doctrine proxies | `false` | No |
+| `ORM_PROXY_DIR` | Proxy directory storage | `/tmp/orm/proxies` | No |
+| `ORM_PROXY_NAMESPACE` | Proxy namespace | `Oryx\ORM\Proxy` | No |
+| `CACHE_DRIVER` | Cache driver (array/memcached/redis) | `array` | No |
+| `CACHE_HOST` | Cache server hostname | `localhost` | No |
+| `CACHE_PORT` | Cache server port | `11211` | No |
+| `CACHE_TTL` | Cache time-to-live (seconds) | `3600` | No |
+| `RATE_LIMIT_ENABLED` | Enable rate limiting | `true` | No |
+| `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `60` | No |
+| `RATE_LIMIT_WINDOW` | Rate limit window (seconds) | `60` | No |
+| `MEMCACHED_HOST` | Memcached hostname | `localhost` | No |
+| `MEMCACHED_PORT` | Memcached port | `11211` | No |
+| `MAILER_TRANSPORT` | Mailer transport | `smtp` | No |
+| `MAILER_HOST` | Mailer hostname | `localhost` | No |
+| `MAILER_PORT` | Mailer port | `25` | No |
+| `MAILER_USER` | Mailer username | (empty) | No |
+| `MAILER_PASSWORD` | Mailer password | (empty) | No |
+
+---
+
+## 10. Running the Application
+
+### 10.1 Development Server
 
 ```bash
 # Using PHP built-in server
@@ -1228,7 +1431,7 @@ php -S localhost:8080 -t public
 composer serve
 ```
 
-### 9.2 Access Points
+### 10.2 Access Points
 
 | URL | Pattern | Entry |
 |-----|---------|-------|
@@ -1238,7 +1441,7 @@ composer serve
 | `http://localhost:8080/api/users/1` | ADR | HAL+JSON |
 | `http://localhost:8080/manifest.json` | PWA | JSON Manifest |
 
-### 9.3 Testing
+### 10.3 Testing
 
 ```bash
 # Run all tests
@@ -1251,7 +1454,7 @@ vendor/bin/phpunit --testsuite Action
 vendor/bin/phpunit --coverage-text
 ```
 
-### 9.4 Console Commands
+### 10.4 Console Commands
 
 ```bash
 # List commands
