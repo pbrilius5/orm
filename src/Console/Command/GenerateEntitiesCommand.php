@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Command;
 
+use Doctrine\DBAL\DriverManager;
+use Doctrine\ORM\Configuration;
+use Doctrine\ORM\EntityManager as DoctrineEntityManager;
+use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
+use Doctrine\ORM\Proxy\ProxyFactory;
 use Doctrine\ORM\Tools\EntityGenerator;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -11,14 +16,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Doctrine\DBAL\DriverManager;
-use Doctrine\ORM\Configuration;
-use Doctrine\ORM\EntityManager as DoctrineEntityManager;
-use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
-use Doctrine\ORM\Proxy\ProxyFactory;
-use Doctrine\ORM\Mapping\ClassMetadataFactory;
 use App\EnvironmentConfig;
-use ReflectionProperty;
 
 /**
  * Generates entity classes and method stubs from your mapping information.
@@ -71,13 +69,9 @@ class GenerateEntitiesCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        // Get the project root (current working directory when the command is run)
         $projectRoot = getcwd();
+        $envConfig = new EnvironmentConfig($projectRoot);
 
-        // Load environment variables using our EnvironmentConfig service
-        $envConfig = new EnvironmentConfig($projectRoot . '/.env');
-
-        // Set up database connection (same as cli-config.php)
         $connectionParams = $envConfig->getDatabaseParams();
 
         try {
@@ -86,43 +80,28 @@ class GenerateEntitiesCommand extends Command
             $io->warning('Could not connect to the database: ' . $e->getMessage());
             $io->warning('Using an in-memory SQLite database for metadata generation.');
 
-            // Fallback to an in-memory SQLite database
-            $connectionParams = $envConfig->getDatabaseParamsForTesting();
-            $connection = DriverManager::getConnection($connectionParams);
+            $connection = DriverManager::getConnection([
+                'driver' => 'pdo_sqlite',
+                'memory' => true,
+            ]);
         }
 
-        // Create Doctrine ORM configuration
         $doctrineConfig = new Configuration();
 
-        // Set up metadata driver using our XML driver
         $xmlDriver = new SimplifiedXmlDriver([
             $projectRoot . '/schema' => 'App\Entity',
         ], '.orm.xml');
         $doctrineConfig->setMetadataDriverImpl($xmlDriver);
 
-        // Proxy configuration - matching EntityManager.php settings
         $doctrineConfig->setAutoGenerateProxyClasses(
             ProxyFactory::AUTOGENERATE_NEVER
         );
         $doctrineConfig->setProxyDir(sys_get_temp_dir());
         $doctrineConfig->setProxyNamespace('Oryx\ORM\Proxy');
 
-        // Create Doctrine EntityManager instance
         $entityManager = DoctrineEntityManager::create($connection, $doctrineConfig);
 
-        // Create a metadata factory and set the driver by reflection
-        $metadataFactory = new ClassMetadataFactory();
-        // Set the driver property
-        $driverReflection = new ReflectionProperty(ClassMetadataFactory::class, 'driver');
-        $driverReflection->setAccessible(true);
-        $driverReflection->setValue($metadataFactory, $xmlDriver);
-        // Set the initialized flag to true to prevent initialize() from being called
-        $initializedReflection = new ReflectionProperty(ClassMetadataFactory::class, 'initialized');
-        $initializedReflection->setAccessible(true);
-        $initializedReflection->setValue($metadataFactory, true);
-
-        // Get all metadata
-        $metadatas = $metadataFactory->getAllMetadata();
+        $metadatas = $entityManager->getMetadataFactory()->getAllMetadata();
 
         if (empty($metadatas)) {
             $io->warning('No metadata classes to process.');
@@ -130,7 +109,6 @@ class GenerateEntitiesCommand extends Command
             return Command::SUCCESS;
         }
 
-        // Apply filter if provided
         $filter = $input->getOption('filter');
         if ($filter) {
             $filteredMetadatas = [];

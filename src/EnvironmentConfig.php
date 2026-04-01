@@ -300,13 +300,14 @@ class EnvironmentConfig
     public function getDatabaseParams(): array
     {
         return [
-            'driver' => $this->get('DB_DRIVER', 'pdo_mysql'),
-            'host' => $this->get('DB_HOST', 'localhost'),
-            'port' => $this->get('DB_PORT', '3306'),
-            'dbname' => $this->get('DB_NAME', 'app'),
-            'user' => $this->get('DB_USER', 'root'),
-            'password' => $this->get('DB_PASSWORD', ''),
-            'charset' => $this->get('DB_CHARSET', 'utf8mb4'),
+            'driver' => $this->get('database.driver', 'pdo_sqlite'),
+            'host' => $this->get('database.host', 'localhost'),
+            'port' => $this->get('database.port', '3306'),
+            'dbname' => $this->get('database.name', 'app'),
+            'user' => $this->get('database.user', 'root'),
+            'password' => $this->get('database.password', ''),
+            'charset' => $this->get('database.charset', 'utf8mb4'),
+            'path' => $this->get('database.path', 'var/data/orm.db'),
         ];
     }
 

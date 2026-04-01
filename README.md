@@ -1453,18 +1453,166 @@ vendor/bin/phpunit --testsuite Action
 vendor/bin/phpunit --coverage-text
 ```
 
-### 10.4 Console Commands
+---
+
+## 11. Console CLI Commands
+
+### 11.1 Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `bin/console list` | List all available commands |
+| `bin/console orm:generate:entities` | Generate entity classes from XML schema |
+| `bin/console oryx:fixtures:load` | Load demo fixtures using Faker |
+| `bin/console oryx:db:create` | Create SQLite/MySQL database and schema |
+
+### 11.2 Entity Generation from XML
+
+Generate all entities from `/schema` XML definitions:
 
 ```bash
-# List commands
-bin/console list
+bin/console orm:generate:entities
+```
 
-# Generate entities from XML
-bin/console oryx:entities:generate
+Generate specific entity only:
 
-# Doctrine migrations
-bin/console doctrine:migrations:migrate
-bin/console doctrine:migrations:diff
+```bash
+bin/console orm:generate:entities --filter=User
+bin/console orm:generate:entities --filter='App\Entity\Post'
+```
+
+Options:
+
+| Option | Description |
+|--------|-------------|
+| `--filter` | Filter entities by name or namespace |
+| `--no-backup` | Do not create backup of existing files |
+| `--update-if-empty` | Do not overwrite existing entity files |
+
+### 11.3 Fixtures Loading with Faker
+
+Load demo data with Faker:
+
+```bash
+# Load default fixtures (3 groups, 10 users, 2 posts per user)
+bin/console oryx:fixtures:load
+
+# Custom counts
+bin/console oryx:fixtures:load --groups=5 --users=50 --posts=3
+
+# Purge existing data before loading
+bin/console oryx:fixtures:load --purge
+
+# Reproducible random data with seed
+bin/console oryx:fixtures:load --seed=42
+```
+
+Options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--groups` | 3 | Number of groups to generate |
+| `--users` | 10 | Number of users to generate |
+| `--posts` | 2 | Posts per user |
+| `--purge` | - | Purge existing data first |
+| `--seed` | null | Random seed for reproducibility |
+
+### 11.4 Database Creation
+
+```bash
+# Create SQLite database (default driver)
+bin/console oryx:db:create
+
+# Force recreate (drops existing)
+bin/console oryx:db:create --force
+```
+
+### 11.5 Doctrine Migrations
+
+```bash
+# Generate migration from schema diff
+vendor/bin/doctrine-migrations diff --configuration=migrations.yaml
+
+# Run migrations
+vendor/bin/doctrine-migrations migrate --configuration=migrations.yaml
+
+# Show migration status
+vendor/bin/doctrine-migrations status --configuration=migrations.yaml
+```
+
+---
+
+## 12. SQLite Demo Quick Start
+
+The application defaults to SQLite for zero-config demo.
+
+```bash
+# 1. Install dependencies
+composer install
+
+# 2. Create database and schema
+bin/console oryx:db:create
+
+# 3. Load demo fixtures
+bin/console oryx:fixtures:load
+
+# 4. Start server
+php -S localhost:8080 -t public
+
+# 5. Visit http://localhost:8080
+```
+
+Switch to MySQL by editing `.env.yaml`:
+
+```yaml
+database:
+  driver: pdo_mysql
+  host: localhost
+  port: 3306
+  name: orm_db
+  user: root
+  password: secret
+```
+
+---
+
+## 13. XML Schema-Driven Entity Generation
+
+### 13.1 Schema Location
+
+All Doctrine XML mappings live in `/schema`:
+
+```
+schema/
+├── User.orm.xml
+├── Post.orm.xml
+└── Group.orm.xml
+```
+
+### 13.2 Pipeline
+
+```
+schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
+```
+
+### 13.3 Example Schema
+
+```xml
+<!-- schema/User.orm.xml -->
+<doctrine-mapping>
+    <entity name="App\Entity\User" table="users">
+        <id name="id" type="integer">
+            <generator strategy="AUTO"/>
+        </id>
+        <field name="email" type="string" length="255" unique="true"/>
+        <field name="password" type="string" length="255"/>
+        <field name="roles" type="json"/>
+        <field name="createdAt" type="datetime"/>
+        <field name="updatedAt" type="datetime" nullable="true"/>
+        <one-to-many target-entity="App\Entity\Post" field="posts" mapped-by="author"/>
+        <many-to-one target-entity="App\Entity\Group" field="group" inversed-by="users"/>
+    </entity>
+</doctrine-mapping>
 ```
 
 ---
