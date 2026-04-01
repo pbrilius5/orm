@@ -13,3 +13,4 @@ composer.lock
 .php-cs-fixer.php
 phpunit.xml
 .phpunit.result.cache
+.phpactor.json

@@ -64,8 +64,7 @@ class GenerateEntitiesCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'If set, EntityGenerator will not overwrite existing files.'
-            )
-        ;
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

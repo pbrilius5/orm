@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Symfony\Component\Console\Application;
-use App\Console\Command\GenerateEntitiesCommand;
 
 // Require Composer autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -13,6 +12,6 @@ $application = new Application();
 $application->setName('Oryx ORM Console');
 $application->setVersion('1.0.0');
 // Add our custom command
-$application->add(new GenerateEntitiesCommand());
+$application->add(new App\Console\Command\GenerateEntitiesCommand());
 
 $application->run();
