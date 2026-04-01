@@ -14,3 +14,4 @@ composer.lock
 phpunit.xml
 .phpunit.result.cache
 .phpactor.json
+/var/data/orm.db

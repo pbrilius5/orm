@@ -35,7 +35,7 @@ bin/console oryx:db:create
 bin/console oryx:fixtures:load --seed=42
 
 # 4. Start the server
-php -S localhost:8080 -t public
+composer serve
 ```
 
 Open [http://localhost:8080](http://localhost:8080) — you should see the home page with users and API links.

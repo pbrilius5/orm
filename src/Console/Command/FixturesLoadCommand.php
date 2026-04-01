@@ -83,6 +83,9 @@ class FixturesLoadCommand extends Command
             $this->faker->seed((int) $input->getOption('seed'));
         }
 
+        // Reset Faker's unique generator to prevent collisions across runs
+        $this->faker->unique(true);
+
         $connectionParams = $envConfig->getDatabaseParams();
 
         if ($connectionParams['driver'] === 'pdo_mysql') {
@@ -119,16 +122,22 @@ class FixturesLoadCommand extends Command
             // Schema may already exist, continue
         }
 
-        if ($input->getOption('purge')) {
+        $groupCount = (int) $input->getOption('groups');
+        $userCount = (int) $input->getOption('users');
+        $postCount = (int) $input->getOption('posts');
+
+        // Auto-purge when seed is provided to ensure deterministic reproducibility
+        if ($input->getOption('seed') !== null) {
+            $io->text('Auto-purging existing data (seeded fixtures require clean database)...');
+            $connection->executeStatement('DELETE FROM posts');
+            $connection->executeStatement('DELETE FROM users');
+            $connection->executeStatement('DELETE FROM `groups`');
+        } elseif ($input->getOption('purge')) {
             $io->text('Purging existing data...');
             $connection->executeStatement('DELETE FROM posts');
             $connection->executeStatement('DELETE FROM users');
             $connection->executeStatement('DELETE FROM `groups`');
         }
-
-        $groupCount = (int) $input->getOption('groups');
-        $userCount = (int) $input->getOption('users');
-        $postCount = (int) $input->getOption('posts');
 
         $io->title('Loading Fixtures');
 
