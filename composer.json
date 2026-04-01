@@ -48,12 +48,12 @@
       "url": "https://gitlab.com/umidigi-ss-group/adr.git"
     }
   ],
-  "autoload": {
-    "psr-4": {
-      "Oryx\\ORM\\": "src/",
-      "App\\": "src/"
-    }
-  },
+    "autoload": {
+        "psr-4": {
+            "Oryx\\ORM\\": "src/",
+            "App\\": "src/"
+        }
+    },
   "autoload-dev": {
     "psr-4": {
       "Oryx\\ORM\\Tests\\": "tests/",
