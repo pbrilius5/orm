@@ -27,17 +27,30 @@
         </div>
     </nav>
 
+    <?php if (!empty($breadcrumbs)): ?>
+    <nav class="bg-white border-bottom" aria-label="breadcrumb">
+        <div class="container-fluid px-4 py-2">
+            <ol class="breadcrumb mb-0 small">
+                <?php foreach ($breadcrumbs as $i => $crumb): ?>
+                    <?php if ($i === count($breadcrumbs) - 1): ?>
+                    <li class="breadcrumb-item active" aria-current="page"><?= htmlspecialchars($crumb['label']) ?></li>
+                    <?php else: ?>
+                    <li class="breadcrumb-item"><a href="<?= htmlspecialchars($crumb['url']) ?>" class="text-decoration-none"><?= htmlspecialchars($crumb['label']) ?></a></li>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </ol>
+        </div>
+    </nav>
+    <?php endif; ?>
+
     <main>
         <?= $content ?? '' ?>
     </main>
 
     <footer class="py-3">
-        <div class="container-fluid d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+        <div class="container-fluid d-flex flex-column flex-sm-row justify-content-between align-items-center gap-1">
             <span class="text-muted small">&copy; <?= date('Y') ?> Oryx ORM</span>
-            <div class="d-flex gap-3">
-                <a href="/" class="text-muted small text-decoration-none">Home</a>
-                <a href="/users" class="text-muted small text-decoration-none">Users</a>
-            </div>
+            <span class="text-muted small">prototype.in — <em>ship fast, iterate faster</em></span>
         </div>
     </footer>
 

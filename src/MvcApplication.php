@@ -47,16 +47,27 @@ class MvcApplication
             return new Response($this->view->renderWithLayout('home', [
                 'title' => 'Oryx ORM - MVC Application',
                 'description' => 'Full-stack ORM with MVC pattern',
+                'breadcrumbs' => [['label' => 'Home', 'url' => '/']],
             ]));
         });
 
         $this->router->get('/users', function (Request $req) {
             $data = $this->controllers['user']->index();
+            $data['breadcrumbs'] = [
+                ['label' => 'Home', 'url' => '/'],
+                ['label' => 'Users', 'url' => '/users'],
+            ];
             return new Response($this->view->renderWithLayout('users/index', $data));
         });
 
         $this->router->get('/users/create', function (Request $req) {
-            return new Response($this->view->renderWithLayout('users/create'));
+            return new Response($this->view->renderWithLayout('users/create', [
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Users', 'url' => '/users'],
+                    ['label' => 'Create', 'url' => '/users/create'],
+                ],
+            ]));
         });
 
         $this->router->post('/users/create', function (Request $req) {
@@ -70,7 +81,14 @@ class MvcApplication
             if (!$user) {
                 return new Response('User not found', 404);
             }
-            return new Response($this->view->renderWithLayout('users/show', ['user' => $user]));
+            return new Response($this->view->renderWithLayout('users/show', [
+                'user' => $user,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Users', 'url' => '/users'],
+                    ['label' => '#' . $user->getId(), 'url' => '/users/' . $user->getId()],
+                ],
+            ]));
         });
 
         $this->router->get('/users/{id}/delete', function (Request $req, array $params) {
@@ -84,7 +102,15 @@ class MvcApplication
             if (!$user) {
                 return new Response('User not found', 404);
             }
-            return new Response($this->view->renderWithLayout('users/edit', ['user' => $user]));
+            return new Response($this->view->renderWithLayout('users/edit', [
+                'user' => $user,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Users', 'url' => '/users'],
+                    ['label' => '#' . $user->getId(), 'url' => '/users/' . $user->getId()],
+                    ['label' => 'Edit', 'url' => '/users/' . $user->getId() . '/edit'],
+                ],
+            ]));
         });
 
         $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
