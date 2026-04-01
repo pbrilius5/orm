@@ -25,6 +25,7 @@ composer install
 - PHP 8.2+
 - MariaDB/MySQL or SQLite
 - Extensions: mbstring, intl, pdo_mysql
+- Optional: memcached extension for distributed rate limiting
 
 **Environment:**
 ```bash
@@ -659,7 +660,7 @@ class RateLimitMiddleware implements MiddlewareInterface
     ): ResponseInterface {
         $key = 'rate_limit:' . ($request->getHeaderLine('X-Forwarded-For') ?: 'local');
         
-        // Implementation with Redis/Memcached would go here
+        // Implementation with Memcached would go here
         
         return $handler->handle($request)
             ->withHeader('X-RateLimit-Limit', (string) $this->maxRequests)

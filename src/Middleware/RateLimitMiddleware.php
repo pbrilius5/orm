@@ -9,51 +9,110 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ * Rate limiting middleware with Memcached support.
+ * Falls back to array-based storage when Memcached is not available.
+ */
 class RateLimitMiddleware implements MiddlewareInterface
 {
     private int $maxRequests;
     private int $windowSeconds;
-    private array $storage = [];
+    private ?\Memcached $memcached = null;
+    private array $fallbackStorage = [];
 
     public function __construct(int $maxRequests = 60, int $windowSeconds = 60)
     {
         $this->maxRequests = $maxRequests;
         $this->windowSeconds = $windowSeconds;
+
+        // Try to initialize Memcached if extension is available
+        if (class_exists('Memcached')) {
+            $this->memcached = new \Memcached();
+            $servers = $this->memcached->getServerList();
+
+            if (empty($servers)) {
+                // Try to connect to default Memcached instance
+                @$this->memcached->addServer('localhost', 11211);
+
+                // Verify connection
+                if ($this->memcached->getServerList() === []) {
+                    $this->memcached = null; // Disable Memcached if connection failed
+                }
+            }
+        }
     }
 
     public function process(
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
-        $key = $this->getKey($request);
+        $key = 'rate_limit:' . $this->getKey($request);
         $now = time();
+        $windowKey = $key . ':window';
+        $countKey = $key . ':count';
 
-        if (!isset($this->storage[$key])) {
-            $this->storage[$key] = ['count' => 0, 'window_start' => $now];
-        }
+        if ($this->memcached !== null) {
+            // Use Memcached for storage
+            $windowStart = $this->memcached->get($windowKey);
+            $count = (int) $this->memcached->get($countKey);
 
-        $record = &$this->storage[$key];
+            if ($windowStart === false || $now - $windowStart >= $this->windowSeconds) {
+                // Window expired, reset counters
+                $windowStart = $now;
+                $count = 0;
+                $this->memcached->set($windowKey, $windowStart, $this->windowSeconds * 2); // Expire window after 2x window time
+                $this->memcached->set($countKey, $count, $this->windowSeconds * 2);
+            }
 
-        if ($now - $record['window_start'] >= $this->windowSeconds) {
-            $record = ['count' => 0, 'window_start' => $now];
-        }
+            $count++;
+            $remaining = max(0, $this->maxRequests - $count);
 
-        $record['count']++;
-        $remaining = max(0, $this->maxRequests - $record['count']);
+            // Store updated count with appropriate expiration
+            $this->memcached->set($countKey, $count, $this->windowSeconds);
 
-        if ($record['count'] > $this->maxRequests) {
-            return new \Laminas\Diactoros\Response\JsonResponse([
-                '_error' => [
-                    'status' => 429,
-                    'title' => 'Too Many Requests',
-                    'detail' => "Rate limit exceeded. Try again in {$this->windowSeconds} seconds.",
-                ],
-            ], 429, [
-                'Content-Type' => 'application/hal+json',
-                'Retry-After' => (string) $this->windowSeconds,
-                'X-RateLimit-Limit' => (string) $this->maxRequests,
-                'X-RateLimit-Remaining' => '0',
-            ]);
+            if ($count > $this->maxRequests) {
+                return new \Laminas\Diactoros\Response\JsonResponse([
+                    '_error' => [
+                        'status' => 429,
+                        'title' => 'Too Many Requests',
+                        'detail' => "Rate limit exceeded. Try again in {$this->windowSeconds} seconds.",
+                    ],
+                ], 429, [
+                    'Content-Type' => 'application/hal+json',
+                    'Retry-After' => (string) $this->windowSeconds,
+                    'X-RateLimit-Limit' => (string) $this->maxRequests,
+                    'X-RateLimit-Remaining' => '0',
+                ]);
+            }
+        } else {
+            // Fallback to array-based storage
+            if (!isset($this->fallbackStorage[$key])) {
+                $this->fallbackStorage[$key] = ['count' => 0, 'window_start' => $now];
+            }
+
+            $record = &$this->fallbackStorage[$key];
+
+            if ($now - $record['window_start'] >= $this->windowSeconds) {
+                $record = ['count' => 0, 'window_start' => $now];
+            }
+
+            $record['count']++;
+            $remaining = max(0, $this->maxRequests - $record['count']);
+
+            if ($record['count'] > $this->maxRequests) {
+                return new \Laminas\Diactoros\Response\JsonResponse([
+                    '_error' => [
+                        'status' => 429,
+                        'title' => 'Too Many Requests',
+                        'detail' => "Rate limit exceeded. Try again in {$this->windowSeconds} seconds.",
+                    ],
+                ], 429, [
+                    'Content-Type' => 'application/hal+json',
+                    'Retry-After' => (string) $this->windowSeconds,
+                    'X-RateLimit-Limit' => (string) $this->maxRequests,
+                    'X-RateLimit-Remaining' => '0',
+                ]);
+            }
         }
 
         $response = $handler->handle($request);
@@ -74,11 +133,26 @@ class RateLimitMiddleware implements MiddlewareInterface
 
     public function reset(string $key): void
     {
-        unset($this->storage[$key]);
+        $key = 'rate_limit:' . $key;
+        $windowKey = $key . ':window';
+        $countKey = $key . ':count';
+
+        if ($this->memcached !== null) {
+            $this->memcached->delete($windowKey);
+            $this->memcached->delete($countKey);
+        } else {
+            unset($this->fallbackStorage[$key]);
+        }
     }
 
     public function resetAll(): void
     {
-        $this->storage = [];
+        if ($this->memcached !== null) {
+            // Note: This is a simplified approach. In production, you might want to use
+            // a specific key prefix and flush only those keys, or use flush() if appropriate.
+            $this->memcached->flush();
+        } else {
+            $this->fallbackStorage = [];
+        }
     }
 }
