@@ -40,7 +40,7 @@ class EntityManagerFactory
         $config->setMetadataDriverImpl($driver);
 
         $config->setAutoGenerateProxyClasses(
-            \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_NEVER
+            \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL
         );
         $config->setProxyDir(sys_get_temp_dir());
         $config->setProxyNamespace('Oryx\ORM\Proxy');
