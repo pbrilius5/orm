@@ -1,38 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title ?? 'Oryx ORM') ?></title>
-    <style>
-        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; }
-        h1 { color: #333; }
-        nav { margin: 1rem 0; padding: 1rem; background: #f5f5f5; }
-        nav a { margin-right: 1rem; color: #0066cc; }
-        .info { background: #e7f3ff; padding: 1rem; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <h1><?= htmlspecialchars($title ?? 'Oryx ORM') ?></h1>
-    
-    <nav>
-        <a href="/">Home</a>
-        <a href="/users">Users</a>
-        <a href="/api/users">API (JSON)</a>
-    </nav>
-    
-    <div class="info">
-        <h2>Full-Stack PHP Application</h2>
-        <p>This application demonstrates multiple architectural patterns:</p>
-        <ul>
-            <li><strong>MVC</strong> - Traditional server-side rendering (this page)</li>
-            <li><strong>ADR</strong> - API endpoints for SPAs (<a href="/api/users">/api/users</a>)</li>
-            <li><strong>PWA</strong> - Progressive Web App ready</li>
-        </ul>
+<div class="container-fluid px-4 py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="p-5 bg-white rounded shadow-sm">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <h1 class="display-5 fw-bold"><?= htmlspecialchars($title ?? 'Oryx ORM') ?></h1>
+                        <p class="lead text-muted"><?= htmlspecialchars($description ?? 'Full-stack ORM with MVC pattern') ?></p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                        <div class="d-flex flex-column flex-sm-row justify-content-lg-end gap-2">
+                            <a href="/users" class="btn btn-primary btn-lg">Manage Users</a>
+                            <a href="/users/create" class="btn btn-outline-secondary btn-lg">Create User</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <?php if (isset($description)): ?>
-    <p><?= htmlspecialchars($description) ?></p>
-    <?php endif; ?>
-</body>
-</html>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6">
+            <div class="d-flex h-100 p-4 bg-dark text-white rounded flex-column justify-content-between">
+                <div>
+                    <h2 class="h4">MVC Pattern</h2>
+                    <p class="mb-0 text-white-50">Traditional server-side rendering with controllers, views, and models.</p>
+                </div>
+                <a href="/users" class="btn btn-outline-light mt-3 align-self-start">Browse Users</a>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div class="d-flex h-100 p-4 bg-white border rounded flex-column justify-content-between">
+                <div>
+                    <h2 class="h4">API Ready</h2>
+                    <p class="mb-0 text-muted">RESTful JSON endpoints for SPAs and mobile apps.</p>
+                </div>
+                <a href="/api/users" class="btn btn-outline-secondary mt-3 align-self-start">View API</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-sm-6 col-md-4">
+            <div class="d-flex flex-column h-100 p-4 bg-white border rounded">
+                <h5 class="fw-bold">Doctrine ORM</h5>
+                <p class="text-muted mb-0 flex-grow-1">Full-featured ORM with DQL, repositories, and entity management.</p>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <div class="d-flex flex-column h-100 p-4 bg-white border rounded">
+                <h5 class="fw-bold">Event System</h5>
+                <p class="text-muted mb-0 flex-grow-1">League\Event integration for decoupled architecture and clean hooks.</p>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-4">
+            <div class="d-flex flex-column h-100 p-4 bg-white border rounded">
+                <h5 class="fw-bold">CLI Console</h5>
+                <p class="text-muted mb-0 flex-grow-1">Symfony Console commands for database migrations and seeding.</p>
+            </div>
+        </div>
+    </div>
+</div>
