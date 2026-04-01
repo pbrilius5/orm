@@ -29,8 +29,21 @@ class EnvironmentConfig
 
     public function __construct(?string $projectRoot = null)
     {
-        $this->projectRoot = $projectRoot ?? getcwd();
+        $this->projectRoot = $projectRoot ?? $this->detectProjectRoot();
         $this->load();
+    }
+
+    private function detectProjectRoot(): string
+    {
+        $dir = __DIR__;
+        while ($dir !== '/' && $dir !== '') {
+            if (file_exists($dir . '/composer.json')) {
+                return $dir;
+            }
+            $dir = dirname($dir);
+        }
+
+        return getcwd();
     }
 
     /**
