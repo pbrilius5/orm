@@ -14,9 +14,9 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
-use Doctrine\ORM\Mapping\ClassMetadataFactory;
+use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
-use Oryx\ORM\Mapping\XmlDriver;
+use Doctrine\ORM\Mapping\ClassMetadataFactory;
 use Symfony\Component\Dotenv\Dotenv;
 use ReflectionProperty;
 
@@ -107,9 +107,9 @@ class GenerateEntitiesCommand extends Command
         $doctrineConfig = new Configuration();
 
         // Set up metadata driver using our XML driver
-        $xmlDriver = new XmlDriver([
-            $projectRoot . '/src/Schema/definitions',
-        ]);
+        $xmlDriver = new SimplifiedXmlDriver([
+            $projectRoot . '/schema' => 'App\Entity',
+        ], '.orm.xml');
         $doctrineConfig->setMetadataDriverImpl($xmlDriver);
 
         // Proxy configuration - matching EntityManager.php settings
