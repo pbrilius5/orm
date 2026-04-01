@@ -63,7 +63,7 @@ class Kernel
     private function createServices(): void
     {
         $this->entityManager = EntityManagerFactory::createFromEnv();
-        $this->fractal = new FractalManager();
+        $this->fractal = new FractalManager(null);
         $this->fractal->setSerializer(new JsonApiSerializer());
     }
 
