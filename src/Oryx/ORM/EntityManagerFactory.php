@@ -22,7 +22,7 @@ class EntityManagerFactory
     {
         $envConfig = new EnvironmentConfig();
 
-        return self::create($envConfig->getDatabaseParams(), dirname(__DIR__, 2) . '/src/Schema/definitions');
+        return self::create($envConfig->getDatabaseParams(), dirname(__DIR__, 2) . '/schema');
     }
 
     /**

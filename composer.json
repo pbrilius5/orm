@@ -52,7 +52,7 @@
   ],
     "autoload": {
         "psr-4": {
-            "Oryx\\ORM\\": "src/",
+            "Oryx\\ORM\\": "src/Oryx/ORM/",
             "App\\": "src/"
         }
     },
