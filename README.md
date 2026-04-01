@@ -30,8 +30,7 @@
 - [x] PHP 8.2+
 - [x] MariaDB/MySQL or SQLite
 - [x] Extensions: mbstring, intl, pdo_mysql
-- [ ] Optional: memcached extension for distributed rate limiting
-- [ ] Optional: redis extension (alternative to memcached)
+- [ ] Optional: memcached extension for distributed rate limiting and caching
 
 ### Quick Start
 
@@ -1402,7 +1401,7 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 | `ORM_AUTO_GENERATE_PROXY` | Auto-generate Doctrine proxies | `false` | No |
 | `ORM_PROXY_DIR` | Proxy directory storage | `/tmp/orm/proxies` | No |
 | `ORM_PROXY_NAMESPACE` | Proxy namespace | `Oryx\ORM\Proxy` | No |
-| `CACHE_DRIVER` | Cache driver (array/memcached/redis) | `array` | No |
+| `CACHE_DRIVER` | Cache driver (array/memcached) | `array` | No |
 | `CACHE_HOST` | Cache server hostname | `localhost` | No |
 | `CACHE_PORT` | Cache server port | `11211` | No |
 | `CACHE_TTL` | Cache time-to-live (seconds) | `3600` | No |
