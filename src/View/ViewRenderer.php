@@ -10,7 +10,7 @@ class ViewRenderer
 
     public function __construct(string $templatePath = null)
     {
-        $this->templatePath = $templatePath ?? dirname(__DIR__) . '/templates';
+        $this->templatePath = $templatePath ?? dirname(__DIR__, 2) . '/templates';
     }
 
     public function render(string $template, array $data = []): string
