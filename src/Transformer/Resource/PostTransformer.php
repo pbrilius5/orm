@@ -12,7 +12,7 @@ use League\Fractal\TransformerAbstract;
  */
 class PostTransformer extends TransformerAbstract
 {
-    protected $availableIncludes = ['author'];
+    protected array $availableIncludes = ['author'];
 
     /**
      * Transform the post entity.

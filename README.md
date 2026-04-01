@@ -541,7 +541,7 @@ class FixtureLoader
 
     public function __construct()
     {
-        $this->fm = new FactoryMuffin();
+        $this->fm = new FactoryMuffin(null, null);
         $this->fm->loadFactories(__DIR__ . '/../../tests/factories');
     }
 

@@ -15,7 +15,7 @@ class FixtureLoader
     public function __construct(?EntityManagerInterface $entityManager = null)
     {
         $this->entityManager = $entityManager;
-        $this->factoryMuffin = new FactoryMuffin();
+        $this->factoryMuffin = new FactoryMuffin(null, null);
         $this->loadFactories();
     }
 

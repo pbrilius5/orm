@@ -12,7 +12,7 @@ use League\Fractal\TransformerAbstract;
  */
 class UserTransformer extends TransformerAbstract
 {
-    protected $availableIncludes = ['posts', 'group'];
+    protected array $availableIncludes = ['posts', 'group'];
 
     /**
      * Transform the user entity.

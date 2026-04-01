@@ -12,7 +12,7 @@ use League\Fractal\TransformerAbstract;
  */
 class GroupTransformer extends TransformerAbstract
 {
-    protected $availableIncludes = ['users'];
+    protected array $availableIncludes = ['users'];
 
     /**
      * Transform the group entity.
