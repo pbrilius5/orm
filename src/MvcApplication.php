@@ -44,7 +44,7 @@ class MvcApplication
     private function registerRoutes(): void
     {
         $this->router->get('/', function (Request $req) {
-            return new Response($this->view->render('home', [
+            return new Response($this->view->renderWithLayout('home', [
                 'title' => 'Oryx ORM - MVC Application',
                 'description' => 'Full-stack ORM with MVC pattern',
             ]));
@@ -52,11 +52,11 @@ class MvcApplication
 
         $this->router->get('/users', function (Request $req) {
             $data = $this->controllers['user']->index();
-            return new Response($this->view->render('users/index', $data));
+            return new Response($this->view->renderWithLayout('users/index', $data));
         });
 
         $this->router->get('/users/create', function (Request $req) {
-            return new Response($this->view->render('users/create'));
+            return new Response($this->view->renderWithLayout('users/create'));
         });
 
         $this->router->post('/users/create', function (Request $req) {
@@ -70,7 +70,7 @@ class MvcApplication
             if (!$user) {
                 return new Response('User not found', 404);
             }
-            return new Response($this->view->render('users/show', ['user' => $user]));
+            return new Response($this->view->renderWithLayout('users/show', ['user' => $user]));
         });
 
         $this->router->get('/users/{id}/delete', function (Request $req, array $params) {
@@ -84,7 +84,7 @@ class MvcApplication
             if (!$user) {
                 return new Response('User not found', 404);
             }
-            return new Response($this->view->render('users/edit', ['user' => $user]));
+            return new Response($this->view->renderWithLayout('users/edit', ['user' => $user]));
         });
 
         $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
