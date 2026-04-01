@@ -17,7 +17,7 @@ use Doctrine\ORM\EntityManager as DoctrineEntityManager;
 use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
 use Doctrine\ORM\Mapping\ClassMetadataFactory;
-use Symfony\Component\Dotenv\Dotenv;
+use App\EnvironmentConfig;
 use ReflectionProperty;
 
 /**
@@ -74,20 +74,11 @@ class GenerateEntitiesCommand extends Command
         // Get the project root (current working directory when the command is run)
         $projectRoot = getcwd();
 
-        // Load environment variables from the project root
-        $dotenv = new Dotenv();
-        $dotenv->bootEnv($projectRoot . '/.env');
+        // Load environment variables using our EnvironmentConfig service
+        $envConfig = new EnvironmentConfig($projectRoot . '/.env');
 
         // Set up database connection (same as cli-config.php)
-        $connectionParams = [
-            'driver' => 'pdo_mysql',
-            'host' => $_ENV['DB_HOST'],
-            'port' => $_ENV['DB_PORT'],
-            'dbname' => $_ENV['DB_NAME'],
-            'user' => $_ENV['DB_USER'],
-            'password' => $_ENV['DB_PASSWORD'],
-            'charset' => 'utf8mb4',
-        ];
+        $connectionParams = $envConfig->getDatabaseParams();
 
         try {
             $connection = DriverManager::getConnection($connectionParams);
@@ -96,10 +87,7 @@ class GenerateEntitiesCommand extends Command
             $io->warning('Using an in-memory SQLite database for metadata generation.');
 
             // Fallback to an in-memory SQLite database
-            $connectionParams = [
-                'driver' => 'pdo_sqlite',
-                'memory' => true,
-            ];
+            $connectionParams = $envConfig->getDatabaseParamsForTesting();
             $connection = DriverManager::getConnection($connectionParams);
         }
 

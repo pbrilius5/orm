@@ -30,7 +30,8 @@
     "symfony/stopwatch": "^6.0",
     "webmozart/assert": "^1.0",
     "oryx/mvc": "dev-develop",
-    "oryx/adr": "dev-develop"
+    "oryx/adr": "dev-develop",
+    "symfony/yaml": "^6.4"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.5",
