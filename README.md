@@ -1,87 +1,175 @@
-# Oryx ORM Web Skeleton - Step-by-Step Tutorial
+# Oryx ORM Web Skeleton
+
+> DQL-centric ORM for PHP 8.2+ with MVC/ADR dual-pattern, HAL+JSON API, and zero-config SQLite demo.
 
 ## Table of Contents
-1. [Installation](#1-installation)
-2. [Architecture Overview](#2-architecture-overview)
-3. [MVC Pattern (Vanilla PHP)](#3-mvc-pattern-vanilla-php)
-4. [ADR Pattern (laminas/diactoros)](#4-adr-pattern-laminasdiactoros)
-5. [League Fractal Transformers](#5-league-fractal-transformers)
-6. [League Factory Muffin Fixtures](#6-league-factory-muffin-fixtures)
-7. [PSR Middleware Security](#7-psr-middleware-security)
-8. [HAL+JSON API](#8-haljson-api)
-9. [Environment Configuration](#9-environment-configuration)
-10. [Running the Application](#10-running-the-application)
+
+1. [Quick Start (SQLite, 30 seconds)](#1-quick-start-sqlite-30-seconds)
+2. [Console CLI Commands](#2-console-cli-commands)
+3. [Running the Application](#3-running-the-application)
+4. [Architecture Overview](#4-architecture-overview)
+5. [MVC Pattern (Vanilla PHP)](#5-mvc-pattern-vanilla-php)
+6. [ADR Pattern (laminas/diactoros)](#6-adr-pattern-laminasdiactoros)
+7. [HAL+JSON API](#7-haljson-api)
+8. [Fractal Transformers](#8-fractal-transformers)
+9. [Fixtures](#9-fixtures)
+10. [Middleware Security](#10-middleware-security)
+11. [Environment Configuration](#11-environment-configuration)
+12. [XML Schema-Driven Entity Generation](#12-xml-schema-driven-entity-generation)
+13. [Summary](#13-summary)
 
 ---
 
-## 1. Installation
+## 1. Quick Start (SQLite, 30 seconds)
 
-### Setup Checklist
+No database server needed. SQLite is the default driver.
 
-- [ ] Clone the repository
-- [ ] Install dependencies with `composer install`
-- [ ] Copy `.env.dist` to `.env` (or create `.env.yaml`)
-- [ ] Configure database credentials
-- [ ] Run `composer serve` to start the development server
-- [ ] Run `composer test` to verify everything works
+```bash
+# 1. Install dependencies
+composer install
+
+# 2. Create database and schema from XML
+bin/console oryx:db:create
+
+# 3. Load demo fixtures (groups, users, posts)
+bin/console oryx:fixtures:load --seed=42
+
+# 4. Start the server
+php -S localhost:8080 -t public
+```
+
+Open http://localhost:8080 — you should see the home page with users and API links.
+
+### What you get
+
+| URL | What |
+|-----|------|
+| `http://localhost:8080/` | MVC home page (PHP templates) |
+| `http://localhost:8080/users` | User list with CRUD |
+| `http://localhost:8080/api/users` | HAL+JSON API collection |
+| `http://localhost:8080/api/users/1` | Single user resource |
+| `http://localhost:8080/api/users?include=posts,group` | With embedded relations |
+
+### Switch to MySQL
+
+Edit `.env.yaml`:
+
+```yaml
+database:
+  driver: pdo_mysql
+  host: localhost
+  port: 3306
+  name: orm_db
+  user: root
+  password: secret
+```
+
+Then recreate: `bin/console oryx:db:create --force && bin/console oryx:fixtures:load`
 
 ### Requirements
 
-- [x] PHP 8.2+
-- [x] MariaDB/MySQL or SQLite
-- [x] Extensions: mbstring, intl, pdo_mysql
-- [ ] Optional: memcached extension for distributed rate limiting and caching
+- PHP 8.2+
+- Extensions: mbstring, intl, pdo_sqlite (included), pdo_mysql (optional)
 
-### Quick Start
+---
+
+## 2. Console CLI Commands
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `bin/console list` | List all commands |
+| `bin/console oryx:db:create` | Create SQLite/MySQL database and schema |
+| `bin/console oryx:fixtures:load` | Load demo fixtures using Faker |
+| `bin/console orm:generate:entities` | Generate entity classes from XML schema |
+
+### Database Creation
 
 ```bash
-git clone <repository>
-cd oryx-orm
-composer install
+# Create SQLite database (default)
+bin/console oryx:db:create
+
+# Force recreate (drops existing)
+bin/console oryx:db:create --force
 ```
 
-### Environment Configuration
+### Fixtures Loading
 
-Choose one of the following approaches:
-
-**Option A: Traditional .env file**
 ```bash
-cp .env.dist .env
-# Edit .env with your database credentials
+# Default: 3 groups, 10 users, 2 posts per user
+bin/console oryx:fixtures:load
+
+# Custom counts
+bin/console oryx:fixtures:load --groups=5 --users=50 --posts=3
+
+# Purge existing data first
+bin/console oryx:fixtures:load --purge
+
+# Reproducible random data
+bin/console oryx:fixtures:load --seed=42
 ```
 
-**Option B: YAML configuration (recommended)**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--groups` | 3 | Number of groups |
+| `--users` | 10 | Number of users |
+| `--posts` | 2 | Posts per user |
+| `--purge` | — | Purge data before loading |
+| `--seed` | null | Random seed |
+
+### Entity Generation from XML
+
 ```bash
-cp .env.yaml .env.yaml.local  # optional local override
-# Edit .env.yaml with your configuration
+# Generate all entities
+bin/console orm:generate:entities
+
+# Generate specific entity
+bin/console orm:generate:entities --filter=User
+bin/console orm:generate:entities --filter='App\Entity\Post'
 ```
 
-**Loading Priority (highest to lowest):**
-1. System environment variables (`$_ENV`, `$_SERVER`)
-2. `.env` file (legacy KEY=VALUE format)
-3. `.env.yaml` (primary YAML configuration)
-4. `.env.dist` (template defaults)
+### Doctrine Migrations
 
-**Variable Substitution Syntax:**
-```yaml
-# Simple reference
-DB_HOST: ${DB_HOST:-localhost}
-
-# With default value
-DB_PORT: ${DB_PORT:-3306}
-
-# Required variable (throws error if not set)
-DB_PASSWORD: ${DB_PASSWORD:?Database password is required}
-
-# Nested references
-database:
-  host: ${DB_HOST:-localhost}
-  port: ${DB_PORT:-3306}
+```bash
+vendor/bin/doctrine-migrations diff --configuration=migrations.yaml
+vendor/bin/doctrine-migrations migrate --configuration=migrations.yaml
+vendor/bin/doctrine-migrations status --configuration=migrations.yaml
 ```
 
 ---
 
-## 2. Architecture Overview
+## 3. Running the Application
+
+### Development Server
+
+```bash
+php -S localhost:8080 -t public
+# or
+composer serve
+```
+
+### Access Points
+
+| URL | Pattern | Entry |
+|-----|---------|-------|
+| `http://localhost:8080/` | MVC | Vanilla HTML |
+| `http://localhost:8080/users` | MVC | Vanilla HTML |
+| `http://localhost:8080/api/users` | ADR | HAL+JSON |
+| `http://localhost:8080/api/users/1` | ADR | HAL+JSON |
+| `http://localhost:8080/manifest.json` | PWA | JSON Manifest |
+
+### Testing
+
+```bash
+composer test
+vendor/bin/phpunit --testsuite Action
+vendor/bin/phpunit --coverage-text
+```
+
+---
+
+## 4. Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -112,11 +200,11 @@ database:
 
 ---
 
-## 3. MVC Pattern (Vanilla PHP)
+## 5. MVC Pattern (Vanilla PHP)
 
 **MVC uses NO external HTTP libraries** - pure PHP for maximum compatibility.
 
-### 3.1 HTTP Layer (Vanilla)
+### 5.1 HTTP Layer (Vanilla)
 
 ```php
 // src/Http/Request.php
@@ -154,7 +242,7 @@ class Router
 }
 ```
 
-### 3.2 MVC Controller
+### 5.2 MVC Controller
 
 ```php
 // src/Controller/UserController.php
@@ -212,7 +300,7 @@ class UserController
 }
 ```
 
-### 3.3 MVC Application
+### 5.3 MVC Application
 
 ```php
 // src/App/MvcApplication.php
@@ -241,7 +329,7 @@ class MvcApplication
 }
 ```
 
-### 3.4 MVC Routes
+### 5.4 MVC Routes
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -253,11 +341,11 @@ class MvcApplication
 
 ---
 
-## 4. ADR Pattern (laminas/diactoros)
+## 6. ADR Pattern (laminas/diactoros)
 
 **ADR uses PSR-7/PSR-15 for modern HTTP handling.**
 
-### 4.1 Kernel + Routing atskirumas
+### 6.1 Kernel + Routing atskirumas
 
 Maršrutai atskirti nuo Kernelio į `App\Routing\*Routes` klases - lengviau tvarkyti ir testuoti.
 
@@ -392,9 +480,7 @@ class Kernel
 }
 ```
 
-### 4.2 ADR Actions (Invokable)
-
-### 4.2 ADR Actions (Invokable)
+### 6.2 ADR Actions (Invokable)
 
 ```php
 // src/Action/User/ListAction.php
@@ -433,7 +519,7 @@ class ListAction
 }
 ```
 
-### 4.3 JSON:HAL Responder
+### 6.3 JSON:HAL Responder
 
 ```php
 // src/Responder/JsonHalResponder.php
@@ -496,241 +582,11 @@ class JsonHalResponder
 
 ---
 
-## 5. League Fractal Transformers
-
-**Transformers convert entities to HAL format.**
-
-### 5.1 User Transformer
-
-```php
-// src/Transformer/Resource/UserTransformer.php
-namespace App\Transformer\Resource;
-
-use App\Entity\User;
-use League\Fractal\TransformerAbstract;
-
-class UserTransformer extends TransformerAbstract
-{
-    protected $availableIncludes = ['posts', 'group'];
-
-    public function transform(User $user): array
-    {
-        return [
-            'id' => $user->getId() ?? 0,
-            'email' => $user->getEmail(),
-            'roles' => $user->getRoles(),
-            'created_at' => $user->getCreatedAt()->format('c'),
-            'updated_at' => $user->getUpdatedAt()?->format('c'),
-        ];
-    }
-
-    public function includePosts(User $user)
-    {
-        return $this->collection($user->getPosts(), new PostTransformer());
-    }
-
-    public function includeGroup(User $user)
-    {
-        return $this->item($user->getGroup(), new GroupTransformer());
-    }
-}
-```
-
-### 5.2 Using Transformers in Actions
-
-```php
-// In ADR Action
-use League\Fractal\Manager;
-use League\Fractal\Resource\Collection;
-use League\Fractal\Serializer\JsonApiSerializer;
-
-$fractal = new Manager();
-$fractal->setSerializer(new JsonApiSerializer());
-
-$users = $this->repository->findAll();
-$resource = new Collection($users, new UserTransformer());
-$data = $fractal->createData($resource)->toArray();
-```
-
----
-
-## 6. League Factory Muffin Fixtures
-
-**Fixtures provide test data generation.**
-
-### 6.1 Factory Definition
-
-```php
-// tests/factories/user.factories.php
-use App\Entity\User;
-
-$fm->define(User::class)->setDefinitions([
-    'email' => 'user{++}@example.com',
-    'password' => 'password123',
-    'roles' => ['ROLE_USER'],
-    'createdAt' => fn() => new \DateTimeImmutable(),
-])->setCallback(function (User $user) {
-    $user->setGroup(null);
-});
-```
-
-### 6.2 FixtureLoader
-
-```php
-// src/Fixture/FixtureLoader.php
-namespace App\Fixture;
-
-use League\FactoryMuffin\FactoryMuffin;
-
-class FixtureLoader
-{
-    private FactoryMuffin $fm;
-
-    public function __construct()
-    {
-        $this->fm = new FactoryMuffin(null, null);
-        $this->fm->loadFactories(__DIR__ . '/../../tests/factories');
-    }
-
-    public function make(string $class): object
-    {
-        return $this->fm->seed(1, $class, [], false)[0];
-    }
-
-    public function makeMany(string $class, int $count): array
-    {
-        return $this->fm->seed($count, $class, [], false);
-    }
-}
-```
-
-### 6.3 Using Fixtures in Tests
-
-```php
-// tests/Action/UserActionTest.php
-public function testListActionReturnsHalJson(): void
-{
-    $loader = new FixtureLoader();
-    $action = new ListAction($loader);
-    
-    $result = $action($request, $response);
-    
-    $this->assertEquals(200, $result->getStatusCode());
-    $this->assertEquals('application/hal+json', $result->getHeaderLine('Content-Type'));
-}
-```
-
----
-
-## 7. PSR Middleware Security
-
-**Middleware provides security, CORS, rate limiting.**
-
-### 7.1 Security Middleware
-
-```php
-// src/Middleware/SecurityMiddleware.php
-namespace App\Middleware;
-
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
-
-class SecurityMiddleware implements MiddlewareInterface
-{
-    public function process(
-        ServerRequestInterface $request,
-        RequestHandlerInterface $handler
-    ): ResponseInterface {
-        $response = $handler->handle($request);
-
-        return $response
-            ->withHeader('X-Content-Type-Options', 'nosniff')
-            ->withHeader('X-Frame-Options', 'DENY')
-            ->withHeader('X-XSS-Protection', '1; mode=block')
-            ->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-            ->withHeader('Content-Security-Policy', "default-src 'self'");
-    }
-}
-```
-
-### 7.2 CORS Middleware
-
-```php
-// src/Middleware/CorsMiddleware.php
-namespace App\Middleware;
-
-class CorsMiddleware implements MiddlewareInterface
-{
-    public function process(
-        ServerRequestInterface $request,
-        RequestHandlerInterface $handler
-    ): ResponseInterface {
-        if ($request->getMethod() === 'OPTIONS') {
-            return new JsonResponse(null, 204, [
-                'Access-Control-Allow-Origin' => '*',
-                'Access-Control-Allow-Methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
-                'Access-Control-Max-Age' => '86400',
-            ]);
-        }
-
-        $response = $handler->handle($request);
-        
-        return $response->withHeader('Access-Control-Allow-Origin', '*');
-    }
-}
-```
-
-### 7.3 Rate Limiting Middleware
-
-```php
-// src/Middleware/RateLimitMiddleware.php
-namespace App\Middleware;
-
-class RateLimitMiddleware implements MiddlewareInterface
-{
-    private int $maxRequests;
-    private int $windowSeconds;
-
-    public function __construct(int $maxRequests = 60, int $windowSeconds = 60)
-    {
-        $this->maxRequests = $maxRequests;
-        $this->windowSeconds = $windowSeconds;
-    }
-
-    public function process(
-        ServerRequestInterface $request,
-        RequestHandlerInterface $handler
-    ): ResponseInterface {
-        $key = 'rate_limit:' . ($request->getHeaderLine('X-Forwarded-For') ?: 'local');
-        
-        // Implementation with Memcached would go here
-        
-        return $handler->handle($request)
-            ->withHeader('X-RateLimit-Limit', (string) $this->maxRequests)
-            ->withHeader('X-RateLimit-Remaining', (string) ($this->maxRequests - 1));
-    }
-}
-```
-
-### 7.4 Applying Middleware to Kernel
-
-```php
-// In Kernel
-$this->router->middleware(new SecurityMiddleware());
-$this->router->middleware(new CorsMiddleware());
-$this->router->middleware(new RateLimitMiddleware(100, 60));
-```
-
----
-
-## 8. API RESTfulness CRUD
+## 7. HAL+JSON API
 
 **Full CRUD operations with HAL+JSON responses.**
 
-### 8.1 API Endpoints
+### 7.1 API Endpoints
 
 | Method | Endpoint | Action | Response | Description |
 |--------|----------|--------|----------|-------------|
@@ -741,13 +597,13 @@ $this->router->middleware(new RateLimitMiddleware(100, 60));
 | `PATCH` | `/api/users/{id}` | PatchAction | `200 + HAL resource` | Partial update |
 | `DELETE` | `/api/users/{id}` | DeleteAction | `204 No Content` | Delete user |
 
-### 8.2 HAL+JSON: Coadinga API atsakus
+### 7.2 HAL+JSON: Codinga API atsakus
 
-**Kas yra HAL?** Hypertext Application Language - standartas, kuris suteikia nuorodas (`_links`) ir įdėtinus resursus (`_embedded`). Skirtumas nuo JSON:API: paprastesnis, lengviau suprasti.
+**Kas yra HAL?** Hypertext Application Language - standartas, kuris suteikia nuorodas (`_links`) ir įdėtinius resursus (`_embedded`). Skirtumas nuo JSON:API: paprastesnis, lengviau suprasti.
 
-**Kodėl Fractal?** Transformuoja Doctrine entitetus į masyvus, prideda nuorodas ir įdėtinus resursus.
+**Kodėl Fractal?** Transformuoja Doctrine entitetus į masyvus, prideda nuorodas ir įdėtinius resursus.
 
-### 8.3 Pagrindinės HAL struktūros
+### 7.3 Pagrindinės HAL struktūros
 
 **1. Vienas resursas (`/api/users/1`):**
 ```json
@@ -804,7 +660,7 @@ $this->router->middleware(new RateLimitMiddleware(100, 60));
 }
 ```
 
-### 8.4 Nuorodos tarp resursų (`_links`)
+### 7.4 Nuorodos tarp resursų (`_links`)
 
 Nuorodos leidžia klientams naviguoti API be hardkodotų URL'ų:
 
@@ -826,49 +682,24 @@ Nuorodos leidžia klientams naviguoti API be hardkodotų URL'ų:
 
 **Praktinis pavyzdys - PWA navigacija:**
 ```javascript
-// React/Vue atsakymo apdorojimas
 const response = await fetch('/api/users/1');
 const data = await response.json();
 
-// Naršymas be hardkodo
-const editUrl = data._links.edit.href;  // "/api/users/1"
-const postsUrl = data._links.posts.href; // "/api/users/1/posts"
+const editUrl = data._links.edit.href;
+const postsUrl = data._links.posts.href;
 ```
 
-### 8.5 Įdėtini resursai (`_embedded`)
+### 7.5 Įdėtiniai resursai (`_embedded`)
 
-Įdėtini resursai neleidžia N+1 užklausų problemų - viena užklausa gauna viską.
-
-**Paprasta užklausa (`/api/posts/1`):**
-```json
-{
-  "_links": { "self": { "href": "/api/posts/1" } },
-  "_embedded": {
-    "post": {
-      "id": 1,
-      "title": "Kaip sukurti REST API",
-      "content": "...",
-      "created_at": "2024-01-15T10:30:00+02:00"
-    }
-  }
-}
-```
+Įdėtiniai resursai neleidžia N+1 užklausų problemų - viena užklausa gauna viską.
 
 **Su autoriumi (`/api/posts/1?include=author`):**
 ```json
 {
   "_links": { "self": { "href": "/api/posts/1" } },
   "_embedded": {
-    "post": {
-      "id": 1,
-      "title": "Kaip sukurti REST API",
-      "content": "..."
-    },
-    "author": {
-      "id": 1,
-      "email": "admin@versliukai.lt",
-      "roles": ["ROLE_ADMIN"]
-    }
+    "post": { "id": 1, "title": "Kaip sukurti REST API", "content": "..." },
+    "author": { "id": 1, "email": "admin@versliukai.lt", "roles": ["ROLE_ADMIN"] }
   }
 }
 ```
@@ -878,317 +709,48 @@ const postsUrl = data._links.posts.href; // "/api/users/1/posts"
 {
   "_links": { "self": { "href": "/api/users/1" } },
   "_embedded": {
-    "user": {
-      "id": 1,
-      "email": "admin@versliukai.lt",
-      "roles": ["ROLE_ADMIN"]
-    },
+    "user": { "id": 1, "email": "admin@versliukai.lt" },
     "posts": [
-      {
-        "id": 1,
-        "title": "Kaip sukurti REST API",
-        "content": "..."
-      },
-      {
-        "id": 2,
-        "title": "Middleware saugumas",
-        "content": "..."
-      }
+      { "id": 1, "title": "Kaip sukurti REST API" },
+      { "id": 2, "title": "Middleware saugumas" }
     ],
-    "group": {
-      "id": 1,
-      "name": "Administratoriai",
-      "created_at": "2024-01-01T00:00:00+02:00"
-    }
+    "group": { "id": 1, "name": "Administratoriai" }
   }
 }
 ```
 
-### 8.6 Transformeriai su Fractal
+### 7.6 Užklausų pavyzdžiai
 
-**UserTransformer - transformuoja User entitetą:**
-```php
-// src/Transformer/Resource/UserTransformer.php
-namespace App\Transformer\Resource;
-
-use App\Entity\User;
-use League\Fractal\TransformerAbstract;
-
-class UserTransformer extends TransformerAbstract
-{
-    // Kuriami "availableIncludes" - ryšiai kuriuos galima įkelti
-    protected $availableIncludes = ['posts', 'group'];
-
-    public function transform(User $user): array
-    {
-        return [
-            'id' => $user->getId(),
-            'email' => $user->getEmail(),
-            'roles' => $user->getRoles(),
-            'created_at' => $user->getCreatedAt()->format('c'),
-            'updated_at' => $user->getUpdatedAt()?->format('c'),
-        ];
-    }
-
-    // Grąžina Collection (daugelis)
-    public function includePosts(User $user)
-    {
-        return $this->collection($user->getPosts(), new PostTransformer());
-    }
-
-    // Grąžina Item (vienas)
-    public function includeGroup(User $user)
-    {
-        return $this->item($user->getGroup(), new GroupTransformer());
-    }
-}
-```
-
-**PostTransformer - postų transformavimas:**
-```php
-// src/Transformer/Resource/PostTransformer.php
-class PostTransformer extends TransformerAbstract
-{
-    protected $availableIncludes = ['author'];
-
-    public function transform(Post $post): array
-    {
-        return [
-            'id' => $post->getId(),
-            'title' => $post->getTitle(),
-            'content' => $post->getContent(),
-            'created_at' => $post->getCreatedAt()->format('c'),
-        ];
-    }
-
-    public function includeAuthor(Post $post)
-    {
-        return $this->item($post->getAuthor(), new UserTransformer());
-    }
-}
-```
-
-**GroupTransformer - grupių transformavimas:**
-```php
-// src/Transformer/Resource/GroupTransformer.php
-class GroupTransformer extends TransformerAbstract
-{
-    protected $availableIncludes = ['users'];
-
-    public function transform(Group $group): array
-    {
-        return [
-            'id' => $group->getId(),
-            'name' => $group->getName(),
-            'created_at' => $group->getCreatedAt()->format('c'),
-        ];
-    }
-
-    public function includeUsers(Group $group)
-    {
-        return $this->collection($group->getUsers(), new UserTransformer());
-    }
-}
-```
-
-### 8.7 Fractal Manager naudojimas ADR veiksmuose
-
-**ListAction su galimybės filtruoti įdėtinus resursus:**
-```php
-// src/Action/User/ListAction.php
-namespace App\Action\User;
-
-use App\Fixture\FixtureLoader;
-use App\Entity\User;
-use App\Responder\JsonHalResponder;
-use League\Fractal\Manager;
-use League\Fractal\Resource\Collection;
-use League\Fractal\Serializer\ArraySerializer;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-
-class ListAction
-{
-    private FixtureLoader $loader;
-
-    public function __construct(FixtureLoader $loader)
-    {
-        $this->loader = $loader;
-    }
-
-    public function __invoke(ServerRequestInterface $request): ResponseInterface
-    {
-        // Sukuriamas Fractal Manager
-        $fractal = new Manager();
-        $fractal->setSerializer(new ArraySerializer());
-
-        // Pasirenkami įdėtini resursai iš ?include=posts,group
-        $params = $request->getQueryParams();
-        if (isset($params['include'])) {
-            $fractal->parseIncludes($params['include']);
-        }
-
-        // Gaunami duomenys (čia iš FixtureLoader, realiame - iš DB)
-        $users = $this->loader->makeMany(User::class, 5);
-
-        // Transfomuojama su UserTransformer
-        $resource = new Collection($users, new \App\Transformer\Resource\UserTransformer());
-        $data = $fractal->createData($resource)->toArray();
-
-        // Grąžinamas HAL atsakymas
-        return JsonHalResponder::collection('users', $data['data'] ?? [], [
-            'total' => count($data['data'] ?? []),
-            'count' => count($data['data'] ?? []),
-        ]);
-    }
-}
-```
-
-**ShowAction su dinaminiais įdėtiniais resursais:**
-```php
-// src/Action/User/ShowAction.php
-namespace App\Action\User;
-
-use App\Entity\User;
-use App\Responder\JsonHalResponder;
-use League\Fractal\Manager;
-use League\Fractal\Resource\Item;
-use League\Fractal\Serializer\ArraySerializer;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-
-class ShowAction
-{
-    public function __invoke(ServerRequestInterface $request): ResponseInterface
-    {
-        $id = $request->getAttribute('id');
-
-        if (!$id || !is_numeric($id)) {
-            return JsonHalResponder::badRequest('Invalid user ID');
-        }
-
-        // Dummy user - realioje reikėtų EntityManager
-        $user = new User();
-        $user->setId((int)$id);
-        $user->setEmail('user@example.com');
-        $user->setRoles(['ROLE_USER']);
-
-        $fractal = new Manager();
-        $fractal->setSerializer(new ArraySerializer());
-
-        // ?include=posts,group
-        $params = $request->getQueryParams();
-        if (isset($params['include'])) {
-            $fractal->parseIncludes($params['include']);
-        }
-
-        $resource = new Item($user, new \App\Transformer\Resource\UserTransformer());
-        $data = $fractal->createData($resource)->toArray();
-
-        return JsonHalResponder::resource(
-            'user',
-            (string)$id,
-            $data['data'] ?? [],
-            ['collection' => '/api/users']
-        );
-    }
-}
-```
-
-### 8.8 JsonHalResponder metodai
-
-```php
-namespace App\Responder;
-
-use Laminas\Diactoros\Response\JsonResponse;
-
-class JsonHalResponder
-{
-    // Vienas resursas (200 OK)
-    public static function resource(
-        string $type,       // "user", "post", "group"
-        string $id,
-        array $attributes,
-        array $links = [],
-        array $embedded = []
-    ): JsonResponse { ... }
-
-    // Kolekcija (200 OK)
-    public static function collection(
-        string $type,
-        array $items,
-        array $meta = [],
-        array $links = []
-    ): JsonResponse { ... }
-
-    // Sukurtas resursas (201 Created)
-    public static function created(string $type, string $id, array $attributes): JsonResponse
-    {
-        return self::resource($type, $id, $attributes)->withStatus(201);
-    }
-
-    // Tuščias atsakymas (204 No Content)
-    public static function noContent(): JsonResponse { ... }
-
-    // Klaidos (400/401/403/404/422/500)
-    public static function badRequest(string $detail = ''): JsonResponse;
-    public static function notFound(string $detail = ''): JsonResponse;
-    public static function unauthorized(string $detail = 'Unauthorized'): JsonResponse;
-    public static function forbidden(string $detail = 'Forbidden'): JsonResponse;
-    public static function unprocessableEntity(array $errors): JsonResponse;
-}
-```
-
-### 8.9 Užklausų pavyzdžiai
-
-**GET /api/users** - visi vartotojai:
 ```bash
+# All users
 curl -X GET http://localhost:8000/api/users
-```
 
-**GET /api/users?include=posts** - vartotojai su postais:
-```bash
+# Users with posts
 curl -X GET "http://localhost:8000/api/users?include=posts"
-```
 
-**GET /api/users?include=posts,group** - vartotojai su visais ryšiais:
-```bash
+# Users with all relations
 curl -X GET "http://localhost:8000/api/users?include=posts,group"
-```
 
-**POST sukurti vartotoją:**
-```bash
+# Create user
 curl -X POST http://localhost:8000/api/users \
   -H "Content-Type: application/json" \
   -d '{"email":"new@versliukai.lt","password":"secret123"}'
-```
 
-**PUT pilnam atnaujinimui:**
-```bash
+# Full update
 curl -X PUT http://localhost:8000/api/users/1 \
   -H "Content-Type: application/json" \
   -d '{"email":"updated@versliukai.lt","roles":["ROLE_ADMIN"]}'
-```
 
-**PATCH daliniam atnaujinimui:**
-```bash
+# Partial update
 curl -X PATCH http://localhost:8000/api/users/1 \
   -H "Content-Type: application/json" \
   -d '{"email":"patched@versliukai.lt"}'
-```
 
-**DELETE ištrinti:**
-```bash
+# Delete
 curl -X DELETE http://localhost:8000/api/users/1
 ```
 
-### 8.10 Middleware saugumas
-
-Žr. skyrių #6 PSR Middleware Security.
-
-### 8.11 Maršrutų struktūra
-
-Maršrutai atskirti nuo Kernelio - lengviau prižiūrėti:
+### 7.7 Maršrutų struktūra
 
 ```
 src/
@@ -1203,72 +765,238 @@ src/
     └── UserController.php
 ```
 
-**Kernelas tik prijungia routes + middleware:**
-```php
-// src/App/Kernel.php
-private function registerRoutes(): void
-{
-    $this->adrRoutes = new AdrRoutes();
-    $router = $this->adrRoutes->getRouter();
+---
 
-    $router->middleware(new SecurityMiddleware());
-    $router->middleware(new CorsMiddleware());
-    $router->middleware(new RateLimitMiddleware(100, 60));
-    $router->middleware(new CsrfMiddleware());
+## 8. Fractal Transformers
+
+**Transformers convert entities to HAL format.**
+
+### 8.1 User Transformer
+
+```php
+// src/Transformer/Resource/UserTransformer.php
+namespace App\Transformer\Resource;
+
+use App\Entity\User;
+use League\Fractal\TransformerAbstract;
+
+class UserTransformer extends TransformerAbstract
+{
+    protected $availableIncludes = ['posts', 'group'];
+
+    public function transform(User $user): array
+    {
+        return [
+            'id' => $user->getId() ?? 0,
+            'email' => $user->getEmail(),
+            'roles' => $user->getRoles(),
+            'created_at' => $user->getCreatedAt()->format('c'),
+            'updated_at' => $user->getUpdatedAt()?->format('c'),
+        ];
+    }
+
+    public function includePosts(User $user)
+    {
+        return $this->collection($user->getPosts(), new PostTransformer());
+    }
+
+    public function includeGroup(User $user)
+    {
+        return $this->item($user->getGroup(), new GroupTransformer());
+    }
 }
 ```
 
-**ADR maršrutai (AdrRoutes.php):**
+### 8.2 Using Transformers in Actions
+
 ```php
-private function register(): void
+use League\Fractal\Manager;
+use League\Fractal\Resource\Collection;
+use League\Fractal\Serializer\JsonApiSerializer;
+
+$fractal = new Manager();
+$fractal->setSerializer(new JsonApiSerializer());
+
+$users = $this->repository->findAll();
+$resource = new Collection($users, new UserTransformer());
+$data = $fractal->createData($resource)->toArray();
+```
+
+---
+
+## 9. Fixtures
+
+**Fixtures provide test data generation.**
+
+### 9.1 Factory Definition (FactoryMuffin)
+
+```php
+// tests/factories/user.factories.php
+use App\Entity\User;
+
+$fm->define(User::class)->setDefinitions([
+    'email' => 'user{++}@example.com',
+    'password' => 'password123',
+    'roles' => ['ROLE_USER'],
+    'createdAt' => fn() => new \DateTimeImmutable(),
+])->setCallback(function (User $user) {
+    $user->setGroup(null);
+});
+```
+
+### 9.2 FixtureLoader
+
+```php
+// src/Fixture/FixtureLoader.php
+namespace App\Fixture;
+
+use League\FactoryMuffin\FactoryMuffin;
+
+class FixtureLoader
 {
-    $this->router->map('GET', '/health', fn() => new JsonResponse(['status' => 'ok']));
+    private FactoryMuffin $fm;
 
-    $this->router->map('GET', '/api/users', [ListAction::class, '__invoke']);
-    $this->router->map('POST', '/api/users', [CreateAction::class, '__invoke']);
-    $this->router->map('GET', '/api/users/{id}', [ShowAction::class, '__invoke']);
-    $this->router->map('PUT', '/api/users/{id}', [UpdateAction::class, '__invoke']);
-    $this->router->map('PATCH', '/api/users/{id}', [PatchAction::class, '__invoke']);
-    $this->router->map('DELETE', '/api/users/{id}', [DeleteAction::class, '__invoke']);
+    public function __construct()
+    {
+        $this->fm = new FactoryMuffin(null, null);
+        $this->fm->loadFactories(__DIR__ . '/../../tests/factories');
+    }
 
-    $this->router->map('GET', '/manifest.json', fn() => new JsonResponse([
-        'name' => 'Oryx ORM App',
-        'short_name' => 'OryxApp',
-        'display' => 'standalone',
-        'start_url' => '/',
-    ]));
+    public function make(string $class): object
+    {
+        return $this->fm->seed(1, $class, [], false)[0];
+    }
+
+    public function makeMany(string $class, int $count): array
+    {
+        return $this->fm->seed($count, $class, [], false);
+    }
 }
 ```
 
-**MVC maršrutai (MvcRoutes.php) - žr. pilną pavyzdį §4.1:**
+### 9.3 Using Fixtures in Tests
+
 ```php
-private function register(): void
+// tests/Action/UserActionTest.php
+public function testListActionReturnsHalJson(): void
 {
-    $this->router->get('/', function (Request $req) {
-        return new Response($this->view->render('home', ['title' => 'Oryx ORM']));
-    });
+    $loader = new FixtureLoader();
+    $action = new ListAction($loader);
 
-    $this->router->get('/users', function (Request $req) {
-        $data = $this->controllers['user']->index();
-        return new Response($this->view->render('users/index', $data));
-    });
+    $result = $action($request, $response);
 
-    $this->router->get('/users/{id}', function (Request $req, array $params) {
-        $user = $this->controllers['user']->show((int) $params['id']);
-        return new Response($this->view->render('users/show', ['user' => $user]));
-    });
+    $this->assertEquals(200, $result->getStatusCode());
+    $this->assertEquals('application/hal+json', $result->getHeaderLine('Content-Type'));
 }
 ```
 
 ---
 
-## 9. Environment Configuration
+## 10. Middleware Security
 
-### 9.1 Configuration Files
+**Middleware provides security, CORS, rate limiting.**
 
-The application supports multiple configuration formats with intelligent loading priority.
+### 10.1 Security Middleware
 
-**File Structure:**
+```php
+// src/Middleware/SecurityMiddleware.php
+namespace App\Middleware;
+
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
+
+class SecurityMiddleware implements MiddlewareInterface
+{
+    public function process(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler
+    ): ResponseInterface {
+        $response = $handler->handle($request);
+
+        return $response
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withHeader('X-Frame-Options', 'DENY')
+            ->withHeader('X-XSS-Protection', '1; mode=block')
+            ->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+            ->withHeader('Content-Security-Policy', "default-src 'self'");
+    }
+}
+```
+
+### 10.2 CORS Middleware
+
+```php
+// src/Middleware/CorsMiddleware.php
+namespace App\Middleware;
+
+class CorsMiddleware implements MiddlewareInterface
+{
+    public function process(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler
+    ): ResponseInterface {
+        if ($request->getMethod() === 'OPTIONS') {
+            return new JsonResponse(null, 204, [
+                'Access-Control-Allow-Origin' => '*',
+                'Access-Control-Allow-Methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
+                'Access-Control-Max-Age' => '86400',
+            ]);
+        }
+
+        $response = $handler->handle($request);
+
+        return $response->withHeader('Access-Control-Allow-Origin', '*');
+    }
+}
+```
+
+### 10.3 Rate Limiting Middleware
+
+```php
+// src/Middleware/RateLimitMiddleware.php
+namespace App\Middleware;
+
+class RateLimitMiddleware implements MiddlewareInterface
+{
+    private int $maxRequests;
+    private int $windowSeconds;
+
+    public function __construct(int $maxRequests = 60, int $windowSeconds = 60)
+    {
+        $this->maxRequests = $maxRequests;
+        $this->windowSeconds = $windowSeconds;
+    }
+
+    public function process(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler
+    ): ResponseInterface {
+        $key = 'rate_limit:' . ($request->getHeaderLine('X-Forwarded-For') ?: 'local');
+
+        return $handler->handle($request)
+            ->withHeader('X-RateLimit-Limit', (string) $this->maxRequests)
+            ->withHeader('X-RateLimit-Remaining', (string) ($this->maxRequests - 1));
+    }
+}
+```
+
+### 10.4 Applying Middleware to Kernel
+
+```php
+$this->router->middleware(new SecurityMiddleware());
+$this->router->middleware(new CorsMiddleware());
+$this->router->middleware(new RateLimitMiddleware(100, 60));
+```
+
+---
+
+## 11. Environment Configuration
+
+### 11.1 Configuration Files
+
 ```
 .env.dist          # Template defaults (committed to VCS)
 .env               # Legacy override (optional, gitignored)
@@ -1276,23 +1004,16 @@ The application supports multiple configuration formats with intelligent loading
 .env.yaml.local    # Local overrides (optional, gitignored)
 ```
 
-### 9.2 Loading Priority
-
-Configuration values are resolved in this order (highest priority wins):
+### 11.2 Loading Priority
 
 1. **System environment variables** - `$_ENV`, `$_SERVER`
-2. **`.env` file** - Legacy KEY=VALUE format (backward compatibility)
+2. **`.env` file** - Legacy KEY=VALUE format
 3. **`.env.yaml`** - Primary YAML configuration
-4. **`.env.dist`** - Template defaults (lowest priority)
+4. **`.env.dist`** - Template defaults
 
-### 9.3 YAML Configuration Format
-
-The `.env.yaml` file supports both flat and nested structures:
+### 11.3 YAML Configuration Format
 
 ```yaml
-# ─────────────────────────────────────────────
-# Database Configuration
-# ─────────────────────────────────────────────
 database:
   host: ${DB_HOST:-localhost}
   port: ${DB_PORT:-3306}
@@ -1300,91 +1021,47 @@ database:
   user: ${DB_USER:-root}
   password: ${DB_PASSWORD:-}
   charset: ${DB_CHARSET:-utf8mb4}
+  driver: ${DB_DRIVER:-pdo_sqlite}
+  path: ${DB_PATH:-var/data/orm.db}
 
-# ─────────────────────────────────────────────
-# Application Settings
-# ─────────────────────────────────────────────
 app:
   env: ${APP_ENV:-dev}
   debug: ${APP_DEBUG:-true}
   secret: ${APP_SECRET:-change-me-in-production}
 
-# ─────────────────────────────────────────────
-# ORM / Doctrine Settings
-# ─────────────────────────────────────────────
 orm:
   auto_generate_proxy: ${ORM_AUTO_GENERATE_PROXY:-false}
   proxy_dir: ${ORM_PROXY_DIR:-/tmp/orm/proxies}
   proxy_namespace: ${ORM_PROXY_NAMESPACE:-Oryx\\ORM\\Proxy}
 ```
 
-### 9.4 Variable Substitution Syntax
-
-The YAML configuration supports powerful variable substitution:
+### 11.4 Variable Substitution Syntax
 
 | Syntax | Description | Example |
 |--------|-------------|---------|
-| `${VAR}` | Direct variable reference | `${DB_HOST}` |
-| `${VAR:-default}` | Use default if not set | `${DB_HOST:-localhost}` |
-| `${VAR:?error}` | Throw error if not set | `${DB_PASSWORD:?Required}` |
-| `${nested.key}` | Reference nested value | `${database.host}` |
+| `${VAR}` | Direct reference | `${DB_HOST}` |
+| `${VAR:-default}` | Default if not set | `${DB_HOST:-localhost}` |
+| `${VAR:?error}` | Error if not set | `${DB_PASSWORD:?Required}` |
+| `${nested.key}` | Nested reference | `${database.host}` |
 
-**Examples:**
-```yaml
-# Simple reference with default
-DB_HOST: ${DB_HOST:-localhost}
-
-# Required variable with custom error message
-DB_PASSWORD: ${DB_PASSWORD:?Database password is required for production}
-
-# Cross-references between sections
-app.database_url: "mysql://${database.user}:${database.password}@${database.host}:${database.port}/${database.name}"
-```
-
-### 9.5 Backward Compatibility
-
-The `.env` file continues to work alongside `.env.yaml`:
-
-```bash
-# Traditional .env format
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=orm_db
-DB_USER=root
-DB_PASSWORD=secret
-```
-
-Values from `.env` override `.env.yaml` defaults, allowing gradual migration.
-
-### 9.6 Using EnvironmentConfig in Code
+### 11.5 Using EnvironmentConfig in Code
 
 ```php
 use App\EnvironmentConfig;
 
 $config = new EnvironmentConfig();
 
-// Get a value with default
 $host = $config->get('DB_HOST', 'localhost');
-
-// Get database connection parameters
 $params = $config->getDatabaseParams();
 
-// Check debug mode
 if ($config->isDebug()) {
     // Development mode
 }
 
-// Get Memcached configuration
-$memcached = $config->getMemcachedConfig();
-
-// Get rate limiting configuration
-$rateLimit = $config->getRateLimitConfig();
-
-// Require a value (throws exception if not set)
 $secret = $config->require('APP_SECRET', 'Application secret is required');
 ```
 
-### 9.7 Environment Variables Reference
+### 11.6 Environment Variables Reference
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
@@ -1394,7 +1071,8 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 | `DB_USER` | Database username | `root` | No |
 | `DB_PASSWORD` | Database password | (empty) | No |
 | `DB_CHARSET` | Database charset | `utf8mb4` | No |
-| `DB_DRIVER` | Database driver | `pdo_mysql` | No |
+| `DB_DRIVER` | Database driver | `pdo_sqlite` | No |
+| `DB_PATH` | SQLite file path | `var/data/orm.db` | No |
 | `APP_ENV` | Application environment | `dev` | No |
 | `APP_DEBUG` | Enable debug mode | `true` | No |
 | `APP_SECRET` | Application secret key | `change-me-in-production` | No |
@@ -1418,167 +1096,9 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 
 ---
 
-## 10. Running the Application
+## 12. XML Schema-Driven Entity Generation
 
-### 10.1 Development Server
-
-```bash
-# Using PHP built-in server
-php -S localhost:8080 -t public
-
-# Using Composer script
-composer serve
-```
-
-### 10.2 Access Points
-
-| URL | Pattern | Entry |
-|-----|---------|-------|
-| `http://localhost:8080/` | MVC | Vanilla HTML |
-| `http://localhost:8080/users` | MVC | Vanilla HTML |
-| `http://localhost:8080/api/users` | ADR | HAL+JSON |
-| `http://localhost:8080/api/users/1` | ADR | HAL+JSON |
-| `http://localhost:8080/manifest.json` | PWA | JSON Manifest |
-
-### 10.3 Testing
-
-```bash
-# Run all tests
-composer test
-
-# Run specific suite
-vendor/bin/phpunit --testsuite Action
-
-# Run with coverage
-vendor/bin/phpunit --coverage-text
-```
-
----
-
-## 11. Console CLI Commands
-
-### 11.1 Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `bin/console list` | List all available commands |
-| `bin/console orm:generate:entities` | Generate entity classes from XML schema |
-| `bin/console oryx:fixtures:load` | Load demo fixtures using Faker |
-| `bin/console oryx:db:create` | Create SQLite/MySQL database and schema |
-
-### 11.2 Entity Generation from XML
-
-Generate all entities from `/schema` XML definitions:
-
-```bash
-bin/console orm:generate:entities
-```
-
-Generate specific entity only:
-
-```bash
-bin/console orm:generate:entities --filter=User
-bin/console orm:generate:entities --filter='App\Entity\Post'
-```
-
-Options:
-
-| Option | Description |
-|--------|-------------|
-| `--filter` | Filter entities by name or namespace |
-| `--no-backup` | Do not create backup of existing files |
-| `--update-if-empty` | Do not overwrite existing entity files |
-
-### 11.3 Fixtures Loading with Faker
-
-Load demo data with Faker:
-
-```bash
-# Load default fixtures (3 groups, 10 users, 2 posts per user)
-bin/console oryx:fixtures:load
-
-# Custom counts
-bin/console oryx:fixtures:load --groups=5 --users=50 --posts=3
-
-# Purge existing data before loading
-bin/console oryx:fixtures:load --purge
-
-# Reproducible random data with seed
-bin/console oryx:fixtures:load --seed=42
-```
-
-Options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--groups` | 3 | Number of groups to generate |
-| `--users` | 10 | Number of users to generate |
-| `--posts` | 2 | Posts per user |
-| `--purge` | - | Purge existing data first |
-| `--seed` | null | Random seed for reproducibility |
-
-### 11.4 Database Creation
-
-```bash
-# Create SQLite database (default driver)
-bin/console oryx:db:create
-
-# Force recreate (drops existing)
-bin/console oryx:db:create --force
-```
-
-### 11.5 Doctrine Migrations
-
-```bash
-# Generate migration from schema diff
-vendor/bin/doctrine-migrations diff --configuration=migrations.yaml
-
-# Run migrations
-vendor/bin/doctrine-migrations migrate --configuration=migrations.yaml
-
-# Show migration status
-vendor/bin/doctrine-migrations status --configuration=migrations.yaml
-```
-
----
-
-## 12. SQLite Demo Quick Start
-
-The application defaults to SQLite for zero-config demo.
-
-```bash
-# 1. Install dependencies
-composer install
-
-# 2. Create database and schema
-bin/console oryx:db:create
-
-# 3. Load demo fixtures
-bin/console oryx:fixtures:load
-
-# 4. Start server
-php -S localhost:8080 -t public
-
-# 5. Visit http://localhost:8080
-```
-
-Switch to MySQL by editing `.env.yaml`:
-
-```yaml
-database:
-  driver: pdo_mysql
-  host: localhost
-  port: 3306
-  name: orm_db
-  user: root
-  password: secret
-```
-
----
-
-## 13. XML Schema-Driven Entity Generation
-
-### 13.1 Schema Location
+### 12.1 Schema Location
 
 All Doctrine XML mappings live in `/schema`:
 
@@ -1589,13 +1109,13 @@ schema/
 └── Group.orm.xml
 ```
 
-### 13.2 Pipeline
+### 12.2 Pipeline
 
 ```
 schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 ```
 
-### 13.3 Example Schema
+### 12.3 Example Schema
 
 ```xml
 <!-- schema/User.orm.xml -->
@@ -1639,10 +1159,18 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 │   ├── Responder/     # JSON:HAL Responders
 │   ├── Transformer/   # League Fractal Transformers
 │   └── Fixture/       # League Factory Muffin
+├── schema/            # Doctrine XML mappings
+│   ├── User.orm.xml
+│   ├── Post.orm.xml
+│   └── Group.orm.xml
+├── templates/         # MVC PHP templates
+│   ├── home.php
+│   ├── users/
+│   └── error/
 └── tests/
     ├── Action/        # ADR Action Tests
     ├── Unit/          # Unit Tests
-    └── factories/      # Factory Definitions
+    └── factories/     # Factory Definitions
 ```
 
 ---
