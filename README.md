@@ -1013,16 +1013,39 @@ $this->router->middleware(new RateLimitMiddleware(100, 60));
 ### 11.1 Configuration Files
 
 ```
-.env.dist          # Template defaults (committed to VCS)
+.env.dist          # Template defaults (committed to VCS) - all variables documented here
+.env.yaml          # Primary YAML config (RECOMMENDED)
 .env               # Legacy override (optional, gitignored)
-.env.yaml          # Primary YAML config (recommended)
 .env.yaml.local    # Local overrides (optional, gitignored)
 ```
 
-### 11.2 Loading Priority
+### 11.2 Setup Instructions
+
+**Step 1:** Copy the template:
+```bash
+cp .env.dist .env          # Legacy KEY=VALUE format (optional)
+cp .env.yaml .env.yaml.local  # Local overrides (recommended)
+```
+
+**Step 2:** Edit `.env.yaml.local` (recommended) or `.env.yaml` directly:
+```yaml
+database:
+  driver: pdo_mysql
+  host: localhost
+  port: 3306
+  name: my_database
+  user: my_user
+  password: my_secret
+```
+
+> **NOTE:** YAML configuration (`.env.yaml`) is the primary and recommended format.
+> The legacy `.env` file (KEY=VALUE) is supported for backward compatibility only.
+> All available variables are documented in `.env.dist`.
+
+### 11.3 Loading Priority
 
 1. **System environment variables** - `$_ENV`, `$_SERVER`
-2. **`.env` file** - Legacy KEY=VALUE format
+2. **`.env` file** - Legacy KEY=VALUE format (if present)
 3. **`.env.yaml`** - Primary YAML configuration
 4. **`.env.dist`** - Template defaults
 

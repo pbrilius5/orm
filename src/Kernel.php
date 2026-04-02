@@ -57,7 +57,7 @@ class Kernel
     private function loadEnvironment(): void
     {
         $dotenv = new Dotenv();
-        $dotenv->bootEnv(dirname(__DIR__, 2) . '/.env');
+        $dotenv->bootEnv(dirname(__DIR__) . '/.env');
     }
 
     private function createServices(): void
