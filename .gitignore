@@ -16,3 +16,7 @@ phpunit.xml
 .phpactor.json
 /var/data/orm.db
 .env.yaml.local
+# PWA assets - users should manage their own copies
+/public/manifest.json
+/public/sw.js
+/public/icons/
