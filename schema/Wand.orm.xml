@@ -17,7 +17,7 @@
         </many-to-one>
         
         <many-to-one target-entity="App\Entity\Role" field="role" inversed-by="wands">
-            <join-column name="role_id" nullable="false"/>
+            <join-column name="role_id" nullable="true"/>
         </many-to-one>
     </entity>
 </doctrine-mapping>

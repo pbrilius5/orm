@@ -8,8 +8,8 @@ class Patronus
 {
     private ?int $id = null;
     private User $user;
-    private Role $role;
-    private Team $team;
+    private ?Role $role = null;
+    private ?Team $team = null;
     private string $token;
     private \DateTimeInterface $issuedAt;
     private \DateTimeInterface $expiresAt;
@@ -37,23 +37,23 @@ class Patronus
         return $this;
     }
 
-    public function getRole(): Role
+    public function getRole(): ?Role
     {
         return $this->role;
     }
 
-    public function setRole(Role $role): self
+    public function setRole(?Role $role): self
     {
         $this->role = $role;
         return $this;
     }
 
-    public function getTeam(): Team
+    public function getTeam(): ?Team
     {
         return $this->team;
     }
 
-    public function setTeam(Team $team): self
+    public function setTeam(?Team $team): self
     {
         $this->team = $team;
         return $this;

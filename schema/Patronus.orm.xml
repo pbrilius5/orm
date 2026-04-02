@@ -16,11 +16,11 @@
         </many-to-one>
         
         <many-to-one target-entity="App\Entity\Role" field="role" inversed-by="patronuses">
-            <join-column name="role_id" nullable="false"/>
+            <join-column name="role_id" nullable="true"/>
         </many-to-one>
         
         <many-to-one target-entity="App\Entity\Team" field="team">
-            <join-column name="team_id" nullable="false"/>
+            <join-column name="team_id" nullable="true"/>
         </many-to-one>
     </entity>
 </doctrine-mapping>

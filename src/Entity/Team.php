@@ -131,4 +131,9 @@ class Team
     {
         return $this->invisibilityCloaks;
     }
+
+    public function countUsers(): int
+    {
+        return $this->users->count();
+    }
 }

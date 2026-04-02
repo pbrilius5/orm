@@ -1442,27 +1442,38 @@ $teamRoles = $user->getRolesForTeam($levelDesignTeam); // [WIZARD, ARCHITECT]
 ### 13.6 Collection Operations
 
 ```php
-// Gauti visus aktyvius roles
-$activeRoles = $user->getUserRoles()
-    ->filter(fn($ur) => $ur->isActive())
-    ->map(fn($ur) => $ur->getRole()->getName());
+// Gauti visus aktyvius roles (Collection filter + map)
+$activeRoles = $user->getAllRoles();
+
+// Gauti role names kaip array
+$roleNames = $user->getRoleNames();
+
+// Gauti roles konkrečiai team
+$teamRoles = $user->getRolesForTeam($team);
+
+// Gauti expired wands
+$expiredWands = $user->getExpiredWands();
+
+// Gauti active wands
+$activeWands = $user->getActiveWands();
+
+// Gauti valid patronuses
+$validPatronuses = $user->getValidPatronuses();
+
+// Gauti active invisibility cloaks
+$activeCloaks = $user->getActiveInvisibilityCloaks();
 
 // Tikrina ar turi specifinę rolę
 $hasArchitect = $user->hasRole(Role::ARCHITECT, $team);
-
-// Gauti visus wands
-$wands = $user->getWands();
-foreach ($wands as $wand) {
-    if ($wand->hasPermission('write') && !$wand->isExpired()) {
-        // Can write
-    }
-}
 
 // Tikrina ar turi validų patronus
 $hasValidPatronus = $user->hasValidPatronusInTeam($team);
 
 // Tikrina ar yra nematomas team
 $isInvisible = $user->isInvisibleInTeam($team);
+
+// Team user count
+$userCount = $team->countUsers();
 ```
 
 ### 13.7 Schema Files
@@ -1479,6 +1490,350 @@ schema/
 ├── Post.orm.xml
 └── Group.orm.xml
 ```
+
+### 13.8 TDD su Doctrine Collections
+
+**Test-Driven Development rodo evoliucinį dizainą** - testai rašomi pirmiausia, tada implementacija, tada refaktoringas.
+
+#### 13.8.1 RED - Pirmas testas (failina)
+
+```php
+// tests/Unit/UserRolesCollectionTest.php
+public function testGetAllRolesReturnsOnlyActive(): void
+{
+    $user = new User();
+    $user->setEmail('test@example.com');
+    $user->setPassword('password123');
+
+    $team = new Team();
+    $team->setName('Level Design');
+    $team->setCreatedAt(new \DateTimeImmutable());
+
+    $wizardRole = new Role();
+    $wizardRole->setName(Role::WIZARD);
+
+    $architectRole = new Role();
+    $architectRole->setName(Role::ARCHITECT);
+
+    // Expired role
+    $expiredUserRole = new UserRole();
+    $expiredUserRole->setRole($wizardRole);
+    $expiredUserRole->setTeam($team);
+    $expiredUserRole->setGrantedAt(new \DateTimeImmutable('-2 days'));
+    $expiredUserRole->setExpiresAt(new \DateTimeImmutable('-1 day'));
+
+    // Active role
+    $activeUserRole = new UserRole();
+    $activeUserRole->setRole($architectRole);
+    $activeUserRole->setTeam($team);
+    $activeUserRole->setGrantedAt(new \DateTimeImmutable());
+
+    $user->getUserRoles()->add($expiredUserRole);
+    $user->getUserRoles()->add($activeUserRole);
+
+    $activeRoles = $user->getAllRoles();
+
+    $this->assertCount(1, $activeRoles);
+    $this->assertSame(Role::ARCHITECT, $activeRoles[0]->getName());
+}
+```
+
+**Testas failina** nes `getAllRoles()` metodas dar neegzistuoja.
+
+#### 13.8.2 GREEN - Pirmas implementacija (foreach)
+
+```php
+// src/Entity/User.php
+public function getAllRoles(): array
+{
+    $roles = [];
+    foreach ($this->userRoles as $userRole) {
+        if ($userRole->isActive()) {
+            $roles[] = $userRole->getRole();
+        }
+    }
+    return $roles;
+}
+```
+
+**Testas praeina** ✅
+
+#### 13.8.3 REFACTOR - Collection API (filter + map)
+
+```php
+// src/Entity/User.php
+public function getAllRoles(): array
+{
+    return array_values($this->userRoles
+        ->filter(fn($ur) => $ur->isActive())
+        ->map(fn($ur) => $ur->getRole())
+        ->toArray());
+}
+```
+
+**Testas vis dar praeina** ✅ - bet kodas elegantiškesnis.
+
+#### 13.8.4 Antras testas - getRoleNames()
+
+```php
+public function testGetRoleNamesUsesCollectionMap(): void
+{
+    $user = new User();
+    $user->setEmail('mapper@example.com');
+    $user->setPassword('password123');
+
+    $team = new Team();
+    $team->setName('Character Art');
+    $team->setCreatedAt(new \DateTimeImmutable());
+
+    $wizardRole = new Role();
+    $wizardRole->setName(Role::WIZARD);
+
+    $gameMasterRole = new Role();
+    $gameMasterRole->setName(Role::GAME_MASTER);
+
+    $wizardUserRole = new UserRole();
+    $wizardUserRole->setRole($wizardRole);
+    $wizardUserRole->setTeam($team);
+    $wizardUserRole->setGrantedAt(new \DateTimeImmutable());
+
+    $gmUserRole = new UserRole();
+    $gmUserRole->setRole($gameMasterRole);
+    $gmUserRole->setTeam($team);
+    $gmUserRole->setGrantedAt(new \DateTimeImmutable());
+
+    $user->getUserRoles()->add($wizardUserRole);
+    $user->getUserRoles()->add($gmUserRole);
+
+    $roleNames = $user->getRoleNames();
+
+    $this->assertCount(2, $roleNames);
+    $this->assertContains(Role::WIZARD, $roleNames);
+    $this->assertContains(Role::GAME_MASTER, $roleNames);
+}
+```
+
+**Implementacija:**
+```php
+public function getRoleNames(): array
+{
+    return array_values($this->userRoles
+        ->filter(fn($ur) => $ur->isActive())
+        ->map(fn($ur) => $ur->getRole()->getName())
+        ->toArray());
+}
+```
+
+#### 13.8.5 Trečias testas - Cross-team roles
+
+```php
+public function testGetRolesForTeamReturnsOnlyMatchingRoles(): void
+{
+    $user = new User();
+    $user->setEmail('cross@example.com');
+    $user->setPassword('password123');
+
+    $teamA = new Team();
+    $teamA->setName('Level Design');
+    $teamA->setCreatedAt(new \DateTimeImmutable());
+
+    $teamB = new Team();
+    $teamB->setName('Audio Engineering');
+    $teamB->setCreatedAt(new \DateTimeImmutable());
+
+    $wizardRole = new Role();
+    $wizardRole->setName(Role::WIZARD);
+
+    $architectRole = new Role();
+    $architectRole->setName(Role::ARCHITECT);
+
+    $userRoleA = new UserRole();
+    $userRoleA->setRole($wizardRole);
+    $userRoleA->setTeam($teamA);
+    $userRoleA->setGrantedAt(new \DateTimeImmutable());
+
+    $userRoleB = new UserRole();
+    $userRoleB->setRole($architectRole);
+    $userRoleB->setTeam($teamB);
+    $userRoleB->setGrantedAt(new \DateTimeImmutable());
+
+    $user->getUserRoles()->add($userRoleA);
+    $user->getUserRoles()->add($userRoleB);
+
+    $teamARoles = $user->getRolesForTeam($teamA);
+
+    $this->assertCount(1, $teamARoles);
+    $this->assertSame(Role::WIZARD, $teamARoles[0]->getName());
+}
+```
+
+**Implementacija:**
+```php
+public function getRolesForTeam(Team $team): array
+{
+    return array_values($this->userRoles
+        ->filter(fn($ur) => $ur->getTeam() === $team && $ur->isActive())
+        ->map(fn($ur) => $ur->getRole())
+        ->toArray());
+}
+```
+
+#### 13.8.6 Ketvirtas testas - Collection count
+
+```php
+public function testCollectionCountReturnsCorrectNumber(): void
+{
+    $user = new User();
+    $user->setEmail('count@example.com');
+    $user->setPassword('password123');
+
+    $this->assertInstanceOf(Collection::class, $user->getUserRoles());
+    $this->assertCount(0, $user->getUserRoles());
+
+    $team = new Team();
+    $team->setName('Test Team');
+    $team->setCreatedAt(new \DateTimeImmutable());
+
+    $role = new Role();
+    $role->setName(Role::WIZARD);
+
+    $userRole = new UserRole();
+    $userRole->setRole($role);
+    $userRole->setTeam($team);
+    $userRole->setGrantedAt(new \DateTimeImmutable());
+
+    $user->getUserRoles()->add($userRole);
+
+    $this->assertCount(1, $user->getUserRoles());
+}
+```
+
+#### 13.8.7 Pilnas TDD ciklas - Wand operations
+
+```php
+public function testGetExpiredWandsReturnsOnlyExpired(): void
+{
+    $user = new User();
+    $user->setEmail('wand@example.com');
+    $user->setPassword('password123');
+
+    $role = new Role();
+    $role->setName(Role::WIZARD);
+
+    $expiredWand = new Wand();
+    $expiredWand->setUser($user);
+    $expiredWand->setRole($role);
+    $expiredWand->setName('Expired Wand');
+    $expiredWand->setPermissions(json_encode(['read']));
+    $expiredWand->setCreatedAt(new \DateTimeImmutable('-2 days'));
+    $expiredWand->setExpiresAt(new \DateTimeImmutable('-1 day'));
+
+    $activeWand = new Wand();
+    $activeWand->setUser($user);
+    $activeWand->setRole($role);
+    $activeWand->setName('Active Wand');
+    $activeWand->setPermissions(json_encode(['read', 'write']));
+    $activeWand->setCreatedAt(new \DateTimeImmutable());
+
+    $user->getWands()->add($expiredWand);
+    $user->getWands()->add($activeWand);
+
+    $expiredWands = $user->getExpiredWands();
+    $activeWands = $user->getActiveWands();
+
+    $this->assertCount(1, $expiredWands);
+    $this->assertCount(1, $activeWands);
+    $this->assertSame('Expired Wand', $expiredWands[0]->getName());
+    $this->assertSame('Active Wand', $activeWands[0]->getName());
+}
+```
+
+**Implementacija:**
+```php
+public function getExpiredWands(): array
+{
+    return array_values($this->wands
+        ->filter(fn($wand) => $wand->isExpired())
+        ->toArray());
+}
+
+public function getActiveWands(): array
+{
+    return array_values($this->wands
+        ->filter(fn($wand) => !$wand->isExpired())
+        ->toArray());
+}
+```
+
+#### 13.8.8 TDD Summary
+
+| Žingsnis | Testas | Implementacija | Rezultatas |
+|----------|--------|----------------|------------|
+| 1. RED | `testGetAllRolesReturnsOnlyActive` | Method doesn't exist | ❌ Fail |
+| 2. GREEN | Same test | `foreach` loop | ✅ Pass |
+| 3. REFACTOR | Same test | `filter()` + `map()` | ✅ Pass |
+| 4. RED | `testGetRoleNamesUsesCollectionMap` | Method doesn't exist | ❌ Fail |
+| 5. GREEN | Same test | `filter()` + `map()` + `getName()` | ✅ Pass |
+| 6. RED | `testGetRolesForTeamReturnsOnlyMatchingRoles` | Method doesn't exist | ❌ Fail |
+| 7. GREEN | Same test | `filter()` + `map()` + team check | ✅ Pass |
+| 8. RED | `testGetExpiredWandsReturnsOnlyExpired` | Method doesn't exist | ❌ Fail |
+| 9. GREEN | Same test | `filter()` + `isExpired()` | ✅ Pass |
+
+**Kodėl TDD su Collections?**
+- **Type safety** - `Collection<UserRole>` vietoj `array`
+- **Lazy loading** - neuzkrauna visų iš karto
+- **Chainable** - `filter()` → `map()` → `toArray()`
+- **Testable** - kiekvienas metodas turi atskirą testą
+- **Maintainable** - refaktoringas be breakage
+
+### 13.9 Intensive Collection Tests
+
+**161 tests, 262 assertions** across 6 dedicated test files:
+
+| Test File | Tests | Assertions | Coverage |
+|-----------|-------|------------|----------|
+| `UserRolesCollectionTest.php` | 12 | 30 | User roles, wands, patronuses, cloaks |
+| `DoctrineCollectionAdvancedTest.php` | 24 | 41 | slice, partition, forAll, matching, isEmpty |
+| `TeamCollectionTest.php` | 23 | 36 | users, roles, cloaks, countUsers |
+| `RoleCollectionTest.php` | 16 | 26 | userRoles, wands, patronuses, permissions |
+| `WandCollectionTest.php` | 20 | 34 | permissions, expiration, CRUD |
+| `PatronusCollectionTest.php` | 18 | 28 | tokens, expiration, uniqueness |
+| `InvisibilityCloakCollectionTest.php` | 20 | 25 | active/inactive, expiration, CRUD |
+
+#### 13.9.1 Doctrine Collection API Coverage
+
+| API Method | Test File | Tests |
+|------------|-----------|-------|
+| `filter()` | DoctrineCollectionAdvanced, RoleCollection | 4 |
+| `map()` | DoctrineCollectionAdvanced, RoleCollection | 3 |
+| `slice()` | DoctrineCollectionAdvanced, TeamCollection | 3 |
+| `partition()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 3 |
+| `first()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
+| `forAll()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 3 |
+| `matching()` | DoctrineCollectionAdvanced | 2 |
+| `count()` | UserRolesCollection, TeamCollection | 3 |
+| `isEmpty()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
+| `contains()` | DoctrineCollectionAdvanced, TeamCollection | 3 |
+| `add()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
+| `remove()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
+| `clear()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 3 |
+| `get()` | DoctrineCollectionAdvanced | 1 |
+| `set()` | DoctrineCollectionAdvanced | 1 |
+| `getKeys()` | DoctrineCollectionAdvanced, TeamCollection | 2 |
+| `getValues()` | DoctrineCollectionAdvanced, TeamCollection | 2 |
+| `exists()` | UserRolesCollection | 1 |
+| `getIterator()` | DoctrineCollectionAdvanced, TeamCollection | 2 |
+
+#### 13.9.2 Entity Property Tests
+
+| Entity | Property Tests | Coverage |
+|--------|---------------|----------|
+| **Wand** | name, permissions, createdAt, expiresAt, isExpired, hasPermission | 20 tests |
+| **Patronus** | token, issuedAt, expiresAt, isValid, isExpired, uniqueness | 18 tests |
+| **InvisibilityCloak** | grantedAt, expiresAt, isActive, activate, deactivate | 20 tests |
+| **Role** | name, description, team, userRoles, wands, patronuses | 16 tests |
+| **Team** | name, description, users, roles, invisibilityCloaks | 23 tests |
+| **User** | email, password, createdAt, userRoles, wands, patronuses, cloaks | 12 tests |
 
 ---
 
@@ -1521,6 +1876,13 @@ schema/
 └── tests/
     ├── Action/        # ADR Action Tests
     ├── Unit/          # Unit Tests
+    │   ├── UserRolesCollectionTest.php
+    │   ├── DoctrineCollectionAdvancedTest.php
+    │   ├── TeamCollectionTest.php
+    │   ├── RoleCollectionTest.php
+    │   ├── WandCollectionTest.php
+    │   ├── PatronusCollectionTest.php
+    │   └── InvisibilityCloakCollectionTest.php
     └── factories/     # Factory Definitions
 ```
 

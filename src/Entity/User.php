@@ -199,24 +199,26 @@ class User
 
     public function getRolesForTeam(Team $team): array
     {
-        $roles = [];
-        foreach ($this->userRoles as $userRole) {
-            if ($userRole->getTeam() === $team && $userRole->isActive()) {
-                $roles[] = $userRole->getRole();
-            }
-        }
-        return $roles;
+        return array_values($this->userRoles
+            ->filter(fn($ur) => $ur->getTeam() === $team && $ur->isActive())
+            ->map(fn($ur) => $ur->getRole())
+            ->toArray());
     }
 
     public function getAllRoles(): array
     {
-        $roles = [];
-        foreach ($this->userRoles as $userRole) {
-            if ($userRole->isActive()) {
-                $roles[] = $userRole->getRole();
-            }
-        }
-        return $roles;
+        return array_values($this->userRoles
+            ->filter(fn($ur) => $ur->isActive())
+            ->map(fn($ur) => $ur->getRole())
+            ->toArray());
+    }
+
+    public function getRoleNames(): array
+    {
+        return array_values($this->userRoles
+            ->filter(fn($ur) => $ur->isActive())
+            ->map(fn($ur) => $ur->getRole()->getName())
+            ->toArray());
     }
 
     public function addWand(Wand $wand): self
@@ -244,6 +246,20 @@ class User
         return $this->wands;
     }
 
+    public function getExpiredWands(): array
+    {
+        return array_values($this->wands
+            ->filter(fn($wand) => $wand->isExpired())
+            ->toArray());
+    }
+
+    public function getActiveWands(): array
+    {
+        return array_values($this->wands
+            ->filter(fn($wand) => !$wand->isExpired())
+            ->toArray());
+    }
+
     public function addPatronus(Patronus $patronus): self
     {
         if (!$this->patronuses->contains($patronus)) {
@@ -269,6 +285,13 @@ class User
         return $this->patronuses;
     }
 
+    public function getValidPatronuses(): array
+    {
+        return array_values($this->patronuses
+            ->filter(fn($patronus) => $patronus->isValid())
+            ->toArray());
+    }
+
     public function addInvisibilityCloak(InvisibilityCloak $cloak): self
     {
         if (!$this->invisibilityCloaks->contains($cloak)) {
@@ -292,6 +315,13 @@ class User
     public function getInvisibilityCloaks(): Collection
     {
         return $this->invisibilityCloaks;
+    }
+
+    public function getActiveInvisibilityCloaks(): array
+    {
+        return array_values($this->invisibilityCloaks
+            ->filter(fn($cloak) => $cloak->isActive())
+            ->toArray());
     }
 
     public function isInvisibleInTeam(Team $team): bool

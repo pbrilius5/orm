@@ -8,7 +8,7 @@ class Wand
 {
     private ?int $id = null;
     private User $user;
-    private Role $role;
+    private ?Role $role = null;
     private string $name;
     private string $permissions;
     private \DateTimeInterface $createdAt;
@@ -35,12 +35,12 @@ class Wand
         return $this;
     }
 
-    public function getRole(): Role
+    public function getRole(): ?Role
     {
         return $this->role;
     }
 
-    public function setRole(Role $role): self
+    public function setRole(?Role $role): self
     {
         $this->role = $role;
         return $this;
