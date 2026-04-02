@@ -12,6 +12,7 @@ use App\Action\User\UpdateAction;
 use App\Action\User\PatchAction;
 use App\Action\User\DeleteAction;
 use App\Fixture\FixtureLoader;
+use League\Fractal\Manager;
 use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\Response;
 
@@ -27,12 +28,13 @@ class UserActionTest extends TestCase
     protected function setUp(): void
     {
         $loader = new FixtureLoader();
+        $fractal = new Manager();
 
-        $this->listAction = new ListAction($loader);
-        $this->showAction = new ShowAction($loader);
-        $this->createAction = new CreateAction($loader);
-        $this->updateAction = new UpdateAction($loader);
-        $this->patchAction = new PatchAction($loader);
+        $this->listAction = new ListAction($loader, $fractal);
+        $this->showAction = new ShowAction($loader, $fractal);
+        $this->createAction = new CreateAction($loader, $fractal);
+        $this->updateAction = new UpdateAction($loader, $fractal);
+        $this->patchAction = new PatchAction($loader, $fractal);
         $this->deleteAction = new DeleteAction();
     }
 
@@ -103,13 +105,13 @@ class UserActionTest extends TestCase
 
     public function testCreateActionWithoutEmailReturns422(): void
     {
-        $body = json_encode([
-            'password' => 'secret123',
-        ]);
+        $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
+        $stream->write(json_encode(['password' => 'secret123']));
+        $stream->rewind();
 
         $request = new ServerRequest();
         $request = $request->withMethod('POST');
-        $request = $request->withBody(new \Laminas\Diactoros\Stream('php://memory', 'w+', [], $body));
+        $request = $request->withBody($stream);
         $response = new Response();
 
         $result = ($this->createAction)($request, $response);
