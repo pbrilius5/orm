@@ -10,7 +10,7 @@ use App\Action\User\CreateAction;
 use App\Action\User\UpdateAction;
 use App\Action\User\PatchAction;
 use App\Action\User\DeleteAction;
-use App\Fixture\FixtureLoader;
+use League\Container\Container;
 use League\Route\Router;
 use League\Route\Strategy\JsonStrategy;
 use Laminas\Diactoros\ResponseFactory;
@@ -21,13 +21,13 @@ use Psr\Http\Message\ResponseInterface;
 class AdrRoutes
 {
     private Router $router;
-    private FixtureLoader $loader;
 
-    public function __construct()
+    public function __construct(Container $container)
     {
-        $this->loader = new FixtureLoader();
         $this->router = new Router();
-        $this->router->setStrategy(new JsonStrategy(new ResponseFactory()));
+        $strategy = new JsonStrategy(new ResponseFactory());
+        $strategy->setContainer($container);
+        $this->router->setStrategy($strategy);
         $this->register();
     }
 

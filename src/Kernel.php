@@ -18,6 +18,7 @@ use App\Middleware\CsrfMiddleware;
 use League\Fractal\Manager as FractalManager;
 use League\Fractal\Serializer\JsonApiSerializer;
 use Oryx\ORM\EntityManagerFactory;
+use App\Fixture\FixtureLoader;
 
 /**
  * ADR API Kernel - routes separated to App\Routing\AdrRoutes.
@@ -71,11 +72,12 @@ class Kernel
     {
         $this->container->addShared(EntityManager::class, $this->entityManager);
         $this->container->addShared(FractalManager::class, $this->fractal);
+        $this->container->addShared(FixtureLoader::class)->addArgument(EntityManager::class);
     }
 
     private function registerRoutes(): void
     {
-        $this->adrRoutes = new AdrRoutes();
+        $this->adrRoutes = new AdrRoutes($this->container);
         $router = $this->adrRoutes->getRouter();
 
         $router->middleware(new SecurityMiddleware());
