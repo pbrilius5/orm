@@ -144,7 +144,7 @@ class FixturesLoadCommand extends Command
         $groups = [];
         for ($i = 0; $i < $groupCount; $i++) {
             $group = new Group();
-            $group->setName($this->faker->unique()->randomElement(['Administrators', 'Editors', 'Viewers', 'Moderators', 'Contributors']));
+            $group->setName(ucfirst($this->faker->unique()->word) . ' Group');
             $group->setCreatedAt(new \DateTimeImmutable());
             $em->persist($group);
             $groups[] = $group;

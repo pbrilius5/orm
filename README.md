@@ -28,13 +28,16 @@ No database server needed. SQLite is the default driver.
 # 1. Install dependencies
 composer install
 
-# 2. Create database and schema from XML
+# 2. Copy environment configuration
+cp .env.dist .env
+
+# 3. Create database and schema from XML
 bin/console oryx:db:create
 
-# 3. Load demo fixtures (groups, users, posts)
-bin/console oryx:fixtures:load --seed=42
+# 4. Load demo fixtures (groups, users, posts)
+bin/console oryx:fixtures:load
 
-# 4. Start the server
+# 5. Start the server
 composer serve
 ```
 
