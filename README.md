@@ -360,7 +360,7 @@ class Kernel
 {
     private AdrRoutes $adrRoutes;
 
-    public function __construct(string $environment = 'dev', bool $debug = true)
+    public function __construct(string $environment = 'dev')
     {
         $this->adrRoutes = new AdrRoutes();
     }
@@ -1052,11 +1052,9 @@ database:
 
 app:
   env: ${APP_ENV:-dev}
-  debug: ${APP_DEBUG:-true}
   secret: ${APP_SECRET:-change-me-in-production}
 
 orm:
-  auto_generate_proxy: ${ORM_AUTO_GENERATE_PROXY:-false}
   proxy_dir: ${ORM_PROXY_DIR:-/tmp/orm/proxies}
   proxy_namespace: ${ORM_PROXY_NAMESPACE:-Oryx\\ORM\\Proxy}
 ```
@@ -1099,10 +1097,8 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 | `DB_CHARSET` | Database charset | `utf8mb4` | No |
 | `DB_DRIVER` | Database driver | `pdo_sqlite` | No |
 | `DB_PATH` | SQLite file path | `var/data/orm.db` | No |
-| `APP_ENV` | Application environment | `dev` | No |
-| `APP_DEBUG` | Enable debug mode | `true` | No |
+| `APP_ENV` | Application environment (dev/prod) | `dev` | No |
 | `APP_SECRET` | Application secret key | `change-me-in-production` | No |
-| `ORM_AUTO_GENERATE_PROXY` | Auto-generate Doctrine proxies | `false` | No |
 | `ORM_PROXY_DIR` | Proxy directory storage | `/tmp/orm/proxies` | No |
 | `ORM_PROXY_NAMESPACE` | Proxy namespace | `Oryx\ORM\Proxy` | No |
 | `CACHE_DRIVER` | Cache driver (array/memcached) | `array` | No |

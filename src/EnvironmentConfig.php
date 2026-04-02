@@ -342,11 +342,11 @@ class EnvironmentConfig
 
     /**
      * Check if debug mode is enabled.
+     * Derived from APP_ENV: true for dev/test, false for prod.
      */
     public function isDebug(): bool
     {
-        $debug = $this->get('APP_DEBUG', false);
-        return is_string($debug) ? ($debug === 'true' || $debug === '1') : (bool) $debug;
+        return !in_array($this->getAppEnv(), ['prod', 'production'], true);
     }
 
     /**

@@ -38,16 +38,14 @@ use App\Action\User\DeleteAction;
 class Kernel
 {
     private string $environment;
-    private bool $debug;
     private Container $container;
     private AdrRoutes $adrRoutes;
     private EntityManager $entityManager;
     private FractalManager $fractal;
 
-    public function __construct(string $environment = 'dev', bool $debug = true)
+    public function __construct(string $environment = 'dev')
     {
         $this->environment = $environment;
-        $this->debug = $debug;
         $this->container = new Container();
 
         $this->boot();
@@ -110,15 +108,17 @@ class Kernel
 
     private function handleError(\Throwable $e): ResponseInterface
     {
+        $debug = !in_array($this->environment, ['prod', 'production'], true);
+
         $error = [
             '_error' => [
                 'status' => 500,
                 'title' => 'Internal Server Error',
-                'detail' => $this->debug ? $e->getMessage() : 'An error occurred',
+                'detail' => $debug ? $e->getMessage() : 'An error occurred',
             ],
         ];
 
-        if ($this->debug) {
+        if ($debug) {
             $error['_error']['trace'] = $e->getTraceAsString();
         }
 
@@ -151,6 +151,6 @@ class Kernel
 
     public function isDebug(): bool
     {
-        return $this->debug;
+        return !in_array($this->environment, ['prod', 'production'], true);
     }
 }
