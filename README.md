@@ -32,7 +32,7 @@ composer install
 cp -v .env.dist .env
 
 # 3. Copy favicon from Oryx MVC vendor package
-cp -v vendor/oryx/mvc/public/favicon.ico public/favicon.ico
+cp -v ./vendor/oryx/mvc/public/favicon.ico ./public/favicon.ico
 
 # 4. Create database and schema from XML
 bin/console oryx:db:create
