@@ -22,13 +22,19 @@ class EntityManagerFactory
     {
         $envConfig = new EnvironmentConfig();
 
-        return self::create($envConfig->getDatabaseParams(), dirname(__DIR__, 3) . '/schema');
+        return self::create(
+            $envConfig->getDatabaseParams(),
+            dirname(__DIR__, 3) . '/schema',
+            $envConfig->getOrmProxyAutoGenerate(),
+            $envConfig->getOrmProxyDir(),
+            $envConfig->getOrmProxyNamespace(),
+        );
     }
 
     /**
      * Create EntityManager with custom configuration.
      */
-    public static function create(array $connectionParams, string $schemaPath): EntityManager
+    public static function create(array $connectionParams, string $schemaPath, int $autoGenerateProxy = \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL, string $proxyDir = null, string $proxyNamespace = null): EntityManager
     {
         $connection = DriverManager::getConnection($connectionParams);
 
@@ -39,11 +45,9 @@ class EntityManagerFactory
         ], '.orm.xml');
         $config->setMetadataDriverImpl($driver);
 
-        $config->setAutoGenerateProxyClasses(
-            \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL
-        );
-        $config->setProxyDir(sys_get_temp_dir());
-        $config->setProxyNamespace('Oryx\ORM\Proxy');
+        $config->setAutoGenerateProxyClasses($autoGenerateProxy);
+        $config->setProxyDir($proxyDir ?? sys_get_temp_dir());
+        $config->setProxyNamespace($proxyNamespace ?? 'Oryx\ORM\Proxy');
 
         return EntityManager::create($connection, $config);
     }

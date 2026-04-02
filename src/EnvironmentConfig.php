@@ -358,6 +358,47 @@ class EnvironmentConfig
     }
 
     /**
+     * Get ORM proxy generation strategy.
+     *
+     * Returns the appropriate Doctrine ProxyFactory auto-generate constant
+     * based on ORM_AUTO_GENERATE_PROXY setting or environment.
+     */
+    public function getOrmProxyAutoGenerate(): int
+    {
+        $explicit = $this->get('ORM_AUTO_GENERATE_PROXY');
+
+        if ($explicit !== null && $explicit !== '') {
+            return match ($explicit) {
+                'always', 'true', '1' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_ALWAYS,
+                'never', 'false', '0' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_NEVER,
+                'file_changed', 'eval' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_FILE_NOT_EXISTS,
+                default => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL,
+            };
+        }
+
+        return match ($this->getAppEnv()) {
+            'prod', 'production' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_NEVER,
+            default => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL,
+        };
+    }
+
+    /**
+     * Get ORM proxy directory.
+     */
+    public function getOrmProxyDir(): string
+    {
+        return (string) $this->get('ORM_PROXY_DIR', sys_get_temp_dir() . '/orm/proxies');
+    }
+
+    /**
+     * Get ORM proxy namespace.
+     */
+    public function getOrmProxyNamespace(): string
+    {
+        return (string) $this->get('ORM_PROXY_NAMESPACE', 'Oryx\ORM\Proxy');
+    }
+
+    /**
      * Get Memcached configuration for rate limiting.
      */
     public function getMemcachedConfig(): array
