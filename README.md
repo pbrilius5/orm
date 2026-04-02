@@ -32,8 +32,11 @@ composer install
 # 2. Copy environment configuration (verbose mode)
 cp -v .env.dist .env
 
-# 3. Copy favicon from Oryx MVC vendor package
+# 3. Copy assets from Oryx MVC vendor package
 cp -v ./vendor/oryx/mvc/public/favicon.ico ./public/favicon.ico
+cp -v ./vendor/oryx/mvc/public/manifest.json ./public/manifest.json
+cp -v ./vendor/oryx/mvc/public/sw.js ./public/sw.js
+cp -rv ./vendor/oryx/mvc/public/icons/ ./public/icons/
 
 # 4. Create database and schema from XML
 bin/console oryx:db:create
@@ -1076,8 +1079,77 @@ $this->router->middleware(new RateLimitMiddleware(100, 60));
 ```
 
 ---
+ 
+## 11. PWA Support
 
-## 11. Environment Configuration
+**Progressive Web App capabilities with offline-first caching.**
+
+### 11.1 Manifest Configuration
+
+The PWA manifest defines how your app appears when installed:
+
+| Property | Value |
+|----------|-------|
+| Name | Oryx ORM App |
+| Short Name | OryxApp |
+| Display | standalone |
+| Start URL | / |
+| Theme Color | #4A90E2 |
+| Background Color | #ffffff |
+
+```json
+{
+  "name": "Oryx ORM App",
+  "short_name": "OryxApp",
+  "description": "Full-stack ORM with ADR pattern",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4A90E2",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+```
+
+### 11.2 Service Worker
+
+Located at `public/sw.js` with cache-first strategy:
+- Pre-caches: `/`, `/index.php`, `/manifest.json`, `/favicon.ico`, and icons
+- Serves cached assets when offline
+- Automatically updates on new versions
+
+### 11.3 PWA Installation
+
+After copying assets (Step 3 in Quick Start):
+1. Visit `http://localhost:8080/`
+2. Browser will show "Install" prompt or use menu → "Add to Home Screen"
+3. Works offline after first visit
+
+### 11.4 Manual PWA File Copy
+
+If you need to manually copy PWA assets:
+```bash
+# Manifest and Service Worker
+cp -v ./vendor/oryx/mvc/public/manifest.json ./public/manifest.json
+cp -v ./vendor/oryx/mvc/public/sw.js ./public/sw.js
+
+# Icons (recursive copy)
+cp -rv ./vendor/oryx/mvc/public/icons/ ./public/icons/
+```
+
+---
+ 
+## 12. Environment Configuration
 
 ### 11.1 Configuration Files
 
@@ -1199,7 +1271,7 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 
 ---
 
-## 12. XML Schema-Driven Entity Generation
+## 13. XML Schema-Driven Entity Generation
 
 ### 12.1 Schema Location
 
@@ -1247,7 +1319,7 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 
 ---
 
-## 13. Role-Based Access su Doctrine Collections
+## 14. Role-Based Access su Doctrine Collections
 
 **Wizard Platform role system su privalomu ROLE_WIZARD ir organizaciniu scope.**
 
@@ -1837,7 +1909,7 @@ public function getActiveWands(): array
 
 ---
 
-## 14. Summary
+## 15. Summary
 
 | Layer | Pattern | HTTP | Templates | Dependencies |
 |-------|---------|------|-----------|---------------|
