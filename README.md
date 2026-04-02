@@ -31,13 +31,16 @@ composer install
 # 2. Copy environment configuration (verbose mode)
 cp -v .env.dist .env
 
-# 3. Create database and schema from XML
+# 3. Copy favicon from Oryx MVC vendor package
+cp -v vendor/oryx/mvc/public/favicon.ico public/favicon.ico
+
+# 4. Create database and schema from XML
 bin/console oryx:db:create
 
-# 4. Load demo fixtures (groups, users, posts)
+# 5. Load demo fixtures (groups, users, posts)
 bin/console oryx:fixtures:load
 
-# 5. Start the server
+# 6. Start the server
 composer serve
 ```
 
