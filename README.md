@@ -768,21 +768,6 @@ src/
     └── UserController.php
 ```
 
-### 7.7 Maršrutų struktūra
-
-```
-src/
-├── App/Kernel.php              # tik inicializacija + middleware
-├── Routing/
-│   ├── AdrRoutes.php          # API maršrutai
-│   └── MvcRoutes.php          # MVC maršrutai
-├── Action/User/                # ADR veiksmai
-│   ├── ListAction.php
-│   └── ...
-└── Controller/                 # MVC kontroleriai
-    └── UserController.php
-```
-
 ---
 
 ## 8. Fractal Transformers
