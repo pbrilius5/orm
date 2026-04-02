@@ -2,6 +2,7 @@
   "name": "oryx/orm",
   "description": "DQL-centric ORM for PHP 8.0+ with Symfony-inspired scout querying & oryx/mvc-adr integration",
   "type": "library",
+  "license": "BSD-3-Clause",
   "require": {
     "php": "^8.2",
     "doctrine/dbal": "^3.0",
@@ -43,11 +44,16 @@
   "repositories": [
     {
       "type": "vcs",
-      "url": "https://gitlab.com/umidigi-ss-group/mvc.git"
+      "url": "https://gitlab.com/umidigi-ss/mvc.git"
     },
     {
       "type": "vcs",
-      "url": "https://gitlab.com/umidigi-ss-group/adr.git"
+      "url": "https://gitlab.com/umidigi-ss/adr.git"
+    },
+    {
+      "type": "composer",
+      "url": "https://repo.packagist.org",
+      "canonical": false
     }
   ],
     "autoload": {
