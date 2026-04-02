@@ -28,8 +28,8 @@ No database server needed. SQLite is the default driver.
 # 1. Install dependencies
 composer install
 
-# 2. Copy environment configuration
-cp .env.dist .env
+# 2. Copy environment configuration (verbose mode)
+cp -v .env.dist .env
 
 # 3. Create database and schema from XML
 bin/console oryx:db:create
@@ -42,6 +42,26 @@ composer serve
 ```
 
 Open [http://localhost:8080](http://localhost:8080) — you should see the home page with users and API links.
+
+### One Switch Controls Everything
+
+The `APP_ENV` variable in `.env` controls both debug output and proxy generation:
+
+| Mode | Debug Output | Proxy Generation |
+|------|--------------|------------------|
+| `dev` (default) | Full error details | In-memory (eval) — no files needed |
+| `prod` | Generic "An error occurred" | Never auto-generates — run `bin/console orm:proxy:generate` before deploying |
+
+To switch modes, simply edit `.env`:
+```bash
+# Development (default)
+APP_ENV=dev
+
+# Production
+APP_ENV=prod
+```
+
+No separate debug toggle — one variable, two behaviors.
 
 ### What you get
 
