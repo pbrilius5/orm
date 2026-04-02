@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Action\User;
 
+use App\Responder\JsonHalResponder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Laminas\Diactoros\Response\JsonResponse;
 
 class DeleteAction
 {
@@ -15,15 +15,9 @@ class DeleteAction
         $id = (int) ($request->getAttribute('id') ?? 0);
 
         if ($id <= 0) {
-            return new JsonResponse([
-                'errors' => [[
-                    'status' => '400',
-                    'title' => 'Bad Request',
-                    'detail' => 'Invalid user ID provided',
-                ]],
-            ], 400);
+            return JsonHalResponder::badRequest('Invalid user ID provided');
         }
 
-        return new JsonResponse(null, 204);
+        return JsonHalResponder::noContent();
     }
 }

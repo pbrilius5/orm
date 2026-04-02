@@ -17,10 +17,10 @@ class PatchAction
     private FixtureLoader $loader;
     private Manager $fractal;
 
-    public function __construct(FixtureLoader $loader)
+    public function __construct(FixtureLoader $loader, Manager $fractal)
     {
         $this->loader = $loader;
-        $this->fractal = new Manager();
+        $this->fractal = $fractal;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -32,6 +32,10 @@ class PatchAction
         }
 
         $body = json_decode((string) $request->getBody(), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return JsonHalResponder::badRequest('Invalid JSON in request body');
+        }
 
         if (empty($body)) {
             return JsonHalResponder::unprocessableEntity([['field' => 'body', 'message' => 'No fields provided']]);

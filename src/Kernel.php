@@ -19,6 +19,12 @@ use League\Fractal\Manager as FractalManager;
 use League\Fractal\Serializer\JsonApiSerializer;
 use Oryx\ORM\EntityManagerFactory;
 use App\Fixture\FixtureLoader;
+use App\Action\User\ListAction;
+use App\Action\User\ShowAction;
+use App\Action\User\CreateAction;
+use App\Action\User\UpdateAction;
+use App\Action\User\PatchAction;
+use App\Action\User\DeleteAction;
 
 /**
  * ADR API Kernel - routes separated to App\Routing\AdrRoutes.
@@ -73,6 +79,13 @@ class Kernel
         $this->container->addShared(EntityManager::class, $this->entityManager);
         $this->container->addShared(FractalManager::class, $this->fractal);
         $this->container->addShared(FixtureLoader::class)->addArgument(EntityManager::class);
+
+        $this->container->addShared(ListAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
+        $this->container->addShared(ShowAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
+        $this->container->addShared(CreateAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
+        $this->container->addShared(UpdateAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
+        $this->container->addShared(PatchAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
+        $this->container->addShared(DeleteAction::class);
     }
 
     private function registerRoutes(): void
