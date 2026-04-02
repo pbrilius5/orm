@@ -4,54 +4,31 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-/**
- * User
- */
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+
 class User
 {
-    /**
-     * @var int
-     */
-    private $id;
-
-    /**
-     * @var string
-     */
-    private $email;
-
-    /**
-     * @var string
-     */
-    private $password;
-
-    /**
-     * @var array
-     */
-    private $roles;
-
-    /**
-     * @var \DateTimeInterface
-     */
-    private $createdAt;
-
-    /**
-     * @var \DateTimeInterface|null
-     */
-    private $updatedAt;
-
-    /**
-     * @var \Doctrine\Common\Collections\Collection<int, Post>
-     */
-    private $posts;
-
-    /**
-     * @var Group|null
-     */
-    private $group;
+    private ?int $id = null;
+    private string $email;
+    private string $password;
+    private \DateTimeInterface $createdAt;
+    private ?\DateTimeInterface $updatedAt = null;
+    private Collection $posts;
+    private Collection $userRoles;
+    private Collection $wands;
+    private Collection $patronuses;
+    private Collection $invisibilityCloaks;
+    private ?Team $team = null;
 
     public function __construct()
     {
-        $this->posts = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->posts = new ArrayCollection();
+        $this->userRoles = new ArrayCollection();
+        $this->wands = new ArrayCollection();
+        $this->patronuses = new ArrayCollection();
+        $this->invisibilityCloaks = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -67,7 +44,6 @@ class User
     public function setEmail(string $email): self
     {
         $this->email = $email;
-
         return $this;
     }
 
@@ -79,19 +55,6 @@ class User
     public function setPassword(string $password): self
     {
         $this->password = $password;
-
-        return $this;
-    }
-
-    public function getRoles(): array
-    {
-        return $this->roles;
-    }
-
-    public function setRoles(array $roles): self
-    {
-        $this->roles = $roles;
-
         return $this;
     }
 
@@ -103,7 +66,6 @@ class User
     public function setCreatedAt(\DateTimeInterface $createdAt): self
     {
         $this->createdAt = $createdAt;
-
         return $this;
     }
 
@@ -115,14 +77,10 @@ class User
     public function setUpdatedAt(?\DateTimeInterface $updatedAt): self
     {
         $this->updatedAt = $updatedAt;
-
         return $this;
     }
 
-    /**
-     * @return \Doctrine\Common\Collections\Collection<int, Post>
-     */
-    public function getPosts(): \Doctrine\Common\Collections\Collection
+    public function getPosts(): Collection
     {
         return $this->posts;
     }
@@ -133,7 +91,6 @@ class User
             $this->posts->add($post);
             $post->setAuthor($this);
         }
-
         return $this;
     }
 
@@ -141,29 +98,229 @@ class User
     {
         if ($this->posts->contains($post)) {
             $this->posts->removeElement($post);
-            // set the owning side to null (unless already changed)
             if ($post->getAuthor() === $this) {
                 $post->setAuthor(null);
             }
         }
-
         return $this;
     }
 
-    public function getGroup(): ?Group
+    public function getTeam(): ?Team
     {
-        return $this->group;
+        return $this->team;
     }
 
-    public function setGroup(?Group $group): self
+    public function setTeam(?Team $team): self
     {
-        $this->group = $group;
+        $this->team = $team;
+        if ($team !== null && !$team->getUsers()->contains($this)) {
+            $team->addUser($this);
+        }
+        return $this;
+    }
 
-        // set the owning side only if the given group is not the one already set
-        if ($group !== null && $group->getUsers()->contains($this) === false) {
-            $group->addUser($this);
+    public function getUserRoles(): Collection
+    {
+        return $this->userRoles;
+    }
+
+    public function hasRole(string $roleName, ?Team $team = null): bool
+    {
+        foreach ($this->userRoles as $userRole) {
+            if ($userRole->getRole()->getName() === $roleName && $userRole->isActive()) {
+                if ($team === null || $userRole->getTeam() === $team) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public function addRole(Role $role, Team $team): self
+    {
+        foreach ($this->userRoles as $existingUserRole) {
+            if ($existingUserRole->getRole() === $role && $existingUserRole->getTeam() === $team) {
+                return $this;
+            }
+        }
+
+        $userRole = new UserRole();
+        $userRole->setUser($this);
+        $userRole->setRole($role);
+        $userRole->setTeam($team);
+        $this->userRoles->add($userRole);
+        $role->addUserRole($userRole);
+
+        if ($role->getName() !== Role::WIZARD && !$this->hasRole(Role::WIZARD, $team)) {
+            $wizardRole = new Role();
+            $wizardRole->setName(Role::WIZARD);
+            $wizardRole->setTeam($team);
+            $this->addRole($wizardRole, $team);
         }
 
         return $this;
+    }
+
+    public function setRoles(array $roleNames): self
+    {
+        $this->userRoles->clear();
+
+        foreach ($roleNames as $roleName) {
+            $role = new Role();
+            $role->setName($roleName);
+
+            $userRole = new UserRole();
+            $userRole->setUser($this);
+            $userRole->setRole($role);
+
+            $team = $this->getTeam();
+            if ($team !== null) {
+                $userRole->setTeam($team);
+            }
+
+            $userRole->setGrantedAt(new \DateTimeImmutable());
+            $this->userRoles->add($userRole);
+        }
+
+        return $this;
+    }
+
+    public function removeRole(Role $role, Team $team): self
+    {
+        foreach ($this->userRoles as $userRole) {
+            if ($userRole->getRole() === $role && $userRole->getTeam() === $team) {
+                $this->userRoles->removeElement($userRole);
+                $role->removeUserRole($userRole);
+                break;
+            }
+        }
+        return $this;
+    }
+
+    public function getRolesForTeam(Team $team): array
+    {
+        $roles = [];
+        foreach ($this->userRoles as $userRole) {
+            if ($userRole->getTeam() === $team && $userRole->isActive()) {
+                $roles[] = $userRole->getRole();
+            }
+        }
+        return $roles;
+    }
+
+    public function getAllRoles(): array
+    {
+        $roles = [];
+        foreach ($this->userRoles as $userRole) {
+            if ($userRole->isActive()) {
+                $roles[] = $userRole->getRole();
+            }
+        }
+        return $roles;
+    }
+
+    public function addWand(Wand $wand): self
+    {
+        if (!$this->wands->contains($wand)) {
+            $this->wands->add($wand);
+            $wand->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeWand(Wand $wand): self
+    {
+        if ($this->wands->contains($wand)) {
+            $this->wands->removeElement($wand);
+            if ($wand->getUser() === $this) {
+                $wand->setUser(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getWands(): Collection
+    {
+        return $this->wands;
+    }
+
+    public function addPatronus(Patronus $patronus): self
+    {
+        if (!$this->patronuses->contains($patronus)) {
+            $this->patronuses->add($patronus);
+            $patronus->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removePatronus(Patronus $patronus): self
+    {
+        if ($this->patronuses->contains($patronus)) {
+            $this->patronuses->removeElement($patronus);
+            if ($patronus->getUser() === $this) {
+                $patronus->setUser(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getPatronuses(): Collection
+    {
+        return $this->patronuses;
+    }
+
+    public function addInvisibilityCloak(InvisibilityCloak $cloak): self
+    {
+        if (!$this->invisibilityCloaks->contains($cloak)) {
+            $this->invisibilityCloaks->add($cloak);
+            $cloak->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeInvisibilityCloak(InvisibilityCloak $cloak): self
+    {
+        if ($this->invisibilityCloaks->contains($cloak)) {
+            $this->invisibilityCloaks->removeElement($cloak);
+            if ($cloak->getUser() === $this) {
+                $cloak->setUser(null);
+            }
+        }
+        return $this;
+    }
+
+    public function getInvisibilityCloaks(): Collection
+    {
+        return $this->invisibilityCloaks;
+    }
+
+    public function isInvisibleInTeam(Team $team): bool
+    {
+        foreach ($this->invisibilityCloaks as $cloak) {
+            if ($cloak->getTeam() === $team && $cloak->isActive()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function hasValidPatronusInTeam(Team $team): bool
+    {
+        foreach ($this->patronuses as $patronus) {
+            if ($patronus->getTeam() === $team && $patronus->isValid()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function hasWandPermission(string $permission): bool
+    {
+        foreach ($this->wands as $wand) {
+            if ($wand->hasPermission($permission) && !$wand->isExpired()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

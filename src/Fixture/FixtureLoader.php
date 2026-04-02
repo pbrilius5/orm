@@ -75,7 +75,25 @@ class FixtureLoader
         $platform = $connection->getDatabasePlatform();
 
         $connection->executeStatement(
+            $platform->getTruncateTableSQL('invisibility_cloaks', true)
+        );
+        $connection->executeStatement(
+            $platform->getTruncateTableSQL('patronuses', true)
+        );
+        $connection->executeStatement(
+            $platform->getTruncateTableSQL('wands', true)
+        );
+        $connection->executeStatement(
+            $platform->getTruncateTableSQL('user_roles', true)
+        );
+        $connection->executeStatement(
             $platform->getTruncateTableSQL('users', true)
+        );
+        $connection->executeStatement(
+            $platform->getTruncateTableSQL('roles', true)
+        );
+        $connection->executeStatement(
+            $platform->getTruncateTableSQL('teams', true)
         );
         $connection->executeStatement(
             $platform->getTruncateTableSQL('posts', true)

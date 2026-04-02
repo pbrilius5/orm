@@ -12,20 +12,21 @@ use League\Fractal\TransformerAbstract;
  */
 class UserTransformer extends TransformerAbstract
 {
-    protected array $availableIncludes = ['posts', 'group'];
+    protected array $availableIncludes = ['posts', 'group', 'userRoles', 'wands', 'patronuses'];
 
-    /**
-     * Transform the user entity.
-     *
-     * @param User $user
-     * @return array
-     */
     public function transform(User $user): array
     {
+        $roles = [];
+        foreach ($user->getUserRoles() as $userRole) {
+            if ($userRole->isActive()) {
+                $roles[] = $userRole->getRole()->getName();
+            }
+        }
+
         return [
             'id' => $user->getId() ?? 0,
             'email' => $user->getEmail(),
-            'roles' => $user->getRoles(),
+            'roles' => $roles,
             'created_at' => $user->getCreatedAt()->format('c'),
             'updated_at' => $user->getUpdatedAt() ? $user->getUpdatedAt()->format('c') : null,
         ];
@@ -51,5 +52,20 @@ class UserTransformer extends TransformerAbstract
     public function includeGroup(User $user)
     {
         return $this->item($user->getGroup(), new \App\Transformer\Resource\GroupTransformer());
+    }
+
+    public function includeUserRoles(User $user)
+    {
+        return $this->collection($user->getUserRoles(), new UserRoleTransformer());
+    }
+
+    public function includeWands(User $user)
+    {
+        return $this->collection($user->getWands(), new WandTransformer());
+    }
+
+    public function includePatronuses(User $user)
+    {
+        return $this->collection($user->getPatronuses(), new PatronusTransformer());
     }
 }

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doctrine-mapping xmlns="https://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://doctrine-project.org/schemas/orm/doctrine-mapping
+                                      https://doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <entity name="App\Entity\Role" table="roles">
+        <id name="id" type="integer">
+            <generator strategy="AUTO"/>
+        </id>
+        <field name="name" type="string" length="100" unique="true"/>
+        <field name="description" type="text" nullable="true"/>
+        
+        <many-to-one target-entity="App\Entity\Team" field="team" inversed-by="roles">
+            <join-column name="team_id" nullable="true"/>
+        </many-to-one>
+        
+        <one-to-many target-entity="App\Entity\UserRole" field="userRoles" mapped-by="role" cascade="persist" orphan-removal="true"/>
+        <one-to-many target-entity="App\Entity\Wand" field="wands" mapped-by="role" cascade="persist"/>
+        <one-to-many target-entity="App\Entity\Patronus" field="patronuses" mapped-by="role" cascade="persist"/>
+    </entity>
+</doctrine-mapping>

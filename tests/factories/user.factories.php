@@ -3,13 +3,12 @@
 declare(strict_types=1);
 
 use App\Entity\User;
+use App\Entity\Team;
 
 $fm->define(User::class)->setDefinitions([
-    'email' => 'user{++}@example.com',
+    'email' => 'user{++}@wizardplatform.com',
     'password' => 'password123',
-    'roles' => ['ROLE_USER'],
     'createdAt' => fn() => new \DateTimeImmutable(),
     'updatedAt' => null,
-])->setCallback(function (User $user) {
-    $user->setGroup(null);
-});
+    'team' => 'factory|' . Team::class,
+]);

@@ -25,7 +25,7 @@ class FixtureLoaderTest extends TestCase
 
         $this->assertInstanceOf(User::class, $user);
         $this->assertNotEmpty($user->getEmail());
-        $this->assertStringContainsString('@example.com', $user->getEmail());
+        $this->assertStringContainsString('@', $user->getEmail());
     }
 
     public function testMakePost(): void
