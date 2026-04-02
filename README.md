@@ -16,7 +16,8 @@
 10. [Middleware Security](#10-middleware-security)
 11. [Environment Configuration](#11-environment-configuration)
 12. [XML Schema-Driven Entity Generation](#12-xml-schema-driven-entity-generation)
-13. [Summary](#13-summary)
+13. [Role-Based Access su Doctrine Collections](#13-role-based-access-su-doctrine-collections)
+14. [Summary](#14-summary)
 
 ---
 
@@ -37,7 +38,7 @@ cp -v ./vendor/oryx/mvc/public/favicon.ico ./public/favicon.ico
 # 4. Create database and schema from XML
 bin/console oryx:db:create
 
-# 5. Load demo fixtures (groups, users, posts)
+# 5. Load demo fixtures (teams, roles, users, wands, patronuses)
 bin/console oryx:fixtures:load
 
 # 6. Start the server
@@ -75,6 +76,7 @@ No separate debug toggle — one variable, two behaviors.
 | [http://localhost:8080/api/users](http://localhost:8080/api/users) | HAL+JSON API collection |
 | [http://localhost:8080/api/users/1](http://localhost:8080/api/users/1) | Single user resource |
 | [http://localhost:8080/api/users?include=posts,group](http://localhost:8080/api/users?include=posts,group) | With embedded relations |
+| [http://localhost:8080/api/users?include=userRoles,wands,patronuses](http://localhost:8080/api/users?include=userRoles,wands,patronuses) | With role system |
 
 ### Switch to MySQL
 
@@ -749,31 +751,34 @@ const postsUrl = data._links.posts.href;
 
 ```bash
 # All users
-curl -X GET http://localhost:8000/api/users
+curl -X GET http://localhost:8080/api/users
 
 # Users with posts
-curl -X GET "http://localhost:8000/api/users?include=posts"
+curl -X GET "http://localhost:8080/api/users?include=posts"
 
 # Users with all relations
-curl -X GET "http://localhost:8000/api/users?include=posts,group"
+curl -X GET "http://localhost:8080/api/users?include=posts,group"
+
+# Users with role system
+curl -X GET "http://localhost:8080/api/users?include=userRoles,wands,patronuses"
 
 # Create user
-curl -X POST http://localhost:8000/api/users \
+curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
-  -d '{"email":"new@versliukai.lt","password":"secret123"}'
+  -d '{"email":"new@wizardplatform.com","password":"secret123"}'
 
 # Full update
-curl -X PUT http://localhost:8000/api/users/1 \
+curl -X PUT http://localhost:8080/api/users/1 \
   -H "Content-Type: application/json" \
-  -d '{"email":"updated@versliukai.lt","roles":["ROLE_ADMIN"]}'
+  -d '{"email":"updated@wizardplatform.com","roles":["ROLE_WIZARD","ROLE_ARCHITECT"]}'
 
 # Partial update
-curl -X PATCH http://localhost:8000/api/users/1 \
+curl -X PATCH http://localhost:8080/api/users/1 \
   -H "Content-Type: application/json" \
-  -d '{"email":"patched@versliukai.lt"}'
+  -d '{"email":"patched@wizardplatform.com"}'
 
 # Delete
-curl -X DELETE http://localhost:8000/api/users/1
+curl -X DELETE http://localhost:8080/api/users/1
 ```
 
 ### 7.7 Maršrutų struktūra
@@ -808,14 +813,21 @@ use League\Fractal\TransformerAbstract;
 
 class UserTransformer extends TransformerAbstract
 {
-    protected $availableIncludes = ['posts', 'group'];
+    protected $availableIncludes = ['posts', 'group', 'userRoles', 'wands', 'patronuses'];
 
     public function transform(User $user): array
     {
+        $roles = [];
+        foreach ($user->getUserRoles() as $userRole) {
+            if ($userRole->isActive()) {
+                $roles[] = $userRole->getRole()->getName();
+            }
+        }
+
         return [
             'id' => $user->getId() ?? 0,
             'email' => $user->getEmail(),
-            'roles' => $user->getRoles(),
+            'roles' => $roles,
             'created_at' => $user->getCreatedAt()->format('c'),
             'updated_at' => $user->getUpdatedAt()?->format('c'),
         ];
@@ -829,6 +841,21 @@ class UserTransformer extends TransformerAbstract
     public function includeGroup(User $user)
     {
         return $this->item($user->getGroup(), new GroupTransformer());
+    }
+
+    public function includeUserRoles(User $user)
+    {
+        return $this->collection($user->getUserRoles(), new UserRoleTransformer());
+    }
+
+    public function includeWands(User $user)
+    {
+        return $this->collection($user->getWands(), new WandTransformer());
+    }
+
+    public function includePatronuses(User $user)
+    {
+        return $this->collection($user->getPatronuses(), new PatronusTransformer());
     }
 }
 ```
@@ -859,15 +886,46 @@ $data = $fractal->createData($resource)->toArray();
 ```php
 // tests/factories/user.factories.php
 use App\Entity\User;
+use App\Entity\Team;
 
 $fm->define(User::class)->setDefinitions([
-    'email' => 'user{++}@example.com',
+    'email' => 'user{++}@wizardplatform.com',
     'password' => 'password123',
-    'roles' => ['ROLE_USER'],
     'createdAt' => fn() => new \DateTimeImmutable(),
-])->setCallback(function (User $user) {
-    $user->setGroup(null);
-});
+    'updatedAt' => null,
+    'team' => 'factory|' . Team::class,
+]);
+
+// tests/factories/role.factories.php
+use App\Entity\Role;
+
+$fm->define(Role::class)->setDefinitions([
+    'name' => fn() => $fm->random([Role::WIZARD, Role::ARCHITECT, Role::GAME_MASTER]),
+    'description' => fn() => 'Magic role for wizard platform',
+]);
+
+// tests/factories/team.factories.php
+use App\Entity\Team;
+
+$fm->define(Team::class)->setDefinitions([
+    'name' => 'Team {++}',
+    'description' => fn() => 'Demo team created by faker',
+    'createdAt' => fn() => new \DateTimeImmutable(),
+]);
+
+// tests/factories/user_role.factories.php
+use App\Entity\UserRole;
+use App\Entity\User;
+use App\Entity\Role;
+use App\Entity\Team;
+
+$fm->define(UserRole::class)->setDefinitions([
+    'user' => 'factory|' . User::class,
+    'role' => 'factory|' . Role::class,
+    'team' => 'factory|' . Team::class,
+    'grantedAt' => fn() => new \DateTimeImmutable(),
+    'expiresAt' => null,
+]);
 ```
 
 ### 9.2 FixtureLoader
@@ -1171,18 +1229,260 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
         </id>
         <field name="email" type="string" length="255" unique="true"/>
         <field name="password" type="string" length="255"/>
-        <field name="roles" type="json"/>
         <field name="createdAt" type="datetime"/>
         <field name="updatedAt" type="datetime" nullable="true"/>
-        <one-to-many target-entity="App\Entity\Post" field="posts" mapped-by="author"/>
-        <many-to-one target-entity="App\Entity\Group" field="group" inversed-by="users"/>
+        
+        <many-to-one target-entity="App\Entity\Team" field="team" inversed-by="users">
+            <join-column name="team_id" nullable="true"/>
+        </many-to-one>
+        
+        <one-to-many target-entity="App\Entity\Post" field="posts" mapped-by="author" cascade="persist"/>
+        <one-to-many target-entity="App\Entity\UserRole" field="userRoles" mapped-by="user" cascade="persist" orphan-removal="true"/>
+        <one-to-many target-entity="App\Entity\Wand" field="wands" mapped-by="user" cascade="persist"/>
+        <one-to-many target-entity="App\Entity\Patronus" field="patronuses" mapped-by="user" cascade="persist"/>
+        <one-to-many target-entity="App\Entity\InvisibilityCloak" field="invisibilityCloaks" mapped-by="user" cascade="persist"/>
     </entity>
 </doctrine-mapping>
 ```
 
 ---
 
-## Summary
+## 13. Role-Based Access su Doctrine Collections
+
+**Wizard Platform role system su privalomu ROLE_WIZARD ir organizaciniu scope.**
+
+### 13.1 Schema Overview
+
+| Entity | Table | Description |
+|--------|-------|-------------|
+| `Role` | `roles` | Wizard roles: WIZARD, ARCHITECT, GAME_MASTER |
+| `UserRole` | `user_roles` | VIA lentelė: user_id + role_id + team_id |
+| `Team` | `teams` | Game dev teams (Level Design, Character Art, Audio) |
+| `Wand` | `wands` | Permission token su JSON permissions |
+| `Patronus` | `patronuses` | JWT-like token su expiration |
+| `InvisibilityCloak` | `invisibility_cloaks` | Invisible privilege per team |
+
+### 13.2 Doctrine Collection vs Array
+
+**Senas būdas (array):**
+```php
+// User::$roles - JSON laukas
+$user->setRoles(['ROLE_USER', 'ROLE_ADMIN']);
+```
+
+**Naujas būdas (Collection):**
+```php
+// User::$userRoles - Doctrine Collection<UserRole>
+$roles = $user->getUserRoles(); // Returns Collection
+$roles->filter(fn($ur) => $ur->isActive());
+$roles->map(fn($ur) => $ur->getRole()->getName());
+```
+
+**Collection privalumai:**
+- Type-safe (Collection<UserRole>)
+- Lazy loading (neuzkrauna visų iš karto)
+- Filtering/mapping be papildomų užklausų
+- Relations su kitais entity
+
+### 13.3 Privalomo ROLE_WIZARD Logika
+
+Pridedant bet kokią kitą rolę, automatiškai pridedamas ROLE_WIZARD:
+
+```php
+// src/Entity/User.php
+public function addRole(Role $role, Team $team): self
+{
+    // Check if role already exists
+    foreach ($this->userRoles as $existingUserRole) {
+        if ($existingUserRole->getRole() === $role && $existingUserRole->getTeam() === $team) {
+            return $this;
+        }
+    }
+
+    $userRole = new UserRole();
+    $userRole->setUser($this);
+    $userRole->setRole($role);
+    $userRole->setTeam($team);
+    $this->userRoles->add($userRole);
+    $role->addUserRole($userRole);
+
+    // Auto-grant WIZARD if adding other role
+    if ($role->getName() !== Role::WIZARD && !$this->hasRole(Role::WIZARD, $team)) {
+        $wizardRole = new Role();
+        $wizardRole->setName(Role::WIZARD);
+        $wizardRole->setTeam($team);
+        $this->addRole($wizardRole, $team);
+    }
+
+    return $this;
+}
+```
+
+### 13.4 Cross-Team Roles
+
+Vartotojas gali turėti skirtingas roles skirtingose team:
+
+```php
+// User turi ARCHITECT role Level Design team
+$user->addRole($architectRole, $levelDesignTeam);
+
+// User turi GAME_MASTER role Character Art team
+$user->addRole($gameMasterRole, $characterArtTeam);
+
+// Tikrina role konkrečioje team
+$user->hasRole(Role::ARCHITECT, $levelDesignTeam); // true
+$user->hasRole(Role::ARCHITECT, $characterArtTeam); // false
+
+// Gauna visus roles
+$allRoles = $user->getAllRoles(); // [WIZARD, ARCHITECT, GAME_MASTER]
+
+// Gauna roles konkrečiai team
+$teamRoles = $user->getRolesForTeam($levelDesignTeam); // [WIZARD, ARCHITECT]
+```
+
+### 13.5 API Pavyzdžiai su Role System
+
+**GET /api/users/1?include=userRoles,wands,patronuses**
+
+```json
+{
+  "_links": {
+    "self": { "href": "/api/users/1" },
+    "collection": { "href": "/api/users" }
+  },
+  "_embedded": {
+    "user": {
+      "id": 1,
+      "email": "harry@wizardplatform.com",
+      "roles": ["ROLE_WIZARD", "ROLE_ARCHITECT"],
+      "created_at": "2026-04-02T10:00:00+02:00",
+      "updated_at": null
+    },
+    "userRoles": [
+      {
+        "id": 1,
+        "role": "ROLE_WIZARD",
+        "team": "Level Design",
+        "granted_at": "2026-04-02T10:00:00+02:00",
+        "expires_at": null,
+        "is_active": true
+      },
+      {
+        "id": 2,
+        "role": "ROLE_ARCHITECT",
+        "team": "Level Design",
+        "granted_at": "2026-04-02T10:05:00+02:00",
+        "expires_at": null,
+        "is_active": true
+      }
+    ],
+    "wands": [
+      {
+        "id": 1,
+        "name": "Wand of Power",
+        "role": "ROLE_WIZARD",
+        "permissions": ["read", "write"],
+        "created_at": "2026-04-02T10:00:00+02:00",
+        "expires_at": null,
+        "is_active": true
+      }
+    ],
+    "patronuses": [
+      {
+        "id": 1,
+        "token": "a1b2c3d4e5f6...",
+        "role": "ROLE_WIZARD",
+        "team": "Level Design",
+        "issued_at": "2026-04-02T10:00:00+02:00",
+        "expires_at": "2026-04-03T10:00:00+02:00",
+        "is_valid": true
+      }
+    ]
+  }
+}
+```
+
+**GET /api/users/1?include=userRoles**
+
+```json
+{
+  "_links": {
+    "self": { "href": "/api/users/1" },
+    "collection": { "href": "/api/users" }
+  },
+  "_embedded": {
+    "user": {
+      "id": 1,
+      "email": "harry@wizardplatform.com",
+      "roles": ["ROLE_WIZARD", "ROLE_ARCHITECT"],
+      "created_at": "2026-04-02T10:00:00+02:00"
+    },
+    "userRoles": [
+      {
+        "id": 1,
+        "role": "ROLE_WIZARD",
+        "team": "Level Design",
+        "granted_at": "2026-04-02T10:00:00+02:00",
+        "expires_at": null,
+        "is_active": true
+      },
+      {
+        "id": 2,
+        "role": "ROLE_ARCHITECT",
+        "team": "Level Design",
+        "granted_at": "2026-04-02T10:05:00+02:00",
+        "expires_at": null,
+        "is_active": true
+      }
+    ]
+  }
+}
+```
+
+### 13.6 Collection Operations
+
+```php
+// Gauti visus aktyvius roles
+$activeRoles = $user->getUserRoles()
+    ->filter(fn($ur) => $ur->isActive())
+    ->map(fn($ur) => $ur->getRole()->getName());
+
+// Tikrina ar turi specifinę rolę
+$hasArchitect = $user->hasRole(Role::ARCHITECT, $team);
+
+// Gauti visus wands
+$wands = $user->getWands();
+foreach ($wands as $wand) {
+    if ($wand->hasPermission('write') && !$wand->isExpired()) {
+        // Can write
+    }
+}
+
+// Tikrina ar turi validų patronus
+$hasValidPatronus = $user->hasValidPatronusInTeam($team);
+
+// Tikrina ar yra nematomas team
+$isInvisible = $user->isInvisibleInTeam($team);
+```
+
+### 13.7 Schema Files
+
+```
+schema/
+├── User.orm.xml
+├── Role.orm.xml
+├── UserRole.orm.xml
+├── Team.orm.xml
+├── Wand.orm.xml
+├── Patronus.orm.xml
+├── InvisibilityCloak.orm.xml
+├── Post.orm.xml
+└── Group.orm.xml
+```
+
+---
+
+## 14. Summary
 
 | Layer | Pattern | HTTP | Templates | Dependencies |
 |-------|---------|------|-----------|---------------|
@@ -1206,6 +1506,12 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 │   └── Fixture/       # League Factory Muffin
 ├── schema/            # Doctrine XML mappings
 │   ├── User.orm.xml
+│   ├── Role.orm.xml
+│   ├── UserRole.orm.xml
+│   ├── Team.orm.xml
+│   ├── Wand.orm.xml
+│   ├── Patronus.orm.xml
+│   ├── InvisibilityCloak.orm.xml
 │   ├── Post.orm.xml
 │   └── Group.orm.xml
 ├── templates/         # MVC PHP templates
