@@ -369,9 +369,10 @@ class EnvironmentConfig
 
         if ($explicit !== null && $explicit !== '') {
             return match ($explicit) {
-                'always', 'true', '1' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_ALWAYS,
-                'never', 'false', '0' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_NEVER,
-                'file_changed', 'eval' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_FILE_NOT_EXISTS,
+                'true', '1', 'eval' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL,
+                'false', '0', 'never' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_NEVER,
+                'file_changed' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_FILE_NOT_EXISTS,
+                'always' => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_ALWAYS,
                 default => \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL,
             };
         }

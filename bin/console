@@ -13,5 +13,7 @@ $application->setVersion('1.0.0');
 $application->add(new App\Console\Command\GenerateEntitiesCommand());
 $application->add(new App\Console\Command\FixturesLoadCommand());
 $application->add(new App\Console\Command\DatabaseCreateCommand());
+$application->add(new App\Console\Command\ProxyClearCommand());
+$application->add(new App\Console\Command\ProxyGenerateCommand());
 
 $application->run();
