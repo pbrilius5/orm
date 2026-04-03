@@ -12,12 +12,16 @@
 6. [ADR Pattern (laminas/diactoros)](#6-adr-pattern-laminasdiactoros)
 7. [HAL+JSON API](#7-haljson-api)
 8. [Fractal Transformers](#8-fractal-transformers)
-9. [Fixtures](#9-fixtures)
-10. [Middleware Security](#10-middleware-security)
-11. [Environment Configuration](#11-environment-configuration)
-12. [XML Schema-Driven Entity Generation](#12-xml-schema-driven-entity-generation)
-13. [Role-Based Access su Doctrine Collections](#13-role-based-access-su-doctrine-collections)
-14. [Summary](#14-summary)
+9. [Command/Handler Pattern (Tactician)](#9-commandhandler-pattern-tactician)
+10. [Fixtures](#10-fixtures)
+11. [Middleware Security](#11-middleware-security)
+12. [Logging (Monolog)](#12-logging-monolog)
+13. [PWA Support](#13-pwa-support)
+14. [Environment Configuration](#14-environment-configuration)
+15. [Doctrine Regional Cache](#15-doctrine-regional-cache)
+16. [XML Schema-Driven Entity Generation](#16-xml-schema-driven-entity-generation)
+17. [Role-Based Access su Doctrine Collections](#17-role-based-access-su-doctrine-collections)
+18. [Summary](#18-summary)
 
 ---
 
@@ -38,13 +42,16 @@ cp -v ./vendor/oryx/mvc/public/manifest.json ./public/manifest.json
 cp -v ./vendor/oryx/mvc/public/sw.js ./public/sw.js
 cp -rv ./vendor/oryx/mvc/public/icons/ ./public/icons/
 
-# 4. Create database and schema from XML
+# 4. Create required directories
+mkdir -p var/log var/data
+
+# 5. Create database and schema from XML
 bin/console oryx:db:create
 
-# 5. Load demo fixtures (teams, roles, users, wands, patronuses)
+# 6. Load demo fixtures (teams, roles, users, wands, patronuses)
 bin/console oryx:fixtures:load
 
-# 6. Start the server
+# 7. Start the server
 composer serve
 ```
 
@@ -227,10 +234,23 @@ For complete API testing documentation including all endpoint references, curl e
 │  │  (Vanilla PHP)     │        │  (laminas/diactoros)    │   │
 │  ├─────────────────────┤        ├─────────────────────────┤   │
 │  │ • App\Http\Request │        │ • App\Kernel            │   │
-│  │ • App\Http\Response│        │ • App\Action\User\*     │   │
+│  │ • App\Http\Response│        │ • App\Action\User\*    │   │
 │  │ • App\Http\Router │        │ • League\Fractal        │   │
-│  │ • PHP Templates   │        │ • JsonHalResponder       │   │
+│  │ • PHP Templates   │        │ • JsonHalResponder      │   │
 │  └─────────────────────┘        └─────────────────────────┘   │
+│                              │                                   │
+│  ┌────────────────────────────┴───────────────────────────┐    │
+│  │              Command/Handler Pattern                   │    │
+│  │  • League\Tactician (CommandBus)                      │    │
+│  │  • 16 Commands + 16 Handlers (User/Group/Console)    │    │
+│  │  • PHP-DI autowiring for dependency injection          │    │
+│  └───────────────────────────────────────────────────────┘    │
+│                              │                                   │
+│  ┌────────────────────────────┴───────────────────────────┐    │
+│  │                   Logging (Monolog)                     │    │
+│  │  • AppLogger (dev: Debug, prod: Error)                 │    │
+│  │  • CrashLogger (critical errors → crash.log)           │    │
+│  └───────────────────────────────────────────────────────┘    │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -860,7 +880,146 @@ $data = $fractal->createData($resource)->toArray();
 
 ---
 
-## 9. Fixtures
+## 9. Command/Handler Pattern (Tactician)
+
+**Unified Command/Handler pattern for MVC, ADR, and Console using League\Tactician.**
+
+### 9.1 Why Command/Handler?
+
+Separates request handling from business logic:
+- **Commands** - Simple objects representing intent (e.g., `CreateUserCommand`)
+- **Handlers** - Execute business logic (e.g., `CreateUserHandler`)
+- **CommandBus** - Dispatches commands to appropriate handlers
+
+This enables:
+- Single responsibility principle
+- Easy testing (mock handlers)
+- Consistent handling across MVC, ADR, and Console
+
+### 9.2 Architecture
+
+```
+src/
+├── Command/                    # Command objects
+│   ├── User/
+│   │   ├── ListUsersCommand.php
+│   │   ├── GetUserCommand.php
+│   │   ├── CreateUserCommand.php
+│   │   ├── UpdateUserCommand.php
+│   │   ├── PatchUserCommand.php
+│   │   └── DeleteUserCommand.php
+│   ├── Group/
+│   │   ├── ListGroupsCommand.php
+│   │   ├── GetGroupCommand.php
+│   │   ├── CreateGroupCommand.php
+│   │   ├── UpdateGroupCommand.php
+│   │   ├── PatchGroupCommand.php
+│   │   └── DeleteGroupCommand.php
+│   ├── Console/
+│   │   ├── ManageUserCommand.php
+│   │   ├── CreateDatabaseCommand.php
+│   │   ├── LoadFixturesCommand.php
+│   │   └── GenerateProxiesCommand.php
+│   └── CommandBusInterface.php  # Interface for testing
+├── Handler/                    # Handler objects
+│   ├── User/                   # 6 handlers
+│   ├── Group/                  # 6 handlers
+│   └── Console/                # 4 handlers
+└── Container/
+    └── TacticianServiceProvider.php  # DI setup
+```
+
+### 9.3 CommandBusInterface
+
+Created to enable mocking in tests (since `League\Tactician\CommandBus` is `final`):
+
+```php
+// src/Command/CommandBusInterface.php
+namespace App\Command;
+
+interface CommandBusInterface
+{
+    /**
+     * @param object $command
+     * @return mixed
+     */
+    public function handle($command);
+}
+```
+
+### 9.4 Using Commands in Actions
+
+```php
+// src/Action/User/ListAction.php
+namespace App\Action\User;
+
+use App\Command\CommandBusInterface;
+use App\Command\User\ListUsersCommand;
+use League\Fractal\Manager;
+
+class ListAction
+{
+    private CommandBusInterface $commandBus;
+    private Manager $fractal;
+
+    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
+    {
+        $this->commandBus = $commandBus;
+        $this->fractal = $fractal;
+    }
+
+    public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $command = new ListUsersCommand(
+            limit: (int) ($request->getQueryParams()['limit'] ?? 10),
+            offset: (int) ($request->getQueryParams()['offset'] ?? 0),
+            search: $request->getQueryParams()['search'] ?? null
+        );
+
+        $users = $this->commandBus->handle($command);
+        // ... transform and return response
+    }
+}
+```
+
+### 9.5 Console Commands
+
+```bash
+# List all users
+bin/console user:list
+
+# Create user
+bin/console user:create --email=user@example.com --password=secret
+
+# Update user
+bin/console user:update 1 --email=new@example.com
+
+# Delete user
+bin/console user:delete 1
+
+# Manage user (interactive)
+bin/console user:manage
+```
+
+### 9.6 Testing with CommandBusInterface
+
+```php
+// tests/Action/UserActionTest.php
+use App\Command\CommandBusInterface;
+
+protected function setUp(): void
+{
+    $this->commandBus = new class implements CommandBusInterface {
+        public function handle($command) {
+            return []; // Return mock data
+        }
+    };
+}
+```
+
+---
+
+## 10. Fixtures
 
 **Fixtures provide test data generation.**
 
@@ -1059,8 +1218,119 @@ $this->router->middleware(new RateLimitMiddleware(100, 60));
 ```
 
 ---
- 
-## 11. PWA Support
+
+## 12. Logging (Monolog)
+
+**Monolog-based logging with environment-aware log levels and crash handling.**
+
+### 12.1 Log Levels by Environment
+
+| Environment | Log Level | Log File |
+|-------------|-----------|----------|
+| `dev` | `Debug` | `var/log/app_dev.log` |
+| `prod` | `Error` | `var/log/app_prod.log` |
+
+### 12.2 LoggerFactory
+
+```php
+// src/Logger/LoggerFactory.php
+namespace App\Logger;
+
+class LoggerFactory
+{
+    public static function create(string $appEnv = 'dev'): LoggerInterface
+    {
+        $level = match ($appEnv) {
+            'dev' => Level::Debug,
+            'prod' => Level::Error,
+            default => Level::Debug,
+        };
+
+        $logFile = 'var/log/app_' . $appEnv . '.log';
+
+        $logger = new Logger('app');
+        $logger->pushHandler(new StreamHandler($logFile, $level));
+        $logger->pushProcessor(new UidProcessor());
+
+        return $logger;
+    }
+}
+```
+
+### 12.3 AppLogger Usage
+
+```php
+use App\Logger\AppLogger;
+use Psr\Log\LogLevel;
+
+class UserController
+{
+    public function __construct(private AppLogger $logger) {}
+
+    public function index(): array
+    {
+        $this->logger->info('User list accessed');
+        // ...
+    }
+}
+```
+
+### 12.4 CrashLogger (Critical Errors)
+
+**Crash logger** captures critical errors to `var/log/crash.log`:
+
+```php
+// src/Logger/CrashLogger.php
+class CrashLogger
+{
+    private LoggerInterface $logger;
+
+    public function __construct()
+    {
+        $this->logger = LoggerFactory::createCrashLogger();
+    }
+
+    public function log(\Throwable $e): void
+    {
+        $this->logger->critical('Critical error', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+    }
+}
+```
+
+**Crashes captured:**
+- `Error` (all PHP errors)
+- `OutOfMemoryError`
+- `Segmentation fault` (via custom handler)
+- `Killed` (SIGKILL signal)
+
+### 12.5 Kernel Crash Handling
+
+```php
+// src/Kernel.php
+set_error_handler(function ($severity, $message, $file, $line) {
+    if ($severity === E_ERROR) {
+        $crashLogger = LoggerFactory::createCrashLogger();
+        $crashLogger->critical("PHP Error: $message in $file:$line");
+    }
+});
+
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        $crashLogger = LoggerFactory::createCrashLogger();
+        $crashLogger->critical("Fatal error: {$error['message']} in {$error['file']}:{$error['line']}");
+    }
+});
+```
+
+---
+
+## 13. PWA Support
 
 **Progressive Web App capabilities with offline-first caching.**
 
@@ -1128,10 +1398,10 @@ cp -rv ./vendor/oryx/mvc/public/icons/ ./public/icons/
 ```
 
 ---
- 
-## 12. Environment Configuration
 
-### 11.1 Configuration Files
+## 14. Environment Configuration
+
+### 14.1 Configuration Files
 
 ```
 .env.dist          # Template defaults (committed to VCS) - all variables documented here
@@ -1140,7 +1410,7 @@ cp -rv ./vendor/oryx/mvc/public/icons/ ./public/icons/
 .env.yaml.local    # Local overrides (optional, gitignored)
 ```
 
-### 11.2 Setup Instructions
+### 14.2 Setup Instructions
 
 **Step 1:** Copy the template:
 ```bash
@@ -1163,14 +1433,14 @@ database:
 > The legacy `.env` file (KEY=VALUE) is supported for backward compatibility only.
 > All available variables are documented in `.env.dist`.
 
-### 11.3 Loading Priority
+### 14.3 Loading Priority
 
 1. **System environment variables** - `$_ENV`, `$_SERVER`
 2. **`.env` file** - Legacy KEY=VALUE format (if present)
 3. **`.env.yaml`** - Primary YAML configuration
 4. **`.env.dist`** - Template defaults
 
-### 11.3 YAML Configuration Format
+### 14.4 YAML Configuration Format
 
 ```yaml
 database:
@@ -1192,7 +1462,7 @@ orm:
   proxy_namespace: ${ORM_PROXY_NAMESPACE:-Oryx\\ORM\\Proxy}
 ```
 
-### 11.4 Variable Substitution Syntax
+### 14.5 Variable Substitution Syntax
 
 | Syntax | Description | Example |
 |--------|-------------|---------|
@@ -1201,7 +1471,7 @@ orm:
 | `${VAR:?error}` | Error if not set | `${DB_PASSWORD:?Required}` |
 | `${nested.key}` | Nested reference | `${database.host}` |
 
-### 11.5 Using EnvironmentConfig in Code
+### 14.6 Using EnvironmentConfig in Code
 
 ```php
 use App\EnvironmentConfig;
@@ -1218,7 +1488,7 @@ if ($config->isDebug()) {
 $secret = $config->require('APP_SECRET', 'Application secret is required');
 ```
 
-### 11.6 Environment Variables Reference
+### 14.7 Environment Variables Reference
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
@@ -1251,9 +1521,68 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 
 ---
 
-## 13. XML Schema-Driven Entity Generation
+## 15. Doctrine Regional Cache
 
-### 12.1 Schema Location
+**Environment-aware caching for Doctrine ORM metadata and query cache.**
+
+### 15.1 Cache by Environment
+
+| Environment | Cache Driver | Extension | Purpose |
+|-------------|-------------|-----------|---------|
+| `dev` | Memcached | `memcached` | Local development |
+| `prod` | Redis | `redis` | Production deployment |
+
+### 15.2 Configuration
+
+In `.env.yaml`:
+
+```yaml
+app:
+  env: dev  # or prod
+
+cache:
+  enabled: true
+  host: localhost      # Memcached host (dev)
+  port: 11211           # Memcached port (dev)
+  redis_host: localhost  # Redis host (prod)
+  redis_port: 6379      # Redis port (prod)
+```
+
+### 15.3 Implementation
+
+```php
+// src/Oryx/ORM/EntityManager.php
+$appEnv = $config['app.env'] ?? 'dev';
+
+if ($appEnv === 'dev' && extension_loaded('memcached')) {
+    // Memcached for development
+    $memcached = new \Memcached();
+    $memcached->addServer($host, $port);
+    // ... create cache adapter
+} elseif ($appEnv === 'prod' && extension_loaded('redis')) {
+    // Redis for production
+    $redis = new \Redis();
+    $redis->connect($host, $port);
+    // ... create cache adapter
+}
+```
+
+### 15.4 Cache Usage
+
+The regional cache is used for:
+- **Metadata cache** - Class mappings, associations
+- **Query cache** - DQL parsed queries
+
+```php
+$config->setMetadataCache($cache);
+$config->setQueryCache($cache);
+```
+
+---
+
+## 16. XML Schema-Driven Entity Generation
+
+### 16.1 Schema Location
 
 All Doctrine XML mappings live in `/schema`:
 
@@ -1264,13 +1593,13 @@ schema/
 └── Group.orm.xml
 ```
 
-### 12.2 Pipeline
+### 16.2 Pipeline
 
 ```
 schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 ```
 
-### 12.3 Example Schema
+### 16.3 Example Schema
 
 ```xml
 <!-- schema/User.orm.xml -->
@@ -1299,11 +1628,11 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 
 ---
 
-## 14. Role-Based Access su Doctrine Collections
+## 17. Role-Based Access su Doctrine Collections
 
 **Wizard Platform role system su privalomu ROLE_WIZARD ir organizaciniu scope.**
 
-### 13.1 Schema Overview
+### 17.1 Schema Overview
 
 | Entity | Table | Description |
 |--------|-------|-------------|
@@ -1314,7 +1643,7 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 | `Patronus` | `patronuses` | JWT-like token su expiration |
 | `InvisibilityCloak` | `invisibility_cloaks` | Invisible privilege per team |
 
-### 13.2 Doctrine Collection vs Array
+### 17.2 Doctrine Collection vs Array
 
 **Senas būdas (array):**
 ```php
@@ -1336,7 +1665,7 @@ $roles->map(fn($ur) => $ur->getRole()->getName());
 - Filtering/mapping be papildomų užklausų
 - Relations su kitais entity
 
-### 13.3 Privalomo ROLE_WIZARD Logika
+### 17.3 Privalomo ROLE_WIZARD Logika
 
 Pridedant bet kokią kitą rolę, automatiškai pridedamas ROLE_WIZARD:
 
@@ -1370,7 +1699,7 @@ public function addRole(Role $role, Team $team): self
 }
 ```
 
-### 13.4 Cross-Team Roles
+### 17.4 Cross-Team Roles
 
 Vartotojas gali turėti skirtingas roles skirtingose team:
 
@@ -1392,7 +1721,7 @@ $allRoles = $user->getAllRoles(); // [WIZARD, ARCHITECT, GAME_MASTER]
 $teamRoles = $user->getRolesForTeam($levelDesignTeam); // [WIZARD, ARCHITECT]
 ```
 
-### 13.5 API Pavyzdžiai su Role System
+### 17.5 API Pavyzdžiai su Role System
 
 **GET /api/users/1?include=userRoles,wands,patronuses**
 
@@ -1491,7 +1820,7 @@ $teamRoles = $user->getRolesForTeam($levelDesignTeam); // [WIZARD, ARCHITECT]
 }
 ```
 
-### 13.6 Collection Operations
+### 17.6 Collection Operations
 
 ```php
 // Gauti visus aktyvius roles (Collection filter + map)
@@ -1528,7 +1857,7 @@ $isInvisible = $user->isInvisibleInTeam($team);
 $userCount = $team->countUsers();
 ```
 
-### 13.7 Schema Files
+### 17.7 Schema Files
 
 ```
 schema/
@@ -1543,11 +1872,11 @@ schema/
 └── Group.orm.xml
 ```
 
-### 13.8 TDD su Doctrine Collections
+### 17.8 TDD su Doctrine Collections
 
 **Test-Driven Development rodo evoliucinį dizainą** - testai rašomi pirmiausia, tada implementacija, tada refaktoringas.
 
-#### 13.8.1 RED - Pirmas testas (failina)
+#### 17.8.1 RED - Pirmas testas (failina)
 
 ```php
 // tests/Unit/UserRolesCollectionTest.php
@@ -1592,7 +1921,7 @@ public function testGetAllRolesReturnsOnlyActive(): void
 
 **Testas failina** nes `getAllRoles()` metodas dar neegzistuoja.
 
-#### 13.8.2 GREEN - Pirmas implementacija (foreach)
+#### 17.8.2 GREEN - Pirmas implementacija (foreach)
 
 ```php
 // src/Entity/User.php
@@ -1610,7 +1939,7 @@ public function getAllRoles(): array
 
 **Testas praeina** ✅
 
-#### 13.8.3 REFACTOR - Collection API (filter + map)
+#### 17.8.3 REFACTOR - Collection API (filter + map)
 
 ```php
 // src/Entity/User.php
@@ -1625,7 +1954,7 @@ public function getAllRoles(): array
 
 **Testas vis dar praeina** ✅ - bet kodas elegantiškesnis.
 
-#### 13.8.4 Antras testas - getRoleNames()
+#### 17.8.4 Antras testas - getRoleNames()
 
 ```php
 public function testGetRoleNamesUsesCollectionMap(): void
@@ -1676,7 +2005,7 @@ public function getRoleNames(): array
 }
 ```
 
-#### 13.8.5 Trečias testas - Cross-team roles
+#### 17.8.5 Trečias testas - Cross-team roles
 
 ```php
 public function testGetRolesForTeamReturnsOnlyMatchingRoles(): void
@@ -1730,7 +2059,7 @@ public function getRolesForTeam(Team $team): array
 }
 ```
 
-#### 13.8.6 Ketvirtas testas - Collection count
+#### 17.8.6 Ketvirtas testas - Collection count
 
 ```php
 public function testCollectionCountReturnsCorrectNumber(): void
@@ -1760,7 +2089,7 @@ public function testCollectionCountReturnsCorrectNumber(): void
 }
 ```
 
-#### 13.8.7 Pilnas TDD ciklas - Wand operations
+#### 17.8.7 Pilnas TDD ciklas - Wand operations
 
 ```php
 public function testGetExpiredWandsReturnsOnlyExpired(): void
@@ -1817,7 +2146,7 @@ public function getActiveWands(): array
 }
 ```
 
-#### 13.8.8 TDD Summary
+#### 17.8.8 TDD Summary
 
 | Žingsnis | Testas | Implementacija | Rezultatas |
 |----------|--------|----------------|------------|
@@ -1838,7 +2167,7 @@ public function getActiveWands(): array
 - **Testable** - kiekvienas metodas turi atskirą testą
 - **Maintainable** - refaktoringas be breakage
 
-### 13.9 Intensive Collection Tests
+### 17.9 Intensive Collection Tests
 
 **161 tests, 262 assertions** across 6 dedicated test files:
 
@@ -1852,7 +2181,7 @@ public function getActiveWands(): array
 | `PatronusCollectionTest.php` | 18 | 28 | tokens, expiration, uniqueness |
 | `InvisibilityCloakCollectionTest.php` | 20 | 25 | active/inactive, expiration, CRUD |
 
-#### 13.9.1 Doctrine Collection API Coverage
+#### 17.9.1 Doctrine Collection API Coverage
 
 | API Method | Test File | Tests |
 |------------|-----------|-------|
@@ -1876,7 +2205,7 @@ public function getActiveWands(): array
 | `exists()` | UserRolesCollection | 1 |
 | `getIterator()` | DoctrineCollectionAdvanced, TeamCollection | 2 |
 
-#### 13.9.2 Entity Property Tests
+#### 17.9.2 Entity Property Tests
 
 | Entity | Property Tests | Coverage |
 |--------|---------------|----------|

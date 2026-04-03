@@ -4,24 +4,24 @@ declare(strict_types=1);
 
 namespace App\Action\Group;
 
-use App\Repository\GroupRepository;
+use App\Command\CommandBusInterface;
+use App\Command\Group\GetGroupCommand;
 use App\Responder\JsonHalResponder;
 use League\Fractal\Manager;
 use League\Fractal\Resource\Item;
-use App\Transformer\Resource\GroupTransformer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Uuid;
 
 class ShowAction
 {
-    private GroupRepository $repository;
+    private CommandBusInterface $commandBus;
     private Manager $fractal;
 
-    public function __construct(GroupRepository $repository)
+    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
     {
-        $this->repository = $repository;
-        $this->fractal = new Manager();
+        $this->commandBus = $commandBus;
+        $this->fractal = $fractal;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -32,14 +32,14 @@ class ShowAction
             return JsonHalResponder::badRequest('Invalid group ID provided');
         }
 
-        $uuid = Uuid::fromString($id);
-        $group = $this->repository->find($uuid);
+        $command = new GetGroupCommand(id: $id);
+        $group = $this->commandBus->handle($command);
 
         if (!$group) {
             return JsonHalResponder::notFound('Group not found');
         }
 
-        $resource = new Item($group, new GroupTransformer());
+        $resource = new Item($group, new \App\Transformer\Resource\GroupTransformer());
         $data = $this->fractal->createData($resource)->toArray();
 
         return JsonHalResponder::resource(

@@ -13,13 +13,21 @@ use App\Entity\UserRole;
 use App\Entity\WizardRole;
 use App\Repository\GroupRepository;
 use App\Repository\UserRepository;
+use App\Command\User\CreateUserCommand;
+use App\Command\User\UpdateUserCommand;
+use App\Command\User\PatchUserCommand;
+use App\Command\User\DeleteUserCommand;
+use App\Command\User\GetUserCommand;
+use App\Command\User\ListUsersCommand;
 use Oryx\ORM\EntityManager;
+use League\Tactician\CommandBus;
 
 class UserController
 {
     private EntityManager $em;
     private UserRepository $repository;
     private GroupRepository $groupRepository;
+    private CommandBus $commandBus;
 
     private const GAMIFICATION_ROLE_CLASSES = [
         WizardRole::NAME => WizardRole::class,
@@ -27,9 +35,10 @@ class UserController
         GameMasterRole::NAME => GameMasterRole::class,
     ];
 
-    public function __construct(EntityManager $em)
+    public function __construct(EntityManager $em, CommandBus $commandBus)
     {
         $this->em = $em;
+        $this->commandBus = $commandBus;
         $this->repository = new UserRepository($em);
         $this->groupRepository = new GroupRepository($em);
     }
@@ -52,161 +61,32 @@ class UserController
 
     public function create(array $data): User
     {
-        $user = new User();
-        $user->setEmail($data['email']);
-        $user->setPassword(password_hash($data['password'] ?? '', PASSWORD_BCRYPT));
-        $user->setCreatedAt(new \DateTimeImmutable());
+        $command = new CreateUserCommand(
+            email: $data['email'],
+            password: $data['password'] ?? '',
+            groupId: $data['group_id'] ?? null,
+            roles: $data['gamification_roles'] ?? []
+        );
 
-        if (!empty($data['group_id'])) {
-            $group = $this->groupRepository->find($data['group_id']);
-            if ($group) {
-                $user->setGroup($group);
-            }
-        }
-
-        $baseRole = $this->em->getRepository(Role::class)->findOneBy(['name' => Role::USER]);
-        if (!$baseRole) {
-            $baseRole = new Role();
-            $baseRole->setName(Role::USER);
-            $this->em->persist($baseRole);
-        }
-
-        $userRole = new UserRole();
-        $userRole->setUser($user);
-        $userRole->setRole($baseRole);
-        $this->em->persist($userRole);
-        $user->getUserRoles()->add($userRole);
-        $baseRole->getUserRoles()->add($userRole);
-
-        $gamificationRoleNames = isset($data['gamification_roles'])
-            ? (is_array($data['gamification_roles']) ? $data['gamification_roles'] : [$data['gamification_roles']])
-            : [];
-
-        foreach ($gamificationRoleNames as $roleName) {
-            if (!isset(self::GAMIFICATION_ROLE_CLASSES[$roleName])) {
-                continue;
-            }
-
-            $roleClass = self::GAMIFICATION_ROLE_CLASSES[$roleName];
-            $existingRole = $this->em->getRepository($roleClass)->findOneBy(['name' => $roleName]);
-            if ($existingRole) {
-                $role = $existingRole;
-            } else {
-                $role = new $roleClass();
-                $role->setName($roleName);
-                $this->em->persist($role);
-            }
-
-            $userRole = new UserRole();
-            $userRole->setUser($user);
-            $userRole->setRole($role);
-            $this->em->persist($userRole);
-            $user->getUserRoles()->add($userRole);
-            $role->getUserRoles()->add($userRole);
-        }
-
-        $this->em->persist($user);
-        $this->em->flush();
-
-        return $user;
+        return $this->commandBus->handle($command);
     }
 
     public function update(string $id, array $data): ?User
     {
-        $user = $this->repository->find($id);
+        $command = new UpdateUserCommand(
+            id: $id,
+            email: $data['email'] ?? '',
+            password: $data['password'] ?? '',
+            groupId: $data['group_id'] ?? null,
+            roles: $data['gamification_roles'] ?? []
+        );
 
-        if (!$user) {
-            return null;
-        }
-
-        if (isset($data['email'])) {
-            $user->setEmail($data['email']);
-        }
-        if (isset($data['password'])) {
-            $user->setPassword(password_hash($data['password'], PASSWORD_BCRYPT));
-        }
-
-        if (array_key_exists('group_id', $data)) {
-            if (empty($data['group_id'])) {
-                $user->setGroup(null);
-            } else {
-                $group = $this->groupRepository->find($data['group_id']);
-                if ($group) {
-                    $user->setGroup($group);
-                }
-            }
-        }
-
-        $requestRoleNames = isset($data['gamification_roles'])
-            ? (is_array($data['gamification_roles']) ? $data['gamification_roles'] : [$data['gamification_roles']])
-            : [];
-
-        $currentUserRoles = $user->getUserRoles()->toArray();
-
-        foreach ($requestRoleNames as $roleName) {
-            if (!isset(self::GAMIFICATION_ROLE_CLASSES[$roleName])) {
-                continue;
-            }
-
-            $roleClass = self::GAMIFICATION_ROLE_CLASSES[$roleName];
-            $existingRole = $this->em->getRepository($roleClass)->findOneBy(['name' => $roleName]);
-            if ($existingRole) {
-                $role = $existingRole;
-            } else {
-                $role = new $roleClass();
-                $role->setName($roleName);
-                $this->em->persist($role);
-            }
-
-            $hasRole = false;
-            foreach ($currentUserRoles as $existingUserRole) {
-                if ($existingUserRole->getRole() === $role) {
-                    $hasRole = true;
-                    break;
-                }
-            }
-
-            if (!$hasRole) {
-                $userRole = new UserRole();
-                $userRole->setUser($user);
-                $userRole->setRole($role);
-                $this->em->persist($userRole);
-                $user->getUserRoles()->add($userRole);
-                $role->getUserRoles()->add($userRole);
-            }
-        }
-
-        foreach ($currentUserRoles as $existingUserRole) {
-            $existingRole = $existingUserRole->getRole();
-            if ($existingRole->getName() === Role::USER) {
-                continue;
-            }
-
-            $shouldKeep = in_array($existingRole->getName(), $requestRoleNames, true);
-
-            if (!$shouldKeep) {
-                $user->getUserRoles()->removeElement($existingUserRole);
-                $existingRole->removeUserRole($existingUserRole);
-            }
-        }
-        $user->setUpdatedAt(new \DateTimeImmutable());
-
-        $this->em->flush();
-
-        return $user;
+        return $this->commandBus->handle($command);
     }
 
     public function delete(string $id): bool
     {
-        $user = $this->repository->find($id);
-
-        if (!$user) {
-            return false;
-        }
-
-        $this->em->remove($user);
-        $this->em->flush();
-
-        return true;
+        $command = new DeleteUserCommand(id: $id);
+        return $this->commandBus->handle($command);
     }
 }

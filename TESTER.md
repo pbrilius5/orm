@@ -596,6 +596,76 @@ Import the following JSON into Postman for quick testing:
 
 ---
 
+## Console Commands (Tactician)
+
+The application now uses Command/Handler pattern. Console commands are executed via `bin/console`:
+
+### User Commands
+
+```bash
+# List all users
+bin/console user:list
+
+# Create user
+bin/console user:create --email=user@example.com --password=secret
+
+# Show user
+bin/console user:show <id>
+
+# Update user
+bin/console user:update <id> --email=new@example.com
+
+# Delete user
+bin/console user:delete <id>
+
+# Interactive user management
+bin/console user:manage
+```
+
+### Group Commands
+
+```bash
+# List all groups
+bin/console group:list
+
+# Create group
+bin/console group:create --name="New Group" --description="Description"
+
+# Show group
+bin/console group:show <id>
+
+# Update group
+bin/console group:update <id> --name="Updated Name"
+
+# Delete group
+bin/console group:delete <id>
+```
+
+### Database Commands
+
+```bash
+# Create database
+bin/console oryx:db:create
+
+# Load fixtures
+bin/console oryx:fixtures:load
+
+# Generate proxies
+bin/console orm:generate:proxies
+```
+
+### Testing Console Commands
+
+```bash
+# List all available commands
+bin/console list
+
+# Get help for specific command
+bin/console user:create --help
+```
+
+---
+
 ## Common Test Scenarios
 
 ### Test Validation - Required Fields Missing

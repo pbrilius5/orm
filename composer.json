@@ -40,7 +40,9 @@
     "laminas/laminas-hydrator": "^1.0",
     "laminas/laminas-servicemanager": "^2.6",
     "laminas/laminas-filter": "^2.5",
-    "ramsey/uuid-doctrine": "^2.1"
+    "ramsey/uuid-doctrine": "^2.1",
+    "monolog/monolog": "^3.10",
+    "doctrine/cache": "^2.2"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.5",
@@ -78,12 +80,19 @@
   "bin": [
     "bin/console"
   ],
-  "scripts": {
+"scripts": {
+    "post-install-cmd": [
+      "mkdir -p var/log var/data",
+      "if [ ! -f .env ]; then cp -v .env.dist .env; fi"
+    ],
+    "post-update-cmd": [
+      "mkdir -p var/log var/data"
+    ],
     "cs-check": "php-cs-fixer fix --dry-run --diff --allow-unsupported-php-version=no",
     "cs-fix": "php-cs-fixer fix --allow-unsupported-php-version=no",
     "serve": [
-	"Composer\\Config::disableProcessTimeout",
-	"php -S localhost:8080 -t public"
+	    "Composer\\Config::disableProcessTimeout",
+	    "php -S localhost:8080 -t public"
     ],
     "stan": "phpstan analyse src tests",
     "test": "phpunit"

@@ -50,13 +50,14 @@ class EntityManagerFactory
             $envConfig->getOrmProxyAutoGenerate(),
             $envConfig->getOrmProxyDir(),
             $envConfig->getOrmProxyNamespace(),
+            $envConfig->getCacheConfig()
         );
     }
 
     /**
      * Create EntityManager with custom configuration.
      */
-    public static function create(array $connectionParams, string $schemaPath, int $autoGenerateProxy = \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL, string $proxyDir = null, string $proxyNamespace = null): EntityManager
+    public static function create(array $connectionParams, string $schemaPath, int $autoGenerateProxy = \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL, string $proxyDir = null, string $proxyNamespace = null, array $cacheConfig = []): EntityManager
     {
         if (!Type::hasType('uuid')) {
             Type::addType('uuid', UuidType::class);
@@ -68,6 +69,7 @@ class EntityManagerFactory
             'metadata.auto_generate_proxy' => $autoGenerateProxy,
             'metadata.proxy_dir' => $proxyDir,
             'metadata.proxy_namespace' => $proxyNamespace,
+            'cache.config' => $cacheConfig,
         ]);
     }
 

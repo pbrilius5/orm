@@ -6,6 +6,7 @@ coverage/
 .vscode/
 *.swp
 *.log
+/var/log/
 composer.lock
 
 # prototype.in

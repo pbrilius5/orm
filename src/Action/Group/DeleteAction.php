@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Action\Group;
 
-use App\Repository\GroupRepository;
+use App\Command\CommandBusInterface;
+use App\Command\Group\DeleteGroupCommand;
 use App\Responder\JsonHalResponder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -12,11 +13,11 @@ use Ramsey\Uuid\Uuid;
 
 class DeleteAction
 {
-    private GroupRepository $repository;
+    private CommandBusInterface $commandBus;
 
-    public function __construct(GroupRepository $repository)
+    public function __construct(CommandBusInterface $commandBus)
     {
-        $this->repository = $repository;
+        $this->commandBus = $commandBus;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -27,14 +28,12 @@ class DeleteAction
             return JsonHalResponder::badRequest('Invalid group ID provided');
         }
 
-        $uuid = Uuid::fromString($id);
-        $group = $this->repository->find($uuid);
+        $command = new DeleteGroupCommand(id: $id);
+        $result = $this->commandBus->handle($command);
 
-        if (!$group) {
+        if (!$result) {
             return JsonHalResponder::notFound('Group not found');
         }
-
-        $this->repository->delete($group);
 
         return JsonHalResponder::noContent();
     }

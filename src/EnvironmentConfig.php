@@ -439,4 +439,30 @@ class EnvironmentConfig
     {
         return $this->projectRoot;
     }
+
+    /**
+     * Get cache configuration.
+     * Cache is automatically enabled in prod mode, or when CACHE_ENABLED=true.
+     */
+    public function getCacheConfig(): array
+    {
+        $appEnv = $this->get('app.env', 'dev');
+        $cacheEnabled = $this->get('cache.enabled', 'false');
+
+        // Auto-enable cache in prod mode unless explicitly disabled
+        if ($cacheEnabled === 'false' && $appEnv === 'prod') {
+            $cacheEnabled = 'true';
+        }
+
+        return [
+            'driver' => $this->get('cache.driver', 'array'),
+            'host' => $this->get('cache.host', 'localhost'),
+            'port' => (int) $this->get('cache.port', 11211),
+            'ttl' => (int) $this->get('cache.ttl', 3600),
+            'enabled' => $cacheEnabled === 'true',
+            'redis_host' => $this->get('cache.redis_host', 'localhost'),
+            'redis_port' => (int) $this->get('cache.redis_port', 6379),
+            'app_env' => $appEnv,
+        ];
+    }
 }

@@ -6,6 +6,7 @@ namespace App;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 use Laminas\Diactoros\Response\JsonResponse;
 use DI\ContainerBuilder;
 use DI\Container;
@@ -16,6 +17,9 @@ use App\Middleware\SecurityMiddleware;
 use App\Middleware\CorsMiddleware;
 use App\Middleware\RateLimitMiddleware;
 use App\Middleware\CsrfMiddleware;
+use App\Logger\CrashLogger;
+use App\Logger\LoggerFactory;
+use App\Responder\JsonHalResponder;
 use League\Fractal\Manager as FractalManager;
 use League\Fractal\Serializer\JsonApiSerializer;
 use Oryx\ORM\EntityManagerFactory;
@@ -39,6 +43,8 @@ class Kernel
     private AdrRoutes $adrRoutes;
     private EntityManager $entityManager;
     private FractalManager $fractal;
+    private ?CrashLogger $crashLogger = null;
+    private ?LoggerInterface $logger = null;
 
     public function __construct(string $environment = 'dev')
     {
@@ -57,6 +63,13 @@ class Kernel
         $this->createServices();
         $this->registerServices();
         $this->registerRoutes();
+        $this->initLogging();
+    }
+
+    private function initLogging(): void
+    {
+        $this->logger = LoggerFactory::create($this->environment);
+        $this->crashLogger = new CrashLogger();
     }
 
     private function loadEnvironment(): void
@@ -101,6 +114,15 @@ class Kernel
 
     private function handleError(\Throwable $e): ResponseInterface
     {
+        $isCrash = CrashLogger::isCrash($e);
+
+        if ($isCrash) {
+            $this->crashLogger?->critical('CRASH: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+            return JsonHalResponder::error('Service Unavailable', 503, 'A critical error occurred');
+        }
+
+        $this->logger?->error('Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+
         $debug = !in_array($this->environment, ['prod', 'production'], true);
 
         $error = [

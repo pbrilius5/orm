@@ -18,7 +18,8 @@
 | Extension | Purpose |
 |-----------|---------|
 | `pdo_mysql` | MySQL/MariaDB database support |
-| `memcached` | Memcached caching support |
+| `memcached` | Development cache server (APP_ENV=dev) |
+| `redis` | Production cache server (APP_ENV=prod) |
 
 ## Dependencies
 

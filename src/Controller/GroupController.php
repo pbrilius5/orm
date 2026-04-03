@@ -6,77 +6,63 @@ namespace App\Controller;
 
 use App\Entity\Group;
 use App\Repository\GroupRepository;
+use App\Command\Group\CreateGroupCommand;
+use App\Command\Group\UpdateGroupCommand;
+use App\Command\Group\PatchGroupCommand;
+use App\Command\Group\DeleteGroupCommand;
+use App\Command\Group\GetGroupCommand;
+use App\Command\Group\ListGroupsCommand;
 use Oryx\ORM\EntityManager;
+use League\Tactician\CommandBus;
 
 class GroupController
 {
     private EntityManager $em;
     private GroupRepository $repository;
+    private CommandBus $commandBus;
 
-    public function __construct(EntityManager $em)
+    public function __construct(EntityManager $em, CommandBus $commandBus)
     {
         $this->em = $em;
+        $this->commandBus = $commandBus;
         $this->repository = new GroupRepository($em);
     }
 
     public function index(?string $search = null): array
     {
-        $groups = $search
-            ? $this->repository->findAllWithFilter($search)
-            : $this->repository->findAll();
+        $command = new ListGroupsCommand(search: $search);
+        $groups = $this->commandBus->handle($command);
         return ['groups' => $groups, 'search' => $search];
     }
 
     public function show(int $id): ?Group
     {
-        return $this->repository->find($id);
+        $command = new GetGroupCommand(id: (string) $id);
+        return $this->commandBus->handle($command);
     }
 
     public function create(array $data): Group
     {
-        $group = new Group();
-        $group->setName($data['name']);
-        $group->setDescription($data['description'] ?? null);
-        $group->setCreatedAt(new \DateTimeImmutable());
-
-        $this->em->persist($group);
-        $this->em->flush();
-
-        return $group;
+        $command = new CreateGroupCommand(
+            name: $data['name'],
+            description: $data['description'] ?? null
+        );
+        return $this->commandBus->handle($command);
     }
 
     public function update(int $id, array $data): ?Group
     {
-        $group = $this->repository->find($id);
-
-        if (!$group) {
-            return null;
-        }
-
-        if (isset($data['name'])) {
-            $group->setName($data['name']);
-        }
-
-        if (array_key_exists('description', $data)) {
-            $group->setDescription($data['description'] ?? null);
-        }
-
-        $this->em->flush();
-
-        return $group;
+        $command = new UpdateGroupCommand(
+            id: (string) $id,
+            name: $data['name'] ?? '',
+            description: $data['description'] ?? null
+        );
+        return $this->commandBus->handle($command);
     }
 
     public function delete(int $id): bool
     {
-        $group = $this->repository->find($id);
-
-        if (!$group) {
-            return false;
-        }
-
-        $this->em->remove($group);
-        $this->em->flush();
-
-        return true;
+        $command = new DeleteGroupCommand(id: (string) $id);
+        return $this->commandBus->handle($command);
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Action\User;
 
-use App\Fixture\FixtureLoader;
-use App\Entity\User;
+use App\Command\CommandBusInterface;
+use App\Command\User\PatchUserCommand;
 use App\Responder\JsonHalResponder;
 use League\Fractal\Manager;
 use League\Fractal\Resource\Item;
@@ -15,12 +15,12 @@ use Ramsey\Uuid\Uuid;
 
 class PatchAction
 {
-    private FixtureLoader $loader;
+    private CommandBusInterface $commandBus;
     private Manager $fractal;
 
-    public function __construct(FixtureLoader $loader, Manager $fractal)
+    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
     {
-        $this->loader = $loader;
+        $this->commandBus = $commandBus;
         $this->fractal = $fractal;
     }
 
@@ -32,8 +32,6 @@ class PatchAction
             return JsonHalResponder::badRequest('Invalid user ID provided');
         }
 
-        $uuid = Uuid::fromString($id);
-
         $body = json_decode((string) $request->getBody(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -44,15 +42,18 @@ class PatchAction
             return JsonHalResponder::unprocessableEntity([['field' => 'body', 'message' => 'No fields provided']]);
         }
 
-        $user = $this->loader->make(User::class);
-        $user->setEmail($body['email'] ?? "user{$id}@example.com");
+        $command = new PatchUserCommand(
+            id: $id,
+            email: $body['email'] ?? null,
+            password: $body['password'] ?? null,
+            groupId: $body['group_id'] ?? null,
+            roles: $body['roles'] ?? null
+        );
 
-        if (isset($body['password'])) {
-            $user->setPassword(password_hash($body['password'], PASSWORD_BCRYPT));
-        }
+        $user = $this->commandBus->handle($command);
 
-        if (isset($body['roles'])) {
-            $user->setRoles($body['roles']);
+        if (!$user) {
+            return JsonHalResponder::notFound('User not found');
         }
 
         $resource = new Item($user, new \App\Transformer\Resource\UserTransformer());
@@ -60,7 +61,7 @@ class PatchAction
 
         return JsonHalResponder::resource(
             'user',
-            (string) $id,
+            $id,
             $data,
             [
                 'collection' => '/api/users',

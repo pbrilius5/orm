@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Action\User;
 
-use App\Fixture\FixtureLoader;
-use App\Entity\User;
+use App\Command\CommandBusInterface;
+use App\Command\User\UpdateUserCommand;
 use App\Responder\JsonHalResponder;
 use League\Fractal\Manager;
 use League\Fractal\Resource\Item;
@@ -15,12 +15,12 @@ use Ramsey\Uuid\Uuid;
 
 class UpdateAction
 {
-    private FixtureLoader $loader;
+    private CommandBusInterface $commandBus;
     private Manager $fractal;
 
-    public function __construct(FixtureLoader $loader, Manager $fractal)
+    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
     {
-        $this->loader = $loader;
+        $this->commandBus = $commandBus;
         $this->fractal = $fractal;
     }
 
@@ -32,23 +32,24 @@ class UpdateAction
             return JsonHalResponder::badRequest('Invalid user ID provided');
         }
 
-        $uuid = Uuid::fromString($id);
         $body = json_decode((string) $request->getBody(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             return JsonHalResponder::badRequest('Invalid JSON in request body');
         }
 
-        $user = $this->loader->make(User::class);
-        $user->setId($uuid);
-        $user->setEmail($body['email'] ?? "user-{$id}@example.com");
+        $command = new UpdateUserCommand(
+            id: $id,
+            email: $body['email'] ?? "user-{$id}@example.com",
+            password: $body['password'] ?? 'password',
+            groupId: $body['group_id'] ?? null,
+            roles: $body['roles'] ?? []
+        );
 
-        if (isset($body['password'])) {
-            $user->setPassword(password_hash($body['password'], PASSWORD_BCRYPT));
-        }
+        $user = $this->commandBus->handle($command);
 
-        if (isset($body['roles'])) {
-            $user->setRoles($body['roles']);
+        if (!$user) {
+            return JsonHalResponder::notFound('User not found');
         }
 
         $resource = new Item($user, new \App\Transformer\Resource\UserTransformer());
