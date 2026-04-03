@@ -27,7 +27,7 @@ class UserController
         return ['users' => $users];
     }
 
-    public function show(int $id): ?User
+    public function show(string $id): ?User
     {
         return $this->repository->find($id);
     }
@@ -76,7 +76,7 @@ class UserController
         return $user;
     }
 
-    public function update(int $id, array $data): ?User
+    public function update(string $id, array $data): ?User
     {
         $user = $this->repository->find($id);
 
@@ -153,7 +153,7 @@ class UserController
         return $user;
     }
 
-    public function delete(int $id): bool
+    public function delete(string $id): bool
     {
         $user = $this->repository->find($id);
 

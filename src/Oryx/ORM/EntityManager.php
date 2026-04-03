@@ -137,6 +137,9 @@ class EntityManager implements EntityManagerInterface
 
     public function find(string $entityName, $id): ?object
     {
+        if (is_string($id) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) {
+            $id = \Ramsey\Uuid\Uuid::fromString($id);
+        }
         return $this->em->find($entityName, $id);
     }
 
