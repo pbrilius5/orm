@@ -71,8 +71,9 @@ class UserForm extends BaseForm
 
         $emailInput = new Input('email');
         $emailInput->setRequired(true);
+        $emailInput->getFilterChain()->attach(new \Laminas\Filter\StringTrim());
         $emailInput->getValidatorChain()
-            ->attach(new NotEmpty())
+            ->attach(new NotEmpty(), true)
             ->attach(new EmailAddress());
         $inputFilter->add($emailInput);
 
@@ -82,6 +83,10 @@ class UserForm extends BaseForm
             ->attach(new NotEmpty())
             ->attach(new StringLength(['min' => 6]));
         $inputFilter->add($passwordInput);
+
+        $rolesInput = new Input('roles');
+        $rolesInput->setRequired(false);
+        $inputFilter->add($rolesInput);
 
         $this->setInputFilter($inputFilter);
     }

@@ -23,7 +23,7 @@ class GroupTransformer extends TransformerAbstract
     public function transform(Group $group): array
     {
         return [
-            'id' => $group->getId(),
+            'id' => $group->getId() ?? 0,
             'name' => $group->getName(),
             'created_at' => $group->getCreatedAt()->format('c'),
         ];

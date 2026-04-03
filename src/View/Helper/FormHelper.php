@@ -53,7 +53,8 @@ class FormHelper
         $name = $element->getName();
         $type = $element->getAttribute('type') ?? 'text';
         $label = $element->getOption('label') ?? ucfirst($name);
-        $value = htmlspecialchars($element->getValue() ?? '');
+        $rawValue = $element->getValue();
+        $value = is_array($rawValue) ? '' : htmlspecialchars($rawValue ?? '');
         $required = $element->getAttribute('required') ? 'required' : '';
         $placeholder = $element->getAttribute('placeholder') ?? '';
         $id = $element->getAttribute('id') ?? $name;
@@ -64,7 +65,7 @@ class FormHelper
 
         if ($type === 'textarea') {
             $html .= '<textarea class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" ' . $required . ' placeholder="' . htmlspecialchars($placeholder) . '">' . $value . '</textarea>';
-        } elseif ($type === 'select' || $type === 'multicheckbox') {
+        } elseif ($type === 'select' || $type === 'multicheckbox' || $type === 'multi_checkbox') {
             $html .= self::renderSelectOrCheckbox($element, $hasError);
         } else {
             $html .= '<input type="' . htmlspecialchars($type) . '" class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" value="' . $value . '" ' . $required . ' placeholder="' . htmlspecialchars($placeholder) . '">';
@@ -90,7 +91,7 @@ class FormHelper
         $type = $element->getAttribute('type') ?? 'select';
         $class = 'form-control' . ($hasError ? ' is-invalid' : '');
 
-        if ($type === 'multicheckbox') {
+        if ($type === 'multicheckbox' || $type === 'multi_checkbox') {
             $html = '<div class="card border p-3 ' . ($hasError ? 'border-danger' : '') . '">';
             $selectedValues = (array) $element->getValue();
             foreach ($valueOptions as $value => $label) {
@@ -125,7 +126,7 @@ class FormHelper
 
     private static function renderSubmitElement(ElementInterface $element): string
     {
-        $value = $element->getAttribute('value') ?? 'Submit';
+        $value = $element->getValue() ?? $element->getAttribute('value') ?? 'Submit';
         $class = $element->getAttribute('class') ?? 'btn btn-primary';
         return '<div class="d-flex flex-column flex-sm-row gap-2 mt-4"><button type="submit" class="' . htmlspecialchars($class) . '">' . htmlspecialchars($value) . '</button></div>';
     }
