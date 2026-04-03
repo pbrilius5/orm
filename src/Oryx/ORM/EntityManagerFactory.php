@@ -6,8 +6,6 @@ namespace Oryx\ORM;
 
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Types\Type;
-use Doctrine\ORM\EntityManager;
-use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use App\EnvironmentConfig;
 use Ramsey\Uuid\Doctrine\UuidType;
@@ -17,6 +15,28 @@ use Ramsey\Uuid\Doctrine\UuidType;
  */
 class EntityManagerFactory
 {
+    private static ?EntityManager $instance = null;
+
+    /**
+     * Get shared EntityManager instance (singleton).
+     */
+    public static function getInstance(): EntityManager
+    {
+        if (self::$instance === null) {
+            self::$instance = self::createFromEnv();
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * Reset the singleton instance (useful for testing).
+     */
+    public static function reset(): void
+    {
+        self::$instance = null;
+    }
+
     /**
      * Create EntityManager from environment variables.
      */
@@ -38,24 +58,17 @@ class EntityManagerFactory
      */
     public static function create(array $connectionParams, string $schemaPath, int $autoGenerateProxy = \Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_EVAL, string $proxyDir = null, string $proxyNamespace = null): EntityManager
     {
-        $connection = DriverManager::getConnection($connectionParams);
-
-        $config = new Configuration();
-
         if (!Type::hasType('uuid')) {
             Type::addType('uuid', UuidType::class);
         }
 
-        $driver = new SimplifiedXmlDriver([
-            $schemaPath => 'App\Entity',
-        ], '.orm.xml');
-        $config->setMetadataDriverImpl($driver);
-
-        $config->setAutoGenerateProxyClasses($autoGenerateProxy);
-        $config->setProxyDir($proxyDir ?? sys_get_temp_dir());
-        $config->setProxyNamespace($proxyNamespace ?? 'Oryx\ORM\Proxy');
-
-        return EntityManager::create($connection, $config);
+        $connection = DriverManager::getConnection($connectionParams);
+        return new EntityManager($connection, [
+            'metadata.schema_path' => $schemaPath,
+            'metadata.auto_generate_proxy' => $autoGenerateProxy,
+            'metadata.proxy_dir' => $proxyDir,
+            'metadata.proxy_namespace' => $proxyNamespace,
+        ]);
     }
 
     /**

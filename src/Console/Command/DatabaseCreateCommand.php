@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Command;
 
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Types\Type;
+use Ramsey\Uuid\Doctrine\UuidType;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -62,6 +64,10 @@ class DatabaseCreateCommand extends Command
                 $io->warning('Database already exists. Use --force to recreate');
                 return Command::SUCCESS;
             }
+        }
+
+        if (!Type::hasType('uuid')) {
+            Type::addType('uuid', UuidType::class);
         }
 
         $connection = DriverManager::getConnection([

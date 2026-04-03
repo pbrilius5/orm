@@ -8,7 +8,7 @@ use App\Entity\User;
 use App\Entity\Role;
 use App\Entity\UserRole;
 use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use Oryx\ORM\EntityManager;
 
 class UserController
 {

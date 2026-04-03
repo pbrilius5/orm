@@ -11,7 +11,7 @@ use App\Http\Response;
 use App\Http\Router;
 use App\View\ViewRenderer;
 use App\View\Helper\FormHelper;
-use Doctrine\ORM\EntityManager;
+use Oryx\ORM\EntityManager;
 
 class MvcApplication
 {

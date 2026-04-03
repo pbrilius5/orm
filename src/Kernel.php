@@ -9,7 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use Laminas\Diactoros\Response\JsonResponse;
 use League\Container\Container;
 use Symfony\Component\Dotenv\Dotenv;
-use Doctrine\ORM\EntityManager;
+use Oryx\ORM\EntityManager;
 use App\Routing\AdrRoutes;
 use App\Middleware\SecurityMiddleware;
 use App\Middleware\CorsMiddleware;
@@ -67,7 +67,7 @@ class Kernel
 
     private function createServices(): void
     {
-        $this->entityManager = EntityManagerFactory::createFromEnv();
+        $this->entityManager = EntityManagerFactory::getInstance();
         $this->fractal = new FractalManager(null);
         $this->fractal->setSerializer(new JsonApiSerializer());
     }

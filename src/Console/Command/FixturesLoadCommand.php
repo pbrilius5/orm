@@ -9,12 +9,14 @@ use App\Entity\Role;
 use App\Entity\User;
 use App\Entity\UserRole;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
 use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
 use Faker\Factory;
 use Faker\Generator;
+use Ramsey\Uuid\Doctrine\UuidType;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -80,6 +82,10 @@ class FixturesLoadCommand extends Command
         $this->faker->unique(true);
 
         $connectionParams = $envConfig->getDatabaseParams();
+
+        if (!Type::hasType('uuid')) {
+            Type::addType('uuid', UuidType::class);
+        }
 
         if ($connectionParams['driver'] === 'pdo_mysql') {
             try {
