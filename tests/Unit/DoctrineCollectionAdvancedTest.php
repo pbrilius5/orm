@@ -5,24 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Entity\Role;
-use App\Entity\Team;
 use App\Entity\User;
 use App\Entity\UserRole;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\Criteria;
 use PHPUnit\Framework\TestCase;
 
 class DoctrineCollectionAdvancedTest extends TestCase
 {
-    private function createTeam(string $name): Team
-    {
-        $team = new Team();
-        $team->setName($name);
-        $team->setCreatedAt(new \DateTimeImmutable());
-        return $team;
-    }
-
     private function createRole(string $name): Role
     {
         $role = new Role();
@@ -30,11 +19,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
         return $role;
     }
 
-    private function createUserRole(Role $role, Team $team, ?\DateTimeImmutable $expiresAt = null): UserRole
+    private function createUserRole(Role $role, ?\DateTimeImmutable $expiresAt = null): UserRole
     {
         $userRole = new UserRole();
         $userRole->setRole($role);
-        $userRole->setTeam($team);
         $userRole->setGrantedAt(new \DateTimeImmutable());
         if ($expiresAt !== null) {
             $userRole->setExpiresAt($expiresAt);
@@ -53,11 +41,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionSliceReturnsSubset(): void
     {
         $user = $this->createUser('slice@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
         for ($i = 0; $i < 5; $i++) {
-            $userRole = $this->createUserRole($role, $team);
+            $userRole = $this->createUserRole($role);
             $user->getUserRoles()->add($userRole);
         }
 
@@ -69,11 +56,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionSliceWithOffsetAndLimit(): void
     {
         $user = $this->createUser('slice-offset@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
         for ($i = 0; $i < 10; $i++) {
-            $userRole = $this->createUserRole($role, $team);
+            $userRole = $this->createUserRole($role);
             $user->getUserRoles()->add($userRole);
         }
 
@@ -85,13 +71,12 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testPartitionSplitsIntoTwoCollections(): void
     {
         $user = $this->createUser('partition@example.com');
-        $team = $this->createTeam('Level Design');
         $wizardRole = $this->createRole(Role::WIZARD);
         $architectRole = $this->createRole(Role::ARCHITECT);
 
-        $user->getUserRoles()->add($this->createUserRole($wizardRole, $team));
-        $user->getUserRoles()->add($this->createUserRole($architectRole, $team));
-        $user->getUserRoles()->add($this->createUserRole($wizardRole, $team));
+        $user->getUserRoles()->add($this->createUserRole($wizardRole));
+        $user->getUserRoles()->add($this->createUserRole($architectRole));
+        $user->getUserRoles()->add($this->createUserRole($wizardRole));
 
         $partitioned = $user->getUserRoles()->partition(
             fn($key, $ur) => $ur->getRole()->getName() === Role::WIZARD
@@ -104,10 +89,9 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionAddDoesNotDuplicate(): void
     {
         $user = $this->createUser('add@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
-        $userRole1 = $this->createUserRole($role, $team);
-        $userRole2 = $this->createUserRole($role, $team);
+        $userRole1 = $this->createUserRole($role);
+        $userRole2 = $this->createUserRole($role);
 
         $user->getUserRoles()->add($userRole1);
         $user->getUserRoles()->add($userRole2);
@@ -121,9 +105,8 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionRemoveElement(): void
     {
         $user = $this->createUser('remove@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
-        $userRole = $this->createUserRole($role, $team);
+        $userRole = $this->createUserRole($role);
 
         $user->getUserRoles()->add($userRole);
         $this->assertCount(1, $user->getUserRoles());
@@ -135,11 +118,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionClearRemovesAll(): void
     {
         $user = $this->createUser('clear@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
         for ($i = 0; $i < 5; $i++) {
-            $user->getUserRoles()->add($this->createUserRole($role, $team));
+            $user->getUserRoles()->add($this->createUserRole($role));
         }
 
         $this->assertCount(5, $user->getUserRoles());
@@ -152,9 +134,8 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionContainsReturnsCorrectBoolean(): void
     {
         $user = $this->createUser('contains@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
-        $userRole = $this->createUserRole($role, $team);
+        $userRole = $this->createUserRole($role);
 
         $this->assertFalse($user->getUserRoles()->contains($userRole));
 
@@ -166,11 +147,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionGetByNumericKey(): void
     {
         $user = $this->createUser('get@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
-        $userRole1 = $this->createUserRole($role, $team);
-        $userRole2 = $this->createUserRole($role, $team);
+        $userRole1 = $this->createUserRole($role);
+        $userRole2 = $this->createUserRole($role);
 
         $user->getUserRoles()->add($userRole1);
         $user->getUserRoles()->add($userRole2);
@@ -183,9 +163,8 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionSetAddsNewElement(): void
     {
         $user = $this->createUser('set@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
-        $userRole = $this->createUserRole($role, $team);
+        $userRole = $this->createUserRole($role);
 
         $user->getUserRoles()->set(0, $userRole);
 
@@ -196,9 +175,8 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionRemoveByKey(): void
     {
         $user = $this->createUser('remove-key@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
-        $userRole = $this->createUserRole($role, $team);
+        $userRole = $this->createUserRole($role);
 
         $user->getUserRoles()->set(0, $userRole);
         $this->assertCount(1, $user->getUserRoles());
@@ -211,11 +189,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionCanBeIteratedWithForeach(): void
     {
         $user = $this->createUser('iterate@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
         for ($i = 0; $i < 3; $i++) {
-            $user->getUserRoles()->add($this->createUserRole($role, $team));
+            $user->getUserRoles()->add($this->createUserRole($role));
         }
 
         $count = 0;
@@ -237,10 +214,9 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionIsEmptyReturnsFalseForNonEmpty(): void
     {
         $user = $this->createUser('not-empty@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
+        $user->getUserRoles()->add($this->createUserRole($role));
 
         $this->assertFalse($user->getUserRoles()->isEmpty());
     }
@@ -248,16 +224,15 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionMatchingWithOrderBy(): void
     {
         $user = $this->createUser('orderby@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
-        $ur1 = $this->createUserRole($role, $team);
+        $ur1 = $this->createUserRole($role);
         $ur1->setGrantedAt(new \DateTimeImmutable('-3 days'));
 
-        $ur2 = $this->createUserRole($role, $team);
+        $ur2 = $this->createUserRole($role);
         $ur2->setGrantedAt(new \DateTimeImmutable('-1 day'));
 
-        $ur3 = $this->createUserRole($role, $team);
+        $ur3 = $this->createUserRole($role);
         $ur3->setGrantedAt(new \DateTimeImmutable('-2 days'));
 
         $user->getUserRoles()->add($ur1);
@@ -276,13 +251,12 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionMatchingWithMultipleWhere(): void
     {
         $user = $this->createUser('multiwhere@example.com');
-        $team = $this->createTeam('Level Design');
         $wizardRole = $this->createRole(Role::WIZARD);
         $architectRole = $this->createRole(Role::ARCHITECT);
 
-        $ur1 = $this->createUserRole($wizardRole, $team);
-        $ur2 = $this->createUserRole($architectRole, $team);
-        $ur3 = $this->createUserRole($wizardRole, $team);
+        $ur1 = $this->createUserRole($wizardRole);
+        $ur2 = $this->createUserRole($architectRole);
+        $ur3 = $this->createUserRole($wizardRole);
 
         $ur2->setExpiresAt(new \DateTimeImmutable('-1 day'));
 
@@ -291,8 +265,7 @@ class DoctrineCollectionAdvancedTest extends TestCase
         $user->getUserRoles()->add($ur3);
 
         $criteria = Criteria::create()
-            ->where(Criteria::expr()->eq('team', $team))
-            ->andWhere(Criteria::expr()->eq('expiresAt', null));
+            ->where(Criteria::expr()->eq('expiresAt', null));
 
         $result = $user->getUserRoles()->matching($criteria);
 
@@ -302,11 +275,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionMapToDifferentType(): void
     {
         $user = $this->createUser('map-type@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
+        $user->getUserRoles()->add($this->createUserRole($role));
+        $user->getUserRoles()->add($this->createUserRole($role));
 
         $grantedAts = $user->getUserRoles()
             ->map(fn($ur) => $ur->getGrantedAt())
@@ -321,14 +293,13 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionFilterWithComplexCondition(): void
     {
         $user = $this->createUser('complex-filter@example.com');
-        $team = $this->createTeam('Level Design');
         $wizardRole = $this->createRole(Role::WIZARD);
         $architectRole = $this->createRole(Role::ARCHITECT);
 
-        $ur1 = $this->createUserRole($wizardRole, $team);
-        $ur2 = $this->createUserRole($architectRole, $team);
+        $ur1 = $this->createUserRole($wizardRole);
+        $ur2 = $this->createUserRole($architectRole);
         $ur2->setExpiresAt(new \DateTimeImmutable('-1 day'));
-        $ur3 = $this->createUserRole($wizardRole, $team);
+        $ur3 = $this->createUserRole($wizardRole);
 
         $user->getUserRoles()->add($ur1);
         $user->getUserRoles()->add($ur2);
@@ -344,11 +315,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionGetKeysReturnsNumericKeys(): void
     {
         $user = $this->createUser('keys@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
+        $user->getUserRoles()->add($this->createUserRole($role));
+        $user->getUserRoles()->add($this->createUserRole($role));
 
         $keys = $user->getUserRoles()->getKeys();
 
@@ -359,11 +329,10 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionGetValuesReturnsElements(): void
     {
         $user = $this->createUser('values@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
-        $ur1 = $this->createUserRole($role, $team);
-        $ur2 = $this->createUserRole($role, $team);
+        $ur1 = $this->createUserRole($role);
+        $ur2 = $this->createUserRole($role);
 
         $user->getUserRoles()->add($ur1);
         $user->getUserRoles()->add($ur2);
@@ -378,12 +347,11 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionForAllReturnsTrueWhenAllMatch(): void
     {
         $user = $this->createUser('forall-true@example.com');
-        $team = $this->createTeam('Level Design');
         $role = $this->createRole(Role::WIZARD);
 
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
-        $user->getUserRoles()->add($this->createUserRole($role, $team));
+        $user->getUserRoles()->add($this->createUserRole($role));
+        $user->getUserRoles()->add($this->createUserRole($role));
+        $user->getUserRoles()->add($this->createUserRole($role));
 
         $allWizard = $user->getUserRoles()
             ->forAll(fn($key, $ur) => $ur->getRole()->getName() === Role::WIZARD);
@@ -394,12 +362,11 @@ class DoctrineCollectionAdvancedTest extends TestCase
     public function testCollectionForAllReturnsFalseWhenSomeDontMatch(): void
     {
         $user = $this->createUser('forall-false@example.com');
-        $team = $this->createTeam('Level Design');
         $wizardRole = $this->createRole(Role::WIZARD);
         $architectRole = $this->createRole(Role::ARCHITECT);
 
-        $user->getUserRoles()->add($this->createUserRole($wizardRole, $team));
-        $user->getUserRoles()->add($this->createUserRole($architectRole, $team));
+        $user->getUserRoles()->add($this->createUserRole($wizardRole));
+        $user->getUserRoles()->add($this->createUserRole($architectRole));
 
         $allWizard = $user->getUserRoles()
             ->forAll(fn($key, $ur) => $ur->getRole()->getName() === Role::WIZARD);

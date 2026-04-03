@@ -4,13 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Command;
 
+use App\Entity\Group;
 use App\Entity\Role;
-use App\Entity\Team;
 use App\Entity\User;
 use App\Entity\UserRole;
-use App\Entity\Wand;
-use App\Entity\Patronus;
-use App\Entity\InvisibilityCloak;
 use App\Entity\Post;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
@@ -43,10 +40,10 @@ class FixturesLoadCommand extends Command
     {
         $this
             ->addOption(
-                'teams',
+                'groups',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Number of teams to generate',
+                'Number of groups to generate',
                 3
             )
             ->addOption(
@@ -129,7 +126,7 @@ class FixturesLoadCommand extends Command
             $schemaTool->createSchema($metadatas);
         }
 
-        $teamCount = (int) $input->getOption('teams');
+        $groupCount = (int) $input->getOption('groups');
         $userCount = (int) $input->getOption('users');
         $postCount = (int) $input->getOption('posts');
 
@@ -139,22 +136,19 @@ class FixturesLoadCommand extends Command
             $io->text('Purging existing data...');
         }
 
-        $io->title('Loading Wizard Platform Fixtures');
+        $io->title('Loading Fixtures');
 
-        $teams = $this->createTeams($io, $em, $teamCount);
-        $roles = $this->createRoles($io, $em, $teams);
-        $users = $this->createUsers($io, $em, $teams, $roles, $userCount);
-        $this->createUserRoles($io, $em, $users, $teams, $roles);
-        $this->createWands($io, $em, $users, $roles);
-        $this->createPatronuses($io, $em, $users, $teams, $roles);
-        $this->createInvisibilityCloaks($io, $em, $users, $teams);
+        $groups = $this->createGroups($io, $em, $groupCount);
+        $roles = $this->createRoles($io, $em);
+        $users = $this->createUsers($io, $em, $groups, $userCount);
+        $this->createUserRoles($io, $em, $users, $roles);
         $this->createPosts($io, $em, $users, $postCount);
 
         $em->flush();
 
         $io->success(sprintf(
-            'Loaded %d teams, %d roles, %d users, %d posts',
-            $teamCount,
+            'Loaded %d groups, %d roles, %d users, %d posts',
+            $groupCount,
             count($roles),
             $userCount,
             $userCount * $postCount
@@ -163,25 +157,24 @@ class FixturesLoadCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function createTeams(SymfonyStyle $io, $em, int $count): array
+    private function createGroups(SymfonyStyle $io, $em, int $count): array
     {
-        $teams = [];
-        $teamNames = ['Level Design', 'Character Art', 'Audio Engineering'];
+        $groups = [];
+        $groupNames = ['Developers', 'Designers', 'Testers'];
 
         for ($i = 0; $i < $count; $i++) {
-            $team = new Team();
-            $team->setName($teamNames[$i] ?? 'Team ' . ($i + 1));
-            $team->setDescription('Magic team for wizard platform');
-            $team->setCreatedAt(new \DateTimeImmutable());
-            $em->persist($team);
-            $teams[] = $team;
-            $io->text(sprintf('  Team: <info>%s</info>', $team->getName()));
+            $group = new Group();
+            $group->setName($groupNames[$i] ?? 'Group ' . ($i + 1));
+            $group->setCreatedAt(new \DateTimeImmutable());
+            $em->persist($group);
+            $groups[] = $group;
+            $io->text(sprintf('  Group: <info>%s</info>', $group->getName()));
         }
 
-        return $teams;
+        return $groups;
     }
 
-    private function createRoles(SymfonyStyle $io, $em, array $teams): array
+    private function createRoles(SymfonyStyle $io, $em): array
     {
         $roles = [];
         $roleNames = [Role::WIZARD, Role::ARCHITECT, Role::GAME_MASTER];
@@ -198,7 +191,7 @@ class FixturesLoadCommand extends Command
         return $roles;
     }
 
-    private function createUsers(SymfonyStyle $io, $em, array $teams, array $roles, int $count): array
+    private function createUsers(SymfonyStyle $io, $em, array $groups, int $count): array
     {
         $users = [];
 
@@ -207,7 +200,7 @@ class FixturesLoadCommand extends Command
             $user->setEmail($this->faker->unique()->safeEmail);
             $user->setPassword(password_hash($this->faker->password, PASSWORD_BCRYPT));
             $user->setCreatedAt(new \DateTimeImmutable());
-            $user->setTeam($this->faker->randomElement($teams));
+            $user->setGroup($this->faker->randomElement($groups));
             $em->persist($user);
             $users[] = $user;
             $io->text(sprintf('  User: <info>%s</info>', $user->getEmail()));
@@ -216,19 +209,13 @@ class FixturesLoadCommand extends Command
         return $users;
     }
 
-    private function createUserRoles(SymfonyStyle $io, $em, array $users, array $teams, array $roles): void
+    private function createUserRoles(SymfonyStyle $io, $em, array $users, array $roles): void
     {
         foreach ($users as $user) {
-            $team = $user->getTeam();
-            if ($team === null) {
-                continue;
-            }
-
             $wizardRole = $roles[Role::WIZARD];
             $userRole = new UserRole();
             $userRole->setUser($user);
             $userRole->setRole($wizardRole);
-            $userRole->setTeam($team);
             $userRole->setGrantedAt(new \DateTimeImmutable());
             $em->persist($userRole);
 
@@ -237,7 +224,6 @@ class FixturesLoadCommand extends Command
                 $userRole = new UserRole();
                 $userRole->setUser($user);
                 $userRole->setRole($architectRole);
-                $userRole->setTeam($team);
                 $userRole->setGrantedAt(new \DateTimeImmutable());
                 $em->persist($userRole);
             }
@@ -247,57 +233,8 @@ class FixturesLoadCommand extends Command
                 $userRole = new UserRole();
                 $userRole->setUser($user);
                 $userRole->setRole($gameMasterRole);
-                $userRole->setTeam($team);
                 $userRole->setGrantedAt(new \DateTimeImmutable());
                 $em->persist($userRole);
-            }
-        }
-    }
-
-    private function createWands(SymfonyStyle $io, $em, array $users, array $roles): void
-    {
-        foreach ($users as $user) {
-            if ($this->faker->boolean(50)) {
-                $wand = new Wand();
-                $wand->setUser($user);
-                $wand->setRole($roles[Role::WIZARD]);
-                $wand->setName('Wand of ' . ucfirst($this->faker->randomElement(['Power', 'Protection', 'Creation'])));
-                $wand->setPermissions(json_encode(['read', 'write']));
-                $wand->setCreatedAt(new \DateTimeImmutable());
-                $em->persist($wand);
-                $io->text(sprintf('  Wand: <info>%s</info> for %s', $wand->getName(), $user->getEmail()));
-            }
-        }
-    }
-
-    private function createPatronuses(SymfonyStyle $io, $em, array $users, array $teams, array $roles): void
-    {
-        foreach ($users as $user) {
-            if ($this->faker->boolean(40)) {
-                $patronus = new Patronus();
-                $patronus->setUser($user);
-                $patronus->setRole($roles[Role::WIZARD]);
-                $patronus->setTeam($user->getTeam() ?? $this->faker->randomElement($teams));
-                $patronus->setToken(bin2hex(random_bytes(32)));
-                $patronus->setIssuedAt(new \DateTimeImmutable());
-                $patronus->setExpiresAt(new \DateTimeImmutable('+24 hours'));
-                $em->persist($patronus);
-                $io->text(sprintf('  Patronus: <info>token created</info> for %s', $user->getEmail()));
-            }
-        }
-    }
-
-    private function createInvisibilityCloaks(SymfonyStyle $io, $em, array $users, array $teams): void
-    {
-        foreach ($users as $user) {
-            if ($this->faker->boolean(20)) {
-                $cloak = new InvisibilityCloak();
-                $cloak->setUser($user);
-                $cloak->setTeam($user->getTeam() ?? $this->faker->randomElement($teams));
-                $cloak->setGrantedAt(new \DateTimeImmutable());
-                $cloak->activate();
-                $em->persist($cloak);
-                $io->text(sprintf('  Invisibility Cloak: <info>granted</info> to %s', $user->getEmail()));
             }
         }
     }

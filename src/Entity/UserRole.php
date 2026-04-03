@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
-
 class UserRole
 {
     private ?int $id = null;
     private User $user;
     private Role $role;
-    private Team $team;
     private \DateTimeInterface $grantedAt;
     private ?\DateTimeInterface $expiresAt = null;
 
@@ -45,17 +41,6 @@ class UserRole
     public function setRole(Role $role): self
     {
         $this->role = $role;
-        return $this;
-    }
-
-    public function getTeam(): Team
-    {
-        return $this->team;
-    }
-
-    public function setTeam(Team $team): self
-    {
-        $this->team = $team;
         return $this;
     }
 

@@ -18,16 +18,11 @@ class Role
     private ?int $id = null;
     private string $name;
     private ?string $description = null;
-    private ?Team $team = null;
     private Collection $userRoles;
-    private Collection $wands;
-    private Collection $patronuses;
 
     public function __construct()
     {
         $this->userRoles = new ArrayCollection();
-        $this->wands = new ArrayCollection();
-        $this->patronuses = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -57,28 +52,9 @@ class Role
         return $this;
     }
 
-    public function getTeam(): ?Team
-    {
-        return $this->team;
-    }
-
-    public function setTeam(?Team $team): self
-    {
-        $this->team = $team;
-        return $this;
-    }
-
-    public function hasScope(?Team $team): bool
-    {
-        if ($this->team === null) {
-            return true;
-        }
-        return $team === null || $this->team === $team;
-    }
-
     public function isGlobal(): bool
     {
-        return $this->team === null;
+        return true;
     }
 
     public function addUserRole(UserRole $userRole): self
@@ -98,55 +74,5 @@ class Role
     public function getUserRoles(): Collection
     {
         return $this->userRoles;
-    }
-
-    public function addWand(Wand $wand): self
-    {
-        if (!$this->wands->contains($wand)) {
-            $this->wands->add($wand);
-            $wand->setRole($this);
-        }
-        return $this;
-    }
-
-    public function removeWand(Wand $wand): self
-    {
-        if ($this->wands->contains($wand)) {
-            $this->wands->removeElement($wand);
-            if ($wand->getRole() === $this) {
-                $wand->setRole(null);
-            }
-        }
-        return $this;
-    }
-
-    public function getWands(): Collection
-    {
-        return $this->wands;
-    }
-
-    public function addPatronus(Patronus $patronus): self
-    {
-        if (!$this->patronuses->contains($patronus)) {
-            $this->patronuses->add($patronus);
-            $patronus->setRole($this);
-        }
-        return $this;
-    }
-
-    public function removePatronus(Patronus $patronus): self
-    {
-        if ($this->patronuses->contains($patronus)) {
-            $this->patronuses->removeElement($patronus);
-            if ($patronus->getRole() === $this) {
-                $patronus->setRole(null);
-            }
-        }
-        return $this;
-    }
-
-    public function getPatronuses(): Collection
-    {
-        return $this->patronuses;
     }
 }

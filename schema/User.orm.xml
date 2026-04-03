@@ -12,14 +12,11 @@
         <field name="createdAt" type="datetime"/>
         <field name="updatedAt" type="datetime" nullable="true"/>
         
-        <many-to-one target-entity="App\Entity\Team" field="team" inversed-by="users">
-            <join-column name="team_id" nullable="true"/>
+        <many-to-one target-entity="App\Entity\Group" field="group" inversed-by="users">
+            <join-column name="group_id" nullable="true"/>
         </many-to-one>
         
         <one-to-many target-entity="App\Entity\Post" field="posts" mapped-by="author" cascade="persist"/>
         <one-to-many target-entity="App\Entity\UserRole" field="userRoles" mapped-by="user" cascade="persist" orphan-removal="true"/>
-        <one-to-many target-entity="App\Entity\Wand" field="wands" mapped-by="user" cascade="persist"/>
-        <one-to-many target-entity="App\Entity\Patronus" field="patronuses" mapped-by="user" cascade="persist"/>
-        <one-to-many target-entity="App\Entity\InvisibilityCloak" field="invisibilityCloaks" mapped-by="user" cascade="persist"/>
     </entity>
 </doctrine-mapping>

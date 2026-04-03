@@ -10,12 +10,6 @@
         <field name="name" type="string" length="100" unique="true"/>
         <field name="description" type="text" nullable="true"/>
         
-        <many-to-one target-entity="App\Entity\Team" field="team" inversed-by="roles">
-            <join-column name="team_id" nullable="true"/>
-        </many-to-one>
-        
         <one-to-many target-entity="App\Entity\UserRole" field="userRoles" mapped-by="role" cascade="persist" orphan-removal="true"/>
-        <one-to-many target-entity="App\Entity\Wand" field="wands" mapped-by="role" cascade="persist"/>
-        <one-to-many target-entity="App\Entity\Patronus" field="patronuses" mapped-by="role" cascade="persist"/>
     </entity>
 </doctrine-mapping>

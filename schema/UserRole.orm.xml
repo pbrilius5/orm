@@ -11,7 +11,7 @@
         <field name="expiresAt" type="datetime" nullable="true"/>
         
         <unique-constraints>
-            <unique-constraint name="user_role_team_unique" columns="user_id,role_id,team_id"/>
+            <unique-constraint name="user_role_unique" columns="user_id,role_id"/>
         </unique-constraints>
         
         <many-to-one target-entity="App\Entity\User" field="user" inversed-by="userRoles">
@@ -20,10 +20,6 @@
         
         <many-to-one target-entity="App\Entity\Role" field="role" inversed-by="userRoles">
             <join-column name="role_id" nullable="false"/>
-        </many-to-one>
-        
-        <many-to-one target-entity="App\Entity\Team" field="team">
-            <join-column name="team_id" nullable="false"/>
         </many-to-one>
     </entity>
 </doctrine-mapping>
