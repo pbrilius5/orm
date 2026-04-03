@@ -6,10 +6,22 @@ namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\UuidInterface;
 
+/**
+ * @ORM\Entity
+ * @ORM\Table(name="users")
+ */
 class User
 {
-    private ?int $id = null;
+    /**
+     * @ORM\Id
+     * @ORM\Column(type="uuid")
+     * @ORM\GeneratedValue(strategy="CUSTOM")
+     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
+     */
+    private ?UuidInterface $id = null;
     private string $email;
     private string $password;
     private \DateTimeInterface $createdAt;
@@ -23,9 +35,15 @@ class User
         $this->createdAt = new \DateTimeImmutable();
     }
 
-    public function getId(): ?int
+    public function getId(): ?UuidInterface
     {
         return $this->id;
+    }
+
+    public function setId(UuidInterface $id): self
+    {
+        $this->id = $id;
+        return $this;
     }
 
     public function getEmail(): string

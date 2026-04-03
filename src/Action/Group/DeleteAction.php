@@ -8,6 +8,7 @@ use App\Repository\GroupRepository;
 use App\Responder\JsonHalResponder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Ramsey\Uuid\Uuid;
 
 class DeleteAction
 {
@@ -20,13 +21,14 @@ class DeleteAction
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $id = (int) ($request->getAttribute('id') ?? 0);
+        $id = $request->getAttribute('id') ?? '';
 
-        if ($id <= 0) {
+        if (!Uuid::isValid($id)) {
             return JsonHalResponder::badRequest('Invalid group ID provided');
         }
 
-        $group = $this->repository->find($id);
+        $uuid = Uuid::fromString($id);
+        $group = $this->repository->find($uuid);
 
         if (!$group) {
             return JsonHalResponder::notFound('Group not found');

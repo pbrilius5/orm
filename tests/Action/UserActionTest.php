@@ -15,6 +15,7 @@ use App\Fixture\FixtureLoader;
 use League\Fractal\Manager;
 use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\Response;
+use Ramsey\Uuid\Uuid;
 
 class UserActionTest extends TestCase
 {
@@ -55,8 +56,9 @@ class UserActionTest extends TestCase
 
     public function testShowActionReturnsUser(): void
     {
-        $request = new ServerRequest([], [], '/api/users/1', 'GET');
-        $request = $request->withAttribute('id', '1');
+        $uuid = Uuid::uuid4();
+        $request = new ServerRequest([], [], '/api/users/' . $uuid->toString(), 'GET');
+        $request = $request->withAttribute('id', $uuid->toString());
         $response = new Response();
 
         $result = ($this->showAction)($request, $response);
@@ -72,7 +74,7 @@ class UserActionTest extends TestCase
     public function testShowActionWithInvalidIdReturns400(): void
     {
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', 'invalid');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $response = new Response();
 
         $result = ($this->showAction)($request, $response);
@@ -121,6 +123,7 @@ class UserActionTest extends TestCase
 
     public function testUpdateActionReturns200(): void
     {
+        $uuid = Uuid::uuid4();
         $data = [
             'email' => 'updated@example.com',
         ];
@@ -131,7 +134,7 @@ class UserActionTest extends TestCase
 
         $request = new ServerRequest();
         $request = $request->withMethod('PUT');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -143,6 +146,7 @@ class UserActionTest extends TestCase
 
     public function testPatchActionReturns200(): void
     {
+        $uuid = Uuid::uuid4();
         $data = [
             'email' => 'patched@example.com',
         ];
@@ -153,7 +157,7 @@ class UserActionTest extends TestCase
 
         $request = new ServerRequest();
         $request = $request->withMethod('PATCH');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -165,13 +169,14 @@ class UserActionTest extends TestCase
 
     public function testPatchActionWithEmptyBodyReturns422(): void
     {
+        $uuid = Uuid::uuid4();
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write('{}');
         $stream->rewind();
 
         $request = new ServerRequest();
         $request = $request->withMethod('PATCH');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -182,9 +187,10 @@ class UserActionTest extends TestCase
 
     public function testDeleteActionReturns204(): void
     {
+        $uuid = Uuid::uuid4();
         $request = new ServerRequest();
         $request = $request->withMethod('DELETE');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $response = new Response();
 
         $result = ($this->deleteAction)($request, $response);

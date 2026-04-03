@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Group;
 use Doctrine\ORM\EntityManagerInterface;
+use Ramsey\Uuid\UuidInterface;
 
 class GroupRepository
 {
@@ -21,7 +22,7 @@ class GroupRepository
         return $this->em->getRepository(Group::class)->findAll();
     }
 
-    public function find(int $id): ?Group
+    public function find(UuidInterface $id): ?Group
     {
         return $this->em->getRepository(Group::class)->find($id);
     }

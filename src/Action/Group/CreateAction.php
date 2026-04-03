@@ -12,6 +12,7 @@ use League\Fractal\Resource\Item;
 use App\Transformer\Resource\GroupTransformer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Ramsey\Uuid\Uuid;
 
 class CreateAction
 {
@@ -39,6 +40,7 @@ class CreateAction
         }
 
         $group = new Group();
+        $group->setId(Uuid::uuid4());
         $group->setName($body['name']);
         $group->setCreatedAt(new \DateTimeImmutable());
 

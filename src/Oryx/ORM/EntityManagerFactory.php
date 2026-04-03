@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Oryx\ORM;
 
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use App\EnvironmentConfig;
+use Ramsey\Uuid\Doctrine\UuidType;
 
 /**
  * Factory for creating Oryx ORM EntityManager instances.
@@ -39,6 +41,10 @@ class EntityManagerFactory
         $connection = DriverManager::getConnection($connectionParams);
 
         $config = new Configuration();
+
+        if (!Type::hasType('uuid')) {
+            Type::addType('uuid', UuidType::class);
+        }
 
         $driver = new SimplifiedXmlDriver([
             $schemaPath => 'App\Entity',

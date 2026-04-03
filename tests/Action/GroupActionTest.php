@@ -15,6 +15,8 @@ use App\Repository\GroupRepository;
 use App\Entity\Group;
 use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\Response;
+use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\UuidInterface;
 
 class GroupActionTest extends TestCase
 {
@@ -25,7 +27,7 @@ class GroupActionTest extends TestCase
         $this->repository = $this->createMock(GroupRepository::class);
     }
 
-    private function createGroup(int $id, string $name): Group
+    private function createGroup(UuidInterface $id, string $name): Group
     {
         $group = new Group();
         $group->setId($id);
@@ -38,8 +40,8 @@ class GroupActionTest extends TestCase
     public function testListActionReturnsHalJson(): void
     {
         $groups = [
-            $this->createGroup(1, 'Developers'),
-            $this->createGroup(2, 'Designers'),
+            $this->createGroup(Uuid::uuid4(), 'Developers'),
+            $this->createGroup(Uuid::uuid4(), 'Designers'),
         ];
 
         $this->repository->expects($this->once())
@@ -78,12 +80,13 @@ class GroupActionTest extends TestCase
 
     public function testShowActionReturnsGroup(): void
     {
-        $group = $this->createGroup(1, 'Developers');
-        $this->repository->method('find')->with(1)->willReturn($group);
+        $uuid = Uuid::uuid4();
+        $group = $this->createGroup($uuid, 'Developers');
+        $this->repository->method('find')->with($uuid)->willReturn($group);
 
         $showAction = new ShowAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $response = new Response();
 
         $result = $showAction($request, $response);
@@ -101,7 +104,7 @@ class GroupActionTest extends TestCase
     {
         $showAction = new ShowAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', 'invalid');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $response = new Response();
 
         $result = $showAction($request, $response);
@@ -113,7 +116,7 @@ class GroupActionTest extends TestCase
     {
         $showAction = new ShowAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', '0');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $response = new Response();
 
         $result = $showAction($request, $response);
@@ -125,7 +128,7 @@ class GroupActionTest extends TestCase
     {
         $showAction = new ShowAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', '-1');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $response = new Response();
 
         $result = $showAction($request, $response);
@@ -135,11 +138,12 @@ class GroupActionTest extends TestCase
 
     public function testShowActionWithNotFoundGroupReturns404(): void
     {
-        $this->repository->method('find')->with(999)->willReturn(null);
+        $uuid = Uuid::uuid4();
+        $this->repository->method('find')->with($uuid)->willReturn(null);
 
         $showAction = new ShowAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', '999');
+        $request = $request->withAttribute('id', $uuid->toString());
         $response = new Response();
 
         $result = $showAction($request, $response);
@@ -227,8 +231,9 @@ class GroupActionTest extends TestCase
 
     public function testUpdateActionReturns200(): void
     {
-        $group = $this->createGroup(1, 'Developers');
-        $this->repository->method('find')->with(1)->willReturn($group);
+        $uuid = Uuid::uuid4();
+        $group = $this->createGroup($uuid, 'Developers');
+        $this->repository->method('find')->with($uuid)->willReturn($group);
 
         $data = ['name' => 'Updated Group'];
 
@@ -239,7 +244,7 @@ class GroupActionTest extends TestCase
         $updateAction = new UpdateAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PUT');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -258,7 +263,7 @@ class GroupActionTest extends TestCase
         $updateAction = new UpdateAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PUT');
-        $request = $request->withAttribute('id', 'invalid');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -269,6 +274,7 @@ class GroupActionTest extends TestCase
 
     public function testUpdateActionWithInvalidJsonReturns400(): void
     {
+        $uuid = Uuid::uuid4();
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write('not json');
         $stream->rewind();
@@ -276,7 +282,7 @@ class GroupActionTest extends TestCase
         $updateAction = new UpdateAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PUT');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -287,7 +293,8 @@ class GroupActionTest extends TestCase
 
     public function testUpdateActionWithNotFoundGroupReturns404(): void
     {
-        $this->repository->method('find')->with(999)->willReturn(null);
+        $uuid = Uuid::uuid4();
+        $this->repository->method('find')->with($uuid)->willReturn(null);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write(json_encode(['name' => 'Test']));
@@ -296,7 +303,7 @@ class GroupActionTest extends TestCase
         $updateAction = new UpdateAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PUT');
-        $request = $request->withAttribute('id', '999');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -307,8 +314,9 @@ class GroupActionTest extends TestCase
 
     public function testPatchActionReturns200(): void
     {
-        $group = $this->createGroup(1, 'Developers');
-        $this->repository->method('find')->with(1)->willReturn($group);
+        $uuid = Uuid::uuid4();
+        $group = $this->createGroup($uuid, 'Developers');
+        $this->repository->method('find')->with($uuid)->willReturn($group);
 
         $data = ['name' => 'Patched Group'];
 
@@ -319,7 +327,7 @@ class GroupActionTest extends TestCase
         $patchAction = new PatchAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PATCH');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -331,6 +339,7 @@ class GroupActionTest extends TestCase
 
     public function testPatchActionWithEmptyBodyReturns422(): void
     {
+        $uuid = Uuid::uuid4();
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write('{}');
         $stream->rewind();
@@ -338,7 +347,7 @@ class GroupActionTest extends TestCase
         $patchAction = new PatchAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PATCH');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -356,7 +365,7 @@ class GroupActionTest extends TestCase
         $patchAction = new PatchAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PATCH');
-        $request = $request->withAttribute('id', 'invalid');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -367,6 +376,7 @@ class GroupActionTest extends TestCase
 
     public function testPatchActionWithInvalidJsonReturns400(): void
     {
+        $uuid = Uuid::uuid4();
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write('not json');
         $stream->rewind();
@@ -374,7 +384,7 @@ class GroupActionTest extends TestCase
         $patchAction = new PatchAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PATCH');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -385,7 +395,8 @@ class GroupActionTest extends TestCase
 
     public function testPatchActionWithNotFoundGroupReturns404(): void
     {
-        $this->repository->method('find')->with(999)->willReturn(null);
+        $uuid = Uuid::uuid4();
+        $this->repository->method('find')->with($uuid)->willReturn(null);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write(json_encode(['name' => 'Test']));
@@ -394,7 +405,7 @@ class GroupActionTest extends TestCase
         $patchAction = new PatchAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('PATCH');
-        $request = $request->withAttribute('id', '999');
+        $request = $request->withAttribute('id', $uuid->toString());
         $request = $request->withBody($stream);
         $response = new Response();
 
@@ -405,13 +416,14 @@ class GroupActionTest extends TestCase
 
     public function testDeleteActionReturns204(): void
     {
-        $group = $this->createGroup(1, 'Developers');
-        $this->repository->method('find')->with(1)->willReturn($group);
+        $uuid = Uuid::uuid4();
+        $group = $this->createGroup($uuid, 'Developers');
+        $this->repository->method('find')->with($uuid)->willReturn($group);
 
         $deleteAction = new DeleteAction($this->repository);
         $request = new ServerRequest();
         $request = $request->withMethod('DELETE');
-        $request = $request->withAttribute('id', '1');
+        $request = $request->withAttribute('id', $uuid->toString());
         $response = new Response();
 
         $result = $deleteAction($request, $response);
@@ -423,7 +435,7 @@ class GroupActionTest extends TestCase
     {
         $deleteAction = new DeleteAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', 'invalid');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $response = new Response();
 
         $result = $deleteAction($request, $response);
@@ -435,7 +447,7 @@ class GroupActionTest extends TestCase
     {
         $deleteAction = new DeleteAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', '0');
+        $request = $request->withAttribute('id', 'not-a-uuid');
         $response = new Response();
 
         $result = $deleteAction($request, $response);
@@ -445,11 +457,12 @@ class GroupActionTest extends TestCase
 
     public function testDeleteActionWithNotFoundGroupReturns404(): void
     {
-        $this->repository->method('find')->with(999)->willReturn(null);
+        $uuid = Uuid::uuid4();
+        $this->repository->method('find')->with($uuid)->willReturn(null);
 
         $deleteAction = new DeleteAction($this->repository);
         $request = new ServerRequest();
-        $request = $request->withAttribute('id', '999');
+        $request = $request->withAttribute('id', $uuid->toString());
         $response = new Response();
 
         $result = $deleteAction($request, $response);

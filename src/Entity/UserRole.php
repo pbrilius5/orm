@@ -4,9 +4,21 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use Ramsey\Uuid\UuidInterface;
+
+/**
+ * @ORM\Entity
+ * @ORM\Table(name="user_roles")
+ */
 class UserRole
 {
-    private ?int $id = null;
+    /**
+     * @ORM\Id
+     * @ORM\Column(type="uuid")
+     * @ORM\GeneratedValue(strategy="CUSTOM")
+     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
+     */
+    private ?UuidInterface $id = null;
     private User $user;
     private Role $role;
     private \DateTimeInterface $grantedAt;
@@ -17,9 +29,15 @@ class UserRole
         $this->grantedAt = new \DateTimeImmutable();
     }
 
-    public function getId(): ?int
+    public function getId(): ?UuidInterface
     {
         return $this->id;
+    }
+
+    public function setId(UuidInterface $id): self
+    {
+        $this->id = $id;
+        return $this;
     }
 
     public function getUser(): User

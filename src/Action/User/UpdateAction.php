@@ -11,6 +11,7 @@ use League\Fractal\Manager;
 use League\Fractal\Resource\Item;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Ramsey\Uuid\Uuid;
 
 class UpdateAction
 {
@@ -25,12 +26,13 @@ class UpdateAction
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $id = (int) ($request->getAttribute('id') ?? 0);
+        $id = $request->getAttribute('id') ?? '';
 
-        if ($id <= 0) {
+        if (!Uuid::isValid($id)) {
             return JsonHalResponder::badRequest('Invalid user ID provided');
         }
 
+        $uuid = Uuid::fromString($id);
         $body = json_decode((string) $request->getBody(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -38,7 +40,8 @@ class UpdateAction
         }
 
         $user = $this->loader->make(User::class);
-        $user->setEmail($body['email'] ?? "user{$id}@example.com");
+        $user->setId($uuid);
+        $user->setEmail($body['email'] ?? "user-{$id}@example.com");
 
         if (isset($body['password'])) {
             $user->setPassword(password_hash($body['password'], PASSWORD_BCRYPT));
@@ -53,7 +56,7 @@ class UpdateAction
 
         return JsonHalResponder::resource(
             'user',
-            (string) $id,
+            $id,
             $data,
             [
                 'collection' => '/api/users',

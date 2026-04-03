@@ -4,28 +4,40 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Ramsey\Uuid\UuidInterface;
+
 /**
  * Group
+ * @ORM\Entity
+ * @ORM\Table(name="groups")
  */
 class Group
 {
     /**
-     * @var int
+     * @var UuidInterface
+     * @ORM\Id
+     * @ORM\Column(type="uuid")
+     * @ORM\GeneratedValue(strategy="CUSTOM")
+     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
      */
-    private $id;
+    private ?UuidInterface $id = null;
 
     /**
      * @var string
+     * @ORM\Column(type="string")
      */
     private $name;
 
     /**
      * @var \DateTimeInterface
+     * @ORM\Column(type="datetime_immutable")
      */
     private $createdAt;
 
     /**
      * @var \Doctrine\Common\Collections\Collection<int, User>
+     * @ORM\OneToMany(targetEntity="User", mappedBy="group")
      */
     private $users;
 
@@ -34,12 +46,12 @@ class Group
         $this->users = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId(): ?UuidInterface
     {
         return $this->id;
     }
 
-    public function setId(int $id): self
+    public function setId(UuidInterface $id): self
     {
         $this->id = $id;
         return $this;
@@ -91,7 +103,6 @@ class Group
     {
         if ($this->users->contains($user)) {
             $this->users->removeElement($user);
-            // set the owning side to null (unless already changed)
             if ($user->getGroup() === $this) {
                 $user->setGroup(null);
             }

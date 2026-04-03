@@ -21,7 +21,7 @@ class UserTransformer extends TransformerAbstract
         }
 
         return [
-            'id' => $user->getId() ?? 0,
+            'id' => $user->getId()->toString(),
             'email' => $user->getEmail(),
             'roles' => $roles,
             'created_at' => $user->getCreatedAt()->format('c'),

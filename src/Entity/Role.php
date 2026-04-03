@@ -6,7 +6,12 @@ namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Ramsey\Uuid\UuidInterface;
 
+/**
+ * @ORM\Entity
+ * @ORM\Table(name="roles")
+ */
 class Role
 {
     public const WIZARD = 'ROLE_WIZARD';
@@ -15,7 +20,13 @@ class Role
     public const MUGGLE = 'ROLE_MUGGLE';
     public const USER = 'ROLE_USER';
 
-    private ?int $id = null;
+    /**
+     * @ORM\Id
+     * @ORM\Column(type="uuid")
+     * @ORM\GeneratedValue(strategy="CUSTOM")
+     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
+     */
+    private ?UuidInterface $id = null;
     private string $name;
     private ?string $description = null;
     private Collection $userRoles;
@@ -25,9 +36,15 @@ class Role
         $this->userRoles = new ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId(): ?UuidInterface
     {
         return $this->id;
+    }
+
+    public function setId(UuidInterface $id): self
+    {
+        $this->id = $id;
+        return $this;
     }
 
     public function getName(): string

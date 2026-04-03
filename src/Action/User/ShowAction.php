@@ -11,6 +11,7 @@ use League\Fractal\Manager;
 use League\Fractal\Resource\Item;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Ramsey\Uuid\Uuid;
 
 class ShowAction
 {
@@ -25,21 +26,23 @@ class ShowAction
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $id = (int) ($request->getAttribute('id') ?? 0);
+        $id = $request->getAttribute('id') ?? '';
 
-        if ($id <= 0) {
+        if (!Uuid::isValid($id)) {
             return JsonHalResponder::badRequest('Invalid user ID provided');
         }
 
+        $uuid = Uuid::fromString($id);
         $user = $this->loader->make(User::class);
-        $user->setEmail("user{$id}@example.com");
+        $user->setId($uuid);
+        $user->setEmail("user-{$id}@example.com");
 
         $resource = new Item($user, new \App\Transformer\Resource\UserTransformer());
         $data = $this->fractal->createData($resource)->toArray();
 
         return JsonHalResponder::resource(
             'user',
-            (string) $id,
+            $id,
             $data,
             [
                 'collection' => '/api/users',

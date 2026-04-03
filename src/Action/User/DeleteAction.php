@@ -7,14 +7,15 @@ namespace App\Action\User;
 use App\Responder\JsonHalResponder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Ramsey\Uuid\Uuid;
 
 class DeleteAction
 {
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $id = (int) ($request->getAttribute('id') ?? 0);
+        $id = $request->getAttribute('id') ?? '';
 
-        if ($id <= 0) {
+        if (!Uuid::isValid($id)) {
             return JsonHalResponder::badRequest('Invalid user ID provided');
         }
 

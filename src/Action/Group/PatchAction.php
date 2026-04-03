@@ -11,6 +11,7 @@ use League\Fractal\Resource\Item;
 use App\Transformer\Resource\GroupTransformer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Ramsey\Uuid\Uuid;
 
 class PatchAction
 {
@@ -25,11 +26,13 @@ class PatchAction
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $id = (int) ($request->getAttribute('id') ?? 0);
+        $id = $request->getAttribute('id') ?? '';
 
-        if ($id <= 0) {
+        if (!Uuid::isValid($id)) {
             return JsonHalResponder::badRequest('Invalid group ID provided');
         }
+
+        $uuid = Uuid::fromString($id);
 
         $body = json_decode((string) $request->getBody(), true);
 
@@ -41,7 +44,7 @@ class PatchAction
             return JsonHalResponder::unprocessableEntity([['field' => 'body', 'message' => 'No fields provided']]);
         }
 
-        $group = $this->repository->find($id);
+        $group = $this->repository->find($uuid);
 
         if (!$group) {
             return JsonHalResponder::notFound('Group not found');
