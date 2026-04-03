@@ -4,22 +4,15 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Form\UserForm;
+use App\Form\GroupForm;
 use App\Http\Request;
 use App\Http\Response;
 use App\Http\Router;
 use App\View\ViewRenderer;
+use App\View\Helper\FormHelper;
 use Doctrine\ORM\EntityManager;
 
-/**
- * MVC Application - Vanilla PHP, no laminas/diactoros.
- *
- * Uses:
- * - App\Http\Request (vanilla)
- * - App\Http\Response (vanilla)
- * - App\Http\Router (vanilla)
- * - App\View\ViewRenderer (vanilla PHP templates)
- * - Doctrine ORM for data
- */
 class MvcApplication
 {
     private Router $router;
@@ -39,6 +32,7 @@ class MvcApplication
     private function registerControllers(): void
     {
         $this->controllers['user'] = new \App\Controller\UserController($this->em);
+        $this->controllers['group'] = new \App\Controller\GroupController($this->em);
     }
 
     private function registerRoutes(): void
@@ -51,6 +45,12 @@ class MvcApplication
             ]));
         });
 
+        $this->registerUserRoutes();
+        $this->registerGroupRoutes();
+    }
+
+    private function registerUserRoutes(): void
+    {
         $this->router->get('/users', function (Request $req) {
             $data = $this->controllers['user']->index();
             $data['breadcrumbs'] = [
@@ -61,7 +61,11 @@ class MvcApplication
         });
 
         $this->router->get('/users/create', function (Request $req) {
+            $form = new UserForm();
+            $form->setAttribute('action', '/users/create');
             return new Response($this->view->renderWithLayout('users/create', [
+                'form' => $form,
+                'formHelper' => FormHelper::class,
                 'breadcrumbs' => [
                     ['label' => 'Home', 'url' => '/'],
                     ['label' => 'Users', 'url' => '/users'],
@@ -71,9 +75,25 @@ class MvcApplication
         });
 
         $this->router->post('/users/create', function (Request $req) {
-            $this->controllers['user']->create($req->all());
-            header('Location: /users');
-            exit;
+            $form = new UserForm();
+            $form->setData($req->all());
+
+            if ($form->isValid()) {
+                $this->controllers['user']->create($req->all());
+                header('Location: /users');
+                exit;
+            }
+
+            $form->setData($req->all());
+            return new Response($this->view->renderWithLayout('users/create', [
+                'form' => $form,
+                'formHelper' => FormHelper::class,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Users', 'url' => '/users'],
+                    ['label' => 'Create', 'url' => '/users/create'],
+                ],
+            ]), 422);
         });
 
         $this->router->get('/users/{id}', function (Request $req, array $params) {
@@ -102,8 +122,12 @@ class MvcApplication
             if (!$user) {
                 return new Response('User not found', 404);
             }
+            $form = new UserForm();
+            $form->setAttribute('action', '/users/' . $user->getId() . '/edit');
             return new Response($this->view->renderWithLayout('users/edit', [
                 'user' => $user,
+                'form' => $form,
+                'formHelper' => FormHelper::class,
                 'breadcrumbs' => [
                     ['label' => 'Home', 'url' => '/'],
                     ['label' => 'Users', 'url' => '/users'],
@@ -114,12 +138,145 @@ class MvcApplication
         });
 
         $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
-            $user = $this->controllers['user']->update((int) $params['id'], $req->all());
-            if (!$user) {
-                return new Response('User not found', 404);
+            $form = new UserForm();
+            $form->setData($req->all());
+
+            if ($form->isValid()) {
+                $user = $this->controllers['user']->update((int) $params['id'], $req->all());
+                if (!$user) {
+                    return new Response('User not found', 404);
+                }
+                header('Location: /users');
+                exit;
             }
-            header('Location: /users');
+
+            $user = $this->controllers['user']->show((int) $params['id']);
+            return new Response($this->view->renderWithLayout('users/edit', [
+                'user' => $user,
+                'form' => $form,
+                'formHelper' => FormHelper::class,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Users', 'url' => '/users'],
+                    ['label' => '#' . $user->getId(), 'url' => '/users/' . $user->getId()],
+                    ['label' => 'Edit', 'url' => '/users/' . $user->getId() . '/edit'],
+                ],
+            ]), 422);
+        });
+    }
+
+    private function registerGroupRoutes(): void
+    {
+        $this->router->get('/groups', function (Request $req) {
+            $data = $this->controllers['group']->index();
+            $data['breadcrumbs'] = [
+                ['label' => 'Home', 'url' => '/'],
+                ['label' => 'Groups', 'url' => '/groups'],
+            ];
+            return new Response($this->view->renderWithLayout('groups/index', $data));
+        });
+
+        $this->router->get('/groups/create', function (Request $req) {
+            $form = new GroupForm();
+            $form->setAttribute('action', '/groups/create');
+            return new Response($this->view->renderWithLayout('groups/create', [
+                'form' => $form,
+                'formHelper' => FormHelper::class,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Groups', 'url' => '/groups'],
+                    ['label' => 'Create', 'url' => '/groups/create'],
+                ],
+            ]));
+        });
+
+        $this->router->post('/groups/create', function (Request $req) {
+            $form = new GroupForm();
+            $form->setData($req->all());
+
+            if ($form->isValid()) {
+                $this->controllers['group']->create($req->all());
+                header('Location: /groups');
+                exit;
+            }
+
+            return new Response($this->view->renderWithLayout('groups/create', [
+                'form' => $form,
+                'formHelper' => FormHelper::class,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Groups', 'url' => '/groups'],
+                    ['label' => 'Create', 'url' => '/groups/create'],
+                ],
+            ]), 422);
+        });
+
+        $this->router->get('/groups/{id}', function (Request $req, array $params) {
+            $group = $this->controllers['group']->show((int) $params['id']);
+            if (!$group) {
+                return new Response('Group not found', 404);
+            }
+            return new Response($this->view->renderWithLayout('groups/show', [
+                'group' => $group,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Groups', 'url' => '/groups'],
+                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
+                ],
+            ]));
+        });
+
+        $this->router->get('/groups/{id}/delete', function (Request $req, array $params) {
+            $this->controllers['group']->delete((int) $params['id']);
+            header('Location: /groups');
             exit;
+        });
+
+        $this->router->get('/groups/{id}/edit', function (Request $req, array $params) {
+            $group = $this->controllers['group']->show((int) $params['id']);
+            if (!$group) {
+                return new Response('Group not found', 404);
+            }
+            $form = new GroupForm();
+            $form->setAttribute('action', '/groups/' . $group->getId() . '/edit');
+            return new Response($this->view->renderWithLayout('groups/edit', [
+                'group' => $group,
+                'form' => $form,
+                'formHelper' => FormHelper::class,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Groups', 'url' => '/groups'],
+                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
+                    ['label' => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
+                ],
+            ]));
+        });
+
+        $this->router->post('/groups/{id}/edit', function (Request $req, array $params) {
+            $form = new GroupForm();
+            $form->setData($req->all());
+
+            if ($form->isValid()) {
+                $group = $this->controllers['group']->update((int) $params['id'], $req->all());
+                if (!$group) {
+                    return new Response('Group not found', 404);
+                }
+                header('Location: /groups');
+                exit;
+            }
+
+            $group = $this->controllers['group']->show((int) $params['id']);
+            return new Response($this->view->renderWithLayout('groups/edit', [
+                'group' => $group,
+                'form' => $form,
+                'formHelper' => FormHelper::class,
+                'breadcrumbs' => [
+                    ['label' => 'Home', 'url' => '/'],
+                    ['label' => 'Groups', 'url' => '/groups'],
+                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
+                    ['label' => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
+                ],
+            ]), 422);
         });
     }
 

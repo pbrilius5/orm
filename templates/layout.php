@@ -24,6 +24,7 @@
                 <div class="d-flex flex-column flex-sm-row ms-sm-auto gap-2 gap-sm-0">
                     <a class="nav-link" href="/">Home</a>
                     <a class="nav-link" href="/users">Users</a>
+                    <a class="nav-link" href="/groups">Groups</a>
                 </div>
             </div>
         </div>
