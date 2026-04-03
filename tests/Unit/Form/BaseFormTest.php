@@ -41,7 +41,7 @@ class BaseFormTest extends TestCase
     public function testUserFormElementCount(): void
     {
         $form = new UserForm();
-        $this->assertCount(4, $form->getElements());
+        $this->assertCount(5, $form->getElements());
     }
 
     public function testUserFormEmailElementAttributes(): void

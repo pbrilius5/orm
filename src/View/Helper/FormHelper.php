@@ -94,12 +94,15 @@ class FormHelper
         if ($type === 'multicheckbox' || $type === 'multi_checkbox') {
             $html = '<div class="card border p-3 ' . ($hasError ? 'border-danger' : '') . '">';
             $selectedValues = (array) $element->getValue();
+            $disabledValue = 'ROLE_USER';
             foreach ($valueOptions as $value => $label) {
                 $checked = in_array($value, $selectedValues) ? 'checked' : '';
                 $id = $name . '_' . $value;
+                $isLocked = ($value === $disabledValue);
+                $disabledAttr = $isLocked ? 'disabled' : '';
                 $html .= '<div class="form-check mb-2">';
-                $html .= '<input class="form-check-input" type="checkbox" name="' . htmlspecialchars($name) . '[]" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . '>';
-                $html .= '<label class="form-check-label" for="' . htmlspecialchars($id) . '">' . htmlspecialchars($label) . '</label>';
+                $html .= '<input class="form-check-input" type="checkbox" name="' . htmlspecialchars($name) . '[]" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . ' ' . $disabledAttr . '>';
+                $html .= '<label class="form-check-label' . ($isLocked ? ' text-muted' : '') . '" for="' . htmlspecialchars($id) . '">' . htmlspecialchars($label) . ($isLocked ? ' <small class="text-muted">(required)</small>' : '') . '</label>';
                 $html .= '</div>';
             }
             $html .= '</div>';

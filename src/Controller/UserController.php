@@ -39,7 +39,10 @@ class UserController
         $user->setPassword(password_hash($data['password'] ?? '', PASSWORD_BCRYPT));
         $user->setCreatedAt(new \DateTimeImmutable());
 
-        $roleNames = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : [$data['roles']]) : [Role::USER];
+        $roleNames = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : [$data['roles']]) : [];
+        if (!in_array(Role::USER, $roleNames, true)) {
+            $roleNames[] = Role::USER;
+        }
         $uniqueRoleNames = array_unique($roleNames);
         foreach ($uniqueRoleNames as $roleName) {
             $existingRole = $this->em->getRepository(Role::class)->findOneBy(['name' => $roleName]);
@@ -91,7 +94,10 @@ class UserController
             $user->setPassword(password_hash($data['password'], PASSWORD_BCRYPT));
         }
         if (isset($data['roles'])) {
-            $requestRoleNames = $data['roles'] ?? [Role::USER];
+            $requestRoleNames = is_array($data['roles']) ? $data['roles'] : [$data['roles']];
+            if (!in_array(Role::USER, $requestRoleNames, true)) {
+                $requestRoleNames[] = Role::USER;
+            }
             $uniqueRequestRoleNames = array_unique($requestRoleNames);
 
             $currentUserRoles = $user->getUserRoles()->toArray();

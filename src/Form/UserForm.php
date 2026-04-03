@@ -50,6 +50,23 @@ class UserForm extends BaseForm
         ]);
 
         $this->add([
+            'name' => 'roles_display',
+            'type' => Element\MultiCheckbox::class,
+            'options' => [
+                'label' => 'Roles',
+                'value_options' => [
+                    'ROLE_USER' => 'User',
+                    'ROLE_WIZARD' => 'Wizard',
+                    'ROLE_ARCHITECT' => 'Architect',
+                    'ROLE_GAME_MASTER' => 'Game Master',
+                ],
+            ],
+            'attributes' => [
+                'value' => ['ROLE_USER'],
+            ],
+        ]);
+
+        $this->add([
             'name' => 'submit',
             'type' => Element\Submit::class,
             'attributes' => [
@@ -79,6 +96,22 @@ class UserForm extends BaseForm
         $rolesInput->setRequired(false);
         $inputFilter->add($rolesInput);
 
+        $rolesDisplayInput = new Input('roles_display');
+        $rolesDisplayInput->setRequired(false);
+        $inputFilter->add($rolesDisplayInput);
+
         $this->setInputFilter($inputFilter);
+    }
+
+    public function setRoles(array $roleNames): void
+    {
+        $rolesDisplay = $this->get('roles_display');
+        $rolesDisplay->setValue($roleNames);
+
+        $roles = $this->get('roles');
+        if (!in_array('ROLE_USER', $roleNames, true)) {
+            $roleNames[] = 'ROLE_USER';
+        }
+        $roles->setValue(implode(',', $roleNames));
     }
 }
