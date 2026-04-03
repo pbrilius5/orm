@@ -14,9 +14,7 @@ class BaseForm extends Form
         $this->initForm();
     }
 
-    protected function initForm(): void
-    {
-    }
+    protected function initForm(): void {}
 
     public function getValidationErrors(): array
     {
