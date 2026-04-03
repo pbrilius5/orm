@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Handler\User;
 
 use App\Command\User\GetUserCommand;
-use App\Entity\User;
+use App\DTO\UserApiDTO;
 use App\Repository\UserRepository;
 use Oryx\ORM\EntityManager;
 use Psr\Log\LoggerInterface;
@@ -23,10 +23,10 @@ class GetUserHandler
         $this->logger = $logger;
     }
 
-    public function handle(GetUserCommand $command): ?User
+    public function handle(GetUserCommand $command): ?UserApiDTO
     {
-        $this->logger?->debug('Getting user: ' . $command->id);
+        $this->logger?->debug('Getting user for API: ' . $command->id);
 
-        return $this->repository->find($command->id);
+        return $this->repository->findForApi($command->id);
     }
 }

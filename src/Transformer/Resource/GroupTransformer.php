@@ -4,39 +4,24 @@ declare(strict_types=1);
 
 namespace App\Transformer\Resource;
 
-use App\Entity\Group;
+use App\DTO\GroupApiDTO;
 use League\Fractal\TransformerAbstract;
 
-/**
- * Transforms a Group entity for API output.
- */
 class GroupTransformer extends TransformerAbstract
 {
     protected array $availableIncludes = ['users'];
 
-    /**
-     * Transform the group entity.
-     *
-     * @param Group $group
-     * @return array
-     */
-    public function transform(Group $group): array
+    public function transform(GroupApiDTO $group): array
     {
         return [
-            'id' => $group->getId()->toString(),
-            'name' => $group->getName(),
-            'created_at' => $group->getCreatedAt()->format('c'),
+            'id' => $group->id,
+            'name' => $group->name,
+            'created_at' => $group->createdAt->format('c'),
         ];
     }
 
-    /**
-     * Include users.
-     *
-     * @param Group $group
-     * @return \League\Fractal\Resource\Collection
-     */
-    public function includeUsers(Group $group)
+    public function includeUsers(GroupApiDTO $group)
     {
-        return $this->collection($group->getUsers(), new \App\Transformer\Resource\UserTransformer());
+        return $this->collection($group->users, new UserTransformer());
     }
 }

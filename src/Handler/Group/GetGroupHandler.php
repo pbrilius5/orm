@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Handler\Group;
 
 use App\Command\Group\GetGroupCommand;
-use App\Entity\Group;
+use App\DTO\GroupApiDTO;
 use App\Repository\GroupRepository;
 use Oryx\ORM\EntityManager;
 use Psr\Log\LoggerInterface;
@@ -23,10 +23,10 @@ class GetGroupHandler
         $this->logger = $logger;
     }
 
-    public function handle(GetGroupCommand $command): ?Group
+    public function handle(GetGroupCommand $command): ?GroupApiDTO
     {
-        $this->logger?->debug('Getting group: ' . $command->id);
+        $this->logger?->debug('Getting group for API: ' . $command->id);
 
-        return $this->repository->find($command->id);
+        return $this->repository->findForApi($command->id);
     }
 }

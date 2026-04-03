@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Handler\Group;
 
 use App\Command\Group\ListGroupsCommand;
-use App\Entity\Group;
 use App\Repository\GroupRepository;
 use Oryx\ORM\EntityManager;
 use Psr\Log\LoggerInterface;
@@ -25,12 +24,12 @@ class ListGroupsHandler
 
     public function handle(ListGroupsCommand $command): array
     {
-        $this->logger?->debug('Listing groups');
+        $this->logger?->debug('Listing groups for API');
 
         if ($command->search) {
-            return $this->repository->findAllWithFilter($command->search);
+            return $this->repository->findAllWithFilterForApi($command->search);
         }
 
-        return $this->repository->findAll();
+        return $this->repository->findAllForApi();
     }
 }

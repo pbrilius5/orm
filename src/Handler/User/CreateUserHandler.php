@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Handler\User;
 
 use App\Command\User\CreateUserCommand;
+use App\DTO\UserApiDTO;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Oryx\ORM\EntityManager;
@@ -23,7 +24,7 @@ class CreateUserHandler
         $this->logger = $logger;
     }
 
-    public function handle(CreateUserCommand $command): User
+    public function handle(CreateUserCommand $command): UserApiDTO
     {
         $this->logger?->info('Creating user: ' . $command->email);
 
@@ -57,6 +58,6 @@ class CreateUserHandler
 
         $this->logger?->info('User created: ' . $user->getId());
 
-        return $user;
+        return $this->repository->findForApi($user->getId());
     }
 }

@@ -4,38 +4,38 @@ declare(strict_types=1);
 
 namespace App\Transformer\Resource;
 
-use App\Entity\User;
+use App\DTO\UserApiDTO;
 use League\Fractal\TransformerAbstract;
 
 class UserTransformer extends TransformerAbstract
 {
     protected array $availableIncludes = ['group', 'userRoles'];
 
-    public function transform(User $user): array
+    public function transform(UserApiDTO $user): array
     {
-        $roles = [];
-        foreach ($user->getUserRoles() as $userRole) {
-            if ($userRole->isActive()) {
-                $roles[] = $userRole->getRole()->getName();
-            }
-        }
-
         return [
-            'id' => $user->getId()->toString(),
-            'email' => $user->getEmail(),
-            'roles' => $roles,
-            'created_at' => $user->getCreatedAt()->format('c'),
-            'updated_at' => $user->getUpdatedAt() ? $user->getUpdatedAt()->format('c') : null,
+            'id' => $user->id,
+            'email' => $user->email,
+            'roles' => $user->roles,
+            'created_at' => $user->createdAt->format('c'),
+            'updated_at' => $user->updatedAt?->format('c'),
         ];
     }
 
-    public function includeGroup(User $user)
+    public function includeGroup(UserApiDTO $user)
     {
-        return $this->item($user->getGroup(), new GroupTransformer());
+        if ($user->groupId === null) {
+            return null;
+        }
+
+        return $this->item([
+            'id' => $user->groupId,
+            'name' => $user->groupName,
+        ], new GroupTransformer());
     }
 
-    public function includeUserRoles(User $user)
+    public function includeUserRoles(UserApiDTO $user)
     {
-        return $this->collection($user->getUserRoles(), new UserRoleTransformer());
+        return $this->collection($user->userRoles, new UserRoleTransformer());
     }
 }

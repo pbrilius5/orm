@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Handler\User;
 
 use App\Command\User\ListUsersCommand;
-use App\Entity\User;
+use App\DTO\UserApiDTO;
 use App\Repository\UserRepository;
 use Oryx\ORM\EntityManager;
 use Psr\Log\LoggerInterface;
@@ -25,8 +25,12 @@ class ListUsersHandler
 
     public function handle(ListUsersCommand $command): array
     {
-        $this->logger?->debug('Listing users');
+        $this->logger?->debug('Listing users for API');
 
-        return $this->repository->findAll();
+        if ($command->search) {
+            return $this->repository->findAllWithFilterForApi($command->search);
+        }
+
+        return $this->repository->findAllForApi();
     }
 }
