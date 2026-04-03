@@ -7,7 +7,8 @@ namespace App;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Laminas\Diactoros\Response\JsonResponse;
-use League\Container\Container;
+use DI\ContainerBuilder;
+use DI\Container;
 use Symfony\Component\Dotenv\Dotenv;
 use Oryx\ORM\EntityManager;
 use App\Routing\AdrRoutes;
@@ -19,12 +20,8 @@ use League\Fractal\Manager as FractalManager;
 use League\Fractal\Serializer\JsonApiSerializer;
 use Oryx\ORM\EntityManagerFactory;
 use App\Fixture\FixtureLoader;
-use App\Action\User\ListAction;
-use App\Action\User\ShowAction;
-use App\Action\User\CreateAction;
-use App\Action\User\UpdateAction;
-use App\Action\User\PatchAction;
-use App\Action\User\DeleteAction;
+
+use function DI\autowire;
 
 /**
  * ADR API Kernel - routes separated to App\Routing\AdrRoutes.
@@ -46,7 +43,10 @@ class Kernel
     public function __construct(string $environment = 'dev')
     {
         $this->environment = $environment;
-        $this->container = new Container();
+
+        $builder = new ContainerBuilder();
+        $builder->useAttributes(true);
+        $this->container = $builder->build();
 
         $this->boot();
     }
@@ -74,16 +74,9 @@ class Kernel
 
     private function registerServices(): void
     {
-        $this->container->addShared(EntityManager::class, $this->entityManager);
-        $this->container->addShared(FractalManager::class, $this->fractal);
-        $this->container->addShared(FixtureLoader::class)->addArgument(EntityManager::class);
-
-        $this->container->addShared(ListAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
-        $this->container->addShared(ShowAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
-        $this->container->addShared(CreateAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
-        $this->container->addShared(UpdateAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
-        $this->container->addShared(PatchAction::class)->addArguments([FixtureLoader::class, FractalManager::class]);
-        $this->container->addShared(DeleteAction::class);
+        $this->container->set(EntityManager::class, $this->entityManager);
+        $this->container->set(FractalManager::class, $this->fractal);
+        $this->container->set(FixtureLoader::class, autowire());
     }
 
     private function registerRoutes(): void

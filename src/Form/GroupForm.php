@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use Laminas\Form\Element;
-use Laminas\InputFilter\Input;
-use Laminas\Validator\NotEmpty;
-use Laminas\Validator\StringLength;
-
 class GroupForm extends BaseForm
 {
     protected function initForm(): void
@@ -18,7 +13,7 @@ class GroupForm extends BaseForm
 
         $this->add([
             'name' => 'name',
-            'type' => Element\Text::class,
+            'type' => 'text',
             'options' => [
                 'label' => 'Group Name',
             ],
@@ -30,7 +25,7 @@ class GroupForm extends BaseForm
 
         $this->add([
             'name' => 'description',
-            'type' => Element\Textarea::class,
+            'type' => 'textarea',
             'options' => [
                 'label' => 'Description',
             ],
@@ -42,21 +37,27 @@ class GroupForm extends BaseForm
 
         $this->add([
             'name' => 'submit',
-            'type' => Element\Submit::class,
+            'type' => 'submit',
             'attributes' => [
                 'value' => 'Save Group',
                 'class' => 'btn btn-primary',
             ],
         ]);
 
-        $inputFilter = new \Laminas\InputFilter\InputFilter();
+        $inputFilterFactory = $this->getFormFactory()->getInputFilterFactory();
 
-        $nameInput = new Input('name');
-        $nameInput->setRequired(true);
-        $nameInput->getValidatorChain()
-            ->attach(new NotEmpty())
-            ->attach(new StringLength(['min' => 2, 'max' => 255]));
-        $inputFilter->add($nameInput);
+        $nameSpec = [
+            'name' => 'name',
+            'required' => true,
+            'validators' => [
+                ['name' => 'NotEmpty'],
+                ['name' => 'StringLength', 'options' => ['min' => 2, 'max' => 255]],
+            ],
+        ];
+
+        $inputFilter = $inputFilterFactory->createInputFilter([
+            $nameSpec,
+        ]);
 
         $this->setInputFilter($inputFilter);
     }

@@ -32,6 +32,7 @@
     "webmozart/assert": "^1.0",
     "oryx/mvc": "dev-develop",
     "oryx/adr": "dev-develop",
+    "php-di/php-di": "^7.0",
     "symfony/yaml": "^6.4",
     "laminas/laminas-form": "^2.6",
     "laminas/laminas-inputfilter": "^2.5",

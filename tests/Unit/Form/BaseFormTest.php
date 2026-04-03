@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Form;
 
+use App\Container\LaminasServiceManagerFactory;
+use Laminas\ServiceManager\ServiceManager;
 use PHPUnit\Framework\TestCase;
 use App\Form\BaseForm;
 use App\Form\UserForm;
@@ -11,27 +13,34 @@ use App\Form\GroupForm;
 
 class BaseFormTest extends TestCase
 {
+    private ServiceManager $laminasSm;
+
+    protected function setUp(): void
+    {
+        $this->laminasSm = LaminasServiceManagerFactory::create();
+    }
+
     public function testBaseFormCanBeExtended(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $this->assertInstanceOf(BaseForm::class, $form);
     }
 
     public function testUserFormHasCorrectName(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $this->assertSame('user', $form->getName());
     }
 
     public function testUserFormHasCorrectMethod(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $this->assertSame('post', $form->getAttribute('method'));
     }
 
     public function testUserFormHasExpectedElements(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $this->assertTrue($form->has('email'));
         $this->assertTrue($form->has('password'));
         $this->assertTrue($form->has('gamification_roles'));
@@ -40,13 +49,13 @@ class BaseFormTest extends TestCase
 
     public function testUserFormElementCount(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $this->assertCount(4, $form->getElements());
     }
 
     public function testUserFormEmailElementAttributes(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $email = $form->get('email');
         $this->assertSame('email', $email->getAttribute('type'));
         $this->assertTrue($email->getAttribute('required'));
@@ -55,7 +64,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormPasswordElementAttributes(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $password = $form->get('password');
         $this->assertSame('password', $password->getAttribute('type'));
         $this->assertTrue($password->getAttribute('required'));
@@ -63,14 +72,14 @@ class BaseFormTest extends TestCase
 
     public function testUserFormGamificationRolesElementIsMultiCheckbox(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $roles = $form->get('gamification_roles');
         $this->assertSame('multi_checkbox', $roles->getAttribute('type'));
     }
 
     public function testUserFormGamificationRolesValueOptions(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $roles = $form->get('gamification_roles');
         $valueOptions = $roles->getOption('value_options');
         $this->assertArrayHasKey('ROLE_WIZARD', $valueOptions);
@@ -80,7 +89,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormSubmitElementAttributes(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $submit = $form->get('submit');
         $this->assertSame('Save', $submit->getValue());
         $this->assertSame('btn btn-primary', $submit->getAttribute('class'));
@@ -88,7 +97,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithValidData(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
@@ -98,7 +107,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithInvalidEmail(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([
             'email' => 'not-an-email',
             'password' => 'secret123',
@@ -110,7 +119,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithEmptyEmail(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([
             'email' => ' ',
             'password' => 'secret123',
@@ -122,7 +131,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithShortPassword(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'abc',
@@ -134,7 +143,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithEmptyPassword(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([
             'email' => 'test@example.com',
             'password' => '',
@@ -146,7 +155,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithMissingFields(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -156,7 +165,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithGamificationRoles(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
@@ -167,7 +176,7 @@ class BaseFormTest extends TestCase
 
     public function testGetValidationErrorsReturnsArray(): void
     {
-        $form = new UserForm();
+        $form = new UserForm(null, [], $this->laminasSm);
         $form->setData([]);
         $form->isValid();
         $errors = $form->getValidationErrors();

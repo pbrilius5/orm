@@ -16,7 +16,7 @@ use App\Action\Group\CreateAction as GroupCreateAction;
 use App\Action\Group\UpdateAction as GroupUpdateAction;
 use App\Action\Group\PatchAction as GroupPatchAction;
 use App\Action\Group\DeleteAction as GroupDeleteAction;
-use League\Container\Container;
+use Psr\Container\ContainerInterface;
 use League\Route\Router;
 use League\Route\Strategy\JsonStrategy;
 use Laminas\Diactoros\ResponseFactory;
@@ -28,7 +28,7 @@ class AdrRoutes
 {
     private Router $router;
 
-    public function __construct(Container $container)
+    public function __construct(ContainerInterface $container)
     {
         $this->router = new Router();
         $strategy = new JsonStrategy(new ResponseFactory());

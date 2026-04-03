@@ -7,11 +7,6 @@ namespace App\Form;
 use App\Entity\ArchitectRole;
 use App\Entity\GameMasterRole;
 use App\Entity\WizardRole;
-use Laminas\Form\Element;
-use Laminas\InputFilter\Input;
-use Laminas\Validator\EmailAddress;
-use Laminas\Validator\NotEmpty;
-use Laminas\Validator\StringLength;
 
 class UserForm extends BaseForm
 {
@@ -22,7 +17,7 @@ class UserForm extends BaseForm
 
         $this->add([
             'name' => 'email',
-            'type' => Element\Email::class,
+            'type' => 'email',
             'options' => [
                 'label' => 'Email',
             ],
@@ -34,7 +29,7 @@ class UserForm extends BaseForm
 
         $this->add([
             'name' => 'password',
-            'type' => Element\Password::class,
+            'type' => 'password',
             'options' => [
                 'label' => 'Password',
             ],
@@ -46,7 +41,7 @@ class UserForm extends BaseForm
 
         $this->add([
             'name' => 'gamification_roles',
-            'type' => Element\MultiCheckbox::class,
+            'type' => 'multicheckbox',
             'options' => [
                 'label' => 'Roles',
                 'value_options' => [
@@ -62,33 +57,46 @@ class UserForm extends BaseForm
 
         $this->add([
             'name' => 'submit',
-            'type' => Element\Submit::class,
+            'type' => 'submit',
             'attributes' => [
                 'value' => 'Save',
                 'class' => 'btn btn-primary',
             ],
         ]);
 
-        $inputFilter = new \Laminas\InputFilter\InputFilter();
+        $inputFilterFactory = $this->getFormFactory()->getInputFilterFactory();
 
-        $emailInput = new Input('email');
-        $emailInput->setRequired(true);
-        $emailInput->getFilterChain()->attach(new \Laminas\Filter\StringTrim());
-        $emailInput->getValidatorChain()
-            ->attach(new NotEmpty(), true)
-            ->attach(new EmailAddress());
-        $inputFilter->add($emailInput);
+        $emailSpec = [
+            'name' => 'email',
+            'required' => true,
+            'filters' => [
+                ['name' => 'StringTrim'],
+            ],
+            'validators' => [
+                ['name' => 'NotEmpty', 'break_chain_on_failure' => true],
+                ['name' => 'EmailAddress'],
+            ],
+        ];
 
-        $passwordInput = new Input('password');
-        $passwordInput->setRequired(true);
-        $passwordInput->getValidatorChain()
-            ->attach(new NotEmpty())
-            ->attach(new StringLength(['min' => 6]));
-        $inputFilter->add($passwordInput);
+        $passwordSpec = [
+            'name' => 'password',
+            'required' => true,
+            'validators' => [
+                ['name' => 'NotEmpty'],
+                ['name' => 'StringLength', 'options' => ['min' => 6]],
+            ],
+        ];
 
-        $rolesInput = new Input('gamification_roles');
-        $rolesInput->setRequired(false);
-        $inputFilter->add($rolesInput);
+        $rolesSpec = [
+            'name' => 'gamification_roles',
+            'required' => false,
+        ];
+
+        $inputFilter = $inputFilterFactory->createInputFilter([
+            $emailSpec,
+            $passwordSpec,
+            $rolesSpec,
+        ]);
 
         $this->setInputFilter($inputFilter);
     }
