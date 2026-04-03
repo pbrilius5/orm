@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Console\Command;
 
 use App\Entity\Group;
-use App\Entity\Post;
 use App\Entity\User;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;

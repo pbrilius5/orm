@@ -14,13 +14,11 @@ class User
     private string $password;
     private \DateTimeInterface $createdAt;
     private ?\DateTimeInterface $updatedAt = null;
-    private Collection $posts;
     private Collection $userRoles;
     private ?Group $group = null;
 
     public function __construct()
     {
-        $this->posts = new ArrayCollection();
         $this->userRoles = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
     }
@@ -71,31 +69,6 @@ class User
     public function setUpdatedAt(?\DateTimeInterface $updatedAt): self
     {
         $this->updatedAt = $updatedAt;
-        return $this;
-    }
-
-    public function getPosts(): Collection
-    {
-        return $this->posts;
-    }
-
-    public function addPost(Post $post): self
-    {
-        if (!$this->posts->contains($post)) {
-            $this->posts->add($post);
-            $post->setAuthor($this);
-        }
-        return $this;
-    }
-
-    public function removePost(Post $post): self
-    {
-        if ($this->posts->contains($post)) {
-            $this->posts->removeElement($post);
-            if ($post->getAuthor() === $this) {
-                $post->setAuthor(null);
-            }
-        }
         return $this;
     }
 

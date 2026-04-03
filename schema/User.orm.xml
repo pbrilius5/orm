@@ -16,7 +16,6 @@
             <join-column name="group_id" nullable="true"/>
         </many-to-one>
         
-        <one-to-many target-entity="App\Entity\Post" field="posts" mapped-by="author" cascade="persist"/>
         <one-to-many target-entity="App\Entity\UserRole" field="userRoles" mapped-by="user" cascade="persist" orphan-removal="true"/>
     </entity>
 </doctrine-mapping>

@@ -10,6 +10,12 @@ use App\Action\User\CreateAction;
 use App\Action\User\UpdateAction;
 use App\Action\User\PatchAction;
 use App\Action\User\DeleteAction;
+use App\Action\Group\ListAction as GroupListAction;
+use App\Action\Group\ShowAction as GroupShowAction;
+use App\Action\Group\CreateAction as GroupCreateAction;
+use App\Action\Group\UpdateAction as GroupUpdateAction;
+use App\Action\Group\PatchAction as GroupPatchAction;
+use App\Action\Group\DeleteAction as GroupDeleteAction;
 use League\Container\Container;
 use League\Route\Router;
 use League\Route\Strategy\JsonStrategy;
@@ -54,6 +60,13 @@ class AdrRoutes
         $this->router->map('PUT', '/api/users/{id}', [UpdateAction::class, '__invoke']);
         $this->router->map('PATCH', '/api/users/{id}', [PatchAction::class, '__invoke']);
         $this->router->map('DELETE', '/api/users/{id}', [DeleteAction::class, '__invoke']);
+
+        $this->router->map('GET', '/api/groups', [GroupListAction::class, '__invoke']);
+        $this->router->map('POST', '/api/groups', [GroupCreateAction::class, '__invoke']);
+        $this->router->map('GET', '/api/groups/{id}', [GroupShowAction::class, '__invoke']);
+        $this->router->map('PUT', '/api/groups/{id}', [GroupUpdateAction::class, '__invoke']);
+        $this->router->map('PATCH', '/api/groups/{id}', [GroupPatchAction::class, '__invoke']);
+        $this->router->map('DELETE', '/api/groups/{id}', [GroupDeleteAction::class, '__invoke']);
 
         $this->router->map('GET', '/manifest.json', function (ServerRequestInterface $request): ResponseInterface {
             return new JsonResponse([

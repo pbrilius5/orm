@@ -9,7 +9,7 @@ use League\Fractal\TransformerAbstract;
 
 class UserTransformer extends TransformerAbstract
 {
-    protected array $availableIncludes = ['posts', 'group', 'userRoles'];
+    protected array $availableIncludes = ['group', 'userRoles'];
 
     public function transform(User $user): array
     {
@@ -27,11 +27,6 @@ class UserTransformer extends TransformerAbstract
             'created_at' => $user->getCreatedAt()->format('c'),
             'updated_at' => $user->getUpdatedAt() ? $user->getUpdatedAt()->format('c') : null,
         ];
-    }
-
-    public function includePosts(User $user)
-    {
-        return $this->collection($user->getPosts(), new PostTransformer());
     }
 
     public function includeGroup(User $user)

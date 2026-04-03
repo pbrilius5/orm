@@ -7,7 +7,6 @@ namespace App\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use App\Fixture\FixtureLoader;
 use App\Entity\User;
-use App\Entity\Post;
 use App\Entity\Group;
 
 class FixtureLoaderTest extends TestCase
@@ -28,15 +27,6 @@ class FixtureLoaderTest extends TestCase
         $this->assertStringContainsString('@', $user->getEmail());
     }
 
-    public function testMakePost(): void
-    {
-        $post = $this->loader->make(Post::class);
-
-        $this->assertInstanceOf(Post::class, $post);
-        $this->assertNotEmpty($post->getTitle());
-        $this->assertNotEmpty($post->getContent());
-    }
-
     public function testMakeGroup(): void
     {
         $group = $this->loader->make(Group::class);
@@ -52,16 +42,6 @@ class FixtureLoaderTest extends TestCase
         $this->assertCount(3, $users);
         foreach ($users as $user) {
             $this->assertInstanceOf(User::class, $user);
-        }
-    }
-
-    public function testMakeManyPosts(): void
-    {
-        $posts = $this->loader->makeMany(Post::class, 5);
-
-        $this->assertCount(5, $posts);
-        foreach ($posts as $post) {
-            $this->assertInstanceOf(Post::class, $post);
         }
     }
 }

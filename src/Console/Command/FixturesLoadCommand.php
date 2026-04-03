@@ -8,7 +8,6 @@ use App\Entity\Group;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Entity\UserRole;
-use App\Entity\Post;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
@@ -52,13 +51,6 @@ class FixturesLoadCommand extends Command
                 InputOption::VALUE_REQUIRED,
                 'Number of users to generate',
                 10
-            )
-            ->addOption(
-                'posts',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Number of posts per user',
-                2
             )
             ->addOption(
                 'purge',
@@ -128,7 +120,6 @@ class FixturesLoadCommand extends Command
 
         $groupCount = (int) $input->getOption('groups');
         $userCount = (int) $input->getOption('users');
-        $postCount = (int) $input->getOption('posts');
 
         if ($input->getOption('seed') !== null) {
             $io->text('Auto-purging existing data (seeded fixtures require clean database)...');
@@ -142,16 +133,14 @@ class FixturesLoadCommand extends Command
         $roles = $this->createRoles($io, $em);
         $users = $this->createUsers($io, $em, $groups, $userCount);
         $this->createUserRoles($io, $em, $users, $roles);
-        $this->createPosts($io, $em, $users, $postCount);
 
         $em->flush();
 
         $io->success(sprintf(
-            'Loaded %d groups, %d roles, %d users, %d posts',
+            'Loaded %d groups, %d roles, %d users',
             $groupCount,
             count($roles),
-            $userCount,
-            $userCount * $postCount
+            $userCount
         ));
 
         return Command::SUCCESS;
@@ -235,20 +224,6 @@ class FixturesLoadCommand extends Command
                 $userRole->setRole($gameMasterRole);
                 $userRole->setGrantedAt(new \DateTimeImmutable());
                 $em->persist($userRole);
-            }
-        }
-    }
-
-    private function createPosts(SymfonyStyle $io, $em, array $users, int $postCount): void
-    {
-        for ($i = 0; $i < $postCount; $i++) {
-            foreach ($users as $user) {
-                $post = new Post();
-                $post->setTitle($this->faker->sentence);
-                $post->setContent($this->faker->paragraphs(3, true));
-                $post->setCreatedAt(new \DateTimeImmutable());
-                $post->setAuthor($user);
-                $em->persist($post);
             }
         }
     }
