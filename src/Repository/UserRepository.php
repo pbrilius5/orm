@@ -5,56 +5,57 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\EntityRepository;
-use Doctrine\ORM\Mapping\ClassMetadata;
+use Oryx\ORM\EntityManager;
 
-/**
- * Repository for User entity.
- *
- * @extends EntityRepository<User>
- */
-class UserRepository extends EntityRepository
+class UserRepository
 {
-    public function __construct(EntityManagerInterface $entityManager)
+    private EntityManager $em;
+
+    public function __construct(EntityManager $entityManager)
     {
-        $metadata = $entityManager->getClassMetadata(User::class);
-        parent::__construct($entityManager, $metadata);
+        $this->em = $entityManager;
     }
 
-    /**
-     * Find user by email
-     */
+    public function findAll(): array
+    {
+        return $this->em->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function find($id): ?User
+    {
+        return $this->em->find(User::class, $id);
+    }
+
     public function findByEmail(string $email): ?User
     {
-        return $this->createQueryBuilder('u')
-            ->andWhere('u.email = :email')
+        return $this->em->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.email = :email')
             ->setParameter('email', $email)
             ->getQuery()
             ->getOneOrNullResult();
     }
 
-    /**
-     * Save user entity
-     */
     public function save(User $entity, bool $flush = false): void
     {
-        $this->getEntityManager()->persist($entity);
+        $this->em->persist($entity);
 
         if ($flush) {
-            $this->getEntityManager()->flush();
+            $this->em->flush();
         }
     }
 
-    /**
-     * Remove user entity
-     */
     public function remove(User $entity, bool $flush = false): void
     {
-        $this->getEntityManager()->remove($entity);
+        $this->em->remove($entity);
 
         if ($flush) {
-            $this->getEntityManager()->flush();
+            $this->em->flush();
         }
     }
 }
