@@ -34,14 +34,14 @@ class BaseFormTest extends TestCase
         $form = new UserForm();
         $this->assertTrue($form->has('email'));
         $this->assertTrue($form->has('password'));
-        $this->assertTrue($form->has('roles'));
+        $this->assertTrue($form->has('gamification_roles'));
         $this->assertTrue($form->has('submit'));
     }
 
     public function testUserFormElementCount(): void
     {
         $form = new UserForm();
-        $this->assertCount(5, $form->getElements());
+        $this->assertCount(4, $form->getElements());
     }
 
     public function testUserFormEmailElementAttributes(): void
@@ -61,18 +61,21 @@ class BaseFormTest extends TestCase
         $this->assertTrue($password->getAttribute('required'));
     }
 
-    public function testUserFormRolesElementIsHidden(): void
+    public function testUserFormGamificationRolesElementIsMultiCheckbox(): void
     {
         $form = new UserForm();
-        $roles = $form->get('roles');
-        $this->assertSame('hidden', $roles->getAttribute('type'));
+        $roles = $form->get('gamification_roles');
+        $this->assertSame('multi_checkbox', $roles->getAttribute('type'));
     }
 
-    public function testUserFormRolesDefaultValue(): void
+    public function testUserFormGamificationRolesValueOptions(): void
     {
         $form = new UserForm();
-        $roles = $form->get('roles');
-        $this->assertSame('ROLE_USER', $roles->getValue());
+        $roles = $form->get('gamification_roles');
+        $valueOptions = $roles->getOption('value_options');
+        $this->assertArrayHasKey('ROLE_WIZARD', $valueOptions);
+        $this->assertArrayHasKey('ROLE_ARCHITECT', $valueOptions);
+        $this->assertArrayHasKey('ROLE_GAME_MASTER', $valueOptions);
     }
 
     public function testUserFormSubmitElementAttributes(): void
@@ -151,13 +154,13 @@ class BaseFormTest extends TestCase
         $this->assertArrayHasKey('password', $errors);
     }
 
-    public function testUserFormValidationWithRoles(): void
+    public function testUserFormValidationWithGamificationRoles(): void
     {
         $form = new UserForm();
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
-            'roles' => 'ROLE_USER',
+            'gamification_roles' => ['ROLE_WIZARD', 'ROLE_ARCHITECT'],
         ]);
         $this->assertTrue($form->isValid());
     }

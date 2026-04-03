@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Entity\ArchitectRole;
+use App\Entity\GameMasterRole;
+use App\Entity\WizardRole;
 use Laminas\Form\Element;
 use Laminas\InputFilter\Input;
 use Laminas\Validator\EmailAddress;
@@ -42,27 +45,18 @@ class UserForm extends BaseForm
         ]);
 
         $this->add([
-            'name' => 'roles',
-            'type' => Element\Hidden::class,
-            'attributes' => [
-                'value' => 'ROLE_USER',
-            ],
-        ]);
-
-        $this->add([
-            'name' => 'roles_display',
+            'name' => 'gamification_roles',
             'type' => Element\MultiCheckbox::class,
             'options' => [
                 'label' => 'Roles',
                 'value_options' => [
-                    'ROLE_USER' => 'User',
-                    'ROLE_WIZARD' => 'Wizard',
-                    'ROLE_ARCHITECT' => 'Architect',
-                    'ROLE_GAME_MASTER' => 'Game Master',
+                    WizardRole::NAME => 'Wizard',
+                    ArchitectRole::NAME => 'Architect',
+                    GameMasterRole::NAME => 'Game Master',
                 ],
             ],
             'attributes' => [
-                'value' => ['ROLE_USER'],
+                'required' => false,
             ],
         ]);
 
@@ -92,26 +86,16 @@ class UserForm extends BaseForm
             ->attach(new StringLength(['min' => 6]));
         $inputFilter->add($passwordInput);
 
-        $rolesInput = new Input('roles');
+        $rolesInput = new Input('gamification_roles');
         $rolesInput->setRequired(false);
         $inputFilter->add($rolesInput);
-
-        $rolesDisplayInput = new Input('roles_display');
-        $rolesDisplayInput->setRequired(false);
-        $inputFilter->add($rolesDisplayInput);
 
         $this->setInputFilter($inputFilter);
     }
 
-    public function setRoles(array $roleNames): void
+    public function setGamificationRoles(array $roleNames): void
     {
-        $rolesDisplay = $this->get('roles_display');
+        $rolesDisplay = $this->get('gamification_roles');
         $rolesDisplay->setValue($roleNames);
-
-        $roles = $this->get('roles');
-        if (!in_array('ROLE_USER', $roleNames, true)) {
-            $roleNames[] = 'ROLE_USER';
-        }
-        $roles->setValue(implode(',', $roleNames));
     }
 }

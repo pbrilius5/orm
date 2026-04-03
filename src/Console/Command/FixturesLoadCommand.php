@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Console\Command;
 
+use App\Entity\ArchitectRole;
+use App\Entity\GameMasterRole;
 use App\Entity\Group;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Entity\UserRole;
+use App\Entity\WizardRole;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\Configuration;
@@ -172,16 +175,34 @@ class FixturesLoadCommand extends Command
     private function createRoles(SymfonyStyle $io, $em): array
     {
         $roles = [];
-        $roleNames = [Role::WIZARD, Role::ARCHITECT, Role::GAME_MASTER];
 
-        foreach ($roleNames as $roleName) {
-            $role = new Role();
-            $role->setName($roleName);
-            $role->setDescription('Role: ' . $roleName);
-            $em->persist($role);
-            $roles[$roleName] = $role;
-            $io->text(sprintf('  Role: <info>%s</info>', $roleName));
-        }
+        $baseRole = new Role();
+        $baseRole->setName(Role::USER);
+        $baseRole->setDescription('Base user role');
+        $em->persist($baseRole);
+        $roles[Role::USER] = $baseRole;
+        $io->text(sprintf('  Role: <info>%s</info>', Role::USER));
+
+        $wizardRole = new WizardRole();
+        $wizardRole->setName(WizardRole::NAME);
+        $wizardRole->setDescription('Wizard role');
+        $em->persist($wizardRole);
+        $roles[WizardRole::NAME] = $wizardRole;
+        $io->text(sprintf('  Role: <info>%s</info>', WizardRole::NAME));
+
+        $architectRole = new ArchitectRole();
+        $architectRole->setName(ArchitectRole::NAME);
+        $architectRole->setDescription('Architect role');
+        $em->persist($architectRole);
+        $roles[ArchitectRole::NAME] = $architectRole;
+        $io->text(sprintf('  Role: <info>%s</info>', ArchitectRole::NAME));
+
+        $gameMasterRole = new GameMasterRole();
+        $gameMasterRole->setName(GameMasterRole::NAME);
+        $gameMasterRole->setDescription('Game Master role');
+        $em->persist($gameMasterRole);
+        $roles[GameMasterRole::NAME] = $gameMasterRole;
+        $io->text(sprintf('  Role: <info>%s</info>', GameMasterRole::NAME));
 
         return $roles;
     }
@@ -207,7 +228,14 @@ class FixturesLoadCommand extends Command
     private function createUserRoles(SymfonyStyle $io, $em, array $users, array $roles): void
     {
         foreach ($users as $user) {
-            $wizardRole = $roles[Role::WIZARD];
+            $baseRole = $roles[Role::USER];
+            $userRole = new UserRole();
+            $userRole->setUser($user);
+            $userRole->setRole($baseRole);
+            $userRole->setGrantedAt(new \DateTimeImmutable());
+            $em->persist($userRole);
+
+            $wizardRole = $roles[WizardRole::NAME];
             $userRole = new UserRole();
             $userRole->setUser($user);
             $userRole->setRole($wizardRole);
@@ -215,7 +243,7 @@ class FixturesLoadCommand extends Command
             $em->persist($userRole);
 
             if ($this->faker->boolean(30)) {
-                $architectRole = $roles[Role::ARCHITECT];
+                $architectRole = $roles[ArchitectRole::NAME];
                 $userRole = new UserRole();
                 $userRole->setUser($user);
                 $userRole->setRole($architectRole);
@@ -224,7 +252,7 @@ class FixturesLoadCommand extends Command
             }
 
             if ($this->faker->boolean(10)) {
-                $gameMasterRole = $roles[Role::GAME_MASTER];
+                $gameMasterRole = $roles[GameMasterRole::NAME];
                 $userRole = new UserRole();
                 $userRole->setUser($user);
                 $userRole->setRole($gameMasterRole);

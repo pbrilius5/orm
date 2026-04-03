@@ -45,7 +45,7 @@
                                     </td>
                                     <td class="d-none d-lg-table-cell">
                                         <div class="d-flex flex-wrap gap-1">
-                                            <?php foreach ($user->getRoles() as $role): ?>
+                                            <?php foreach ($user->getGamificationRoles() as $role): ?>
                                             <span class="badge bg-secondary"><?= htmlspecialchars($role) ?></span>
                                             <?php endforeach; ?>
                                         </div>

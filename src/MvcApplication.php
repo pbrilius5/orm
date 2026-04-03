@@ -124,7 +124,7 @@ class MvcApplication
             }
             $form = new UserForm();
             $form->setAttribute('action', '/users/' . $user->getId() . '/edit');
-            $form->setRoles($user->getRoleNames());
+            $form->setGamificationRoles($user->getGamificationRoles());
             return new Response($this->view->renderWithLayout('users/edit', [
                 'user' => $user,
                 'form' => $form,

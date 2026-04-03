@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\User;
+use App\Entity\ArchitectRole;
+use App\Entity\GameMasterRole;
 use App\Entity\Role;
+use App\Entity\User;
 use App\Entity\UserRole;
+use App\Entity\WizardRole;
 use App\Repository\UserRepository;
 use Oryx\ORM\EntityManager;
 
@@ -14,6 +17,12 @@ class UserController
 {
     private EntityManager $em;
     private UserRepository $repository;
+
+    private const GAMIFICATION_ROLE_CLASSES = [
+        WizardRole::NAME => WizardRole::class,
+        ArchitectRole::NAME => ArchitectRole::class,
+        GameMasterRole::NAME => GameMasterRole::class,
+    ];
 
     public function __construct(EntityManager $em)
     {
@@ -39,38 +48,45 @@ class UserController
         $user->setPassword(password_hash($data['password'] ?? '', PASSWORD_BCRYPT));
         $user->setCreatedAt(new \DateTimeImmutable());
 
-        $roleNames = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : [$data['roles']]) : [];
-        if (!in_array(Role::USER, $roleNames, true)) {
-            $roleNames[] = Role::USER;
+        $baseRole = $this->em->getRepository(Role::class)->findOneBy(['name' => Role::USER]);
+        if (!$baseRole) {
+            $baseRole = new Role();
+            $baseRole->setName(Role::USER);
+            $this->em->persist($baseRole);
         }
-        $uniqueRoleNames = array_unique($roleNames);
-        foreach ($uniqueRoleNames as $roleName) {
-            $existingRole = $this->em->getRepository(Role::class)->findOneBy(['name' => $roleName]);
+
+        $userRole = new UserRole();
+        $userRole->setUser($user);
+        $userRole->setRole($baseRole);
+        $this->em->persist($userRole);
+        $user->getUserRoles()->add($userRole);
+        $baseRole->getUserRoles()->add($userRole);
+
+        $gamificationRoleNames = isset($data['gamification_roles'])
+            ? (is_array($data['gamification_roles']) ? $data['gamification_roles'] : [$data['gamification_roles']])
+            : [];
+
+        foreach ($gamificationRoleNames as $roleName) {
+            if (!isset(self::GAMIFICATION_ROLE_CLASSES[$roleName])) {
+                continue;
+            }
+
+            $roleClass = self::GAMIFICATION_ROLE_CLASSES[$roleName];
+            $existingRole = $this->em->getRepository($roleClass)->findOneBy(['name' => $roleName]);
             if ($existingRole) {
                 $role = $existingRole;
             } else {
-                $role = new Role();
+                $role = new $roleClass();
                 $role->setName($roleName);
                 $this->em->persist($role);
             }
 
-            $hasRole = false;
-            foreach ($user->getUserRoles() as $existingUserRole) {
-                if ($existingUserRole->getRole() === $role) {
-                    $hasRole = true;
-                    break;
-                }
-            }
-
-            if (!$hasRole) {
-                $userRole = new UserRole();
-                $userRole->setUser($user);
-                $userRole->setRole($role);
-                $this->em->persist($userRole);
-
-                $user->getUserRoles()->add($userRole);
-                $role->getUserRoles()->add($userRole);
-            }
+            $userRole = new UserRole();
+            $userRole->setUser($user);
+            $userRole->setRole($role);
+            $this->em->persist($userRole);
+            $user->getUserRoles()->add($userRole);
+            $role->getUserRoles()->add($userRole);
         }
 
         $this->em->persist($user);
@@ -93,21 +109,22 @@ class UserController
         if (isset($data['password'])) {
             $user->setPassword(password_hash($data['password'], PASSWORD_BCRYPT));
         }
-        if (isset($data['roles'])) {
-            $requestRoleNames = is_array($data['roles']) ? $data['roles'] : [$data['roles']];
-            if (!in_array(Role::USER, $requestRoleNames, true)) {
-                $requestRoleNames[] = Role::USER;
-            }
-            $uniqueRequestRoleNames = array_unique($requestRoleNames);
+        if (isset($data['gamification_roles'])) {
+            $requestRoleNames = is_array($data['gamification_roles']) ? $data['gamification_roles'] : [$data['gamification_roles']];
 
             $currentUserRoles = $user->getUserRoles()->toArray();
 
-            foreach ($uniqueRequestRoleNames as $roleName) {
-                $existingRole = $this->em->getRepository(Role::class)->findOneBy(['name' => $roleName]);
+            foreach ($requestRoleNames as $roleName) {
+                if (!isset(self::GAMIFICATION_ROLE_CLASSES[$roleName])) {
+                    continue;
+                }
+
+                $roleClass = self::GAMIFICATION_ROLE_CLASSES[$roleName];
+                $existingRole = $this->em->getRepository($roleClass)->findOneBy(['name' => $roleName]);
                 if ($existingRole) {
                     $role = $existingRole;
                 } else {
-                    $role = new Role();
+                    $role = new $roleClass();
                     $role->setName($roleName);
                     $this->em->persist($role);
                 }
@@ -125,30 +142,22 @@ class UserController
                     $userRole->setUser($user);
                     $userRole->setRole($role);
                     $this->em->persist($userRole);
-
                     $user->getUserRoles()->add($userRole);
                     $role->getUserRoles()->add($userRole);
                 }
             }
 
             foreach ($currentUserRoles as $existingUserRole) {
-                $shouldKeep = false;
-                foreach ($uniqueRequestRoleNames as $requestRoleName) {
-                    $requestRole = $this->em->getRepository(Role::class)->findOneBy(['name' => $requestRoleName]);
-                    if (!$requestRole) {
-                        $requestRole = new Role();
-                        $requestRole->setName($requestRoleName);
-                    }
-
-                    if ($existingUserRole->getRole() === $requestRole) {
-                        $shouldKeep = true;
-                        break;
-                    }
+                $existingRole = $existingUserRole->getRole();
+                if ($existingRole->getName() === Role::USER) {
+                    continue;
                 }
+
+                $shouldKeep = in_array($existingRole->getName(), $requestRoleNames, true);
 
                 if (!$shouldKeep) {
                     $user->getUserRoles()->removeElement($existingUserRole);
-                    $existingUserRole->getRole()->removeUserRole($existingUserRole);
+                    $existingRole->removeUserRole($existingUserRole);
                 }
             }
         }

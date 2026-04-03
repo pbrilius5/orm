@@ -10,11 +10,11 @@ use Ramsey\Uuid\UuidInterface;
 
 class Role
 {
+    public const USER = 'ROLE_USER';
     public const WIZARD = 'ROLE_WIZARD';
     public const ARCHITECT = 'ROLE_ARCHITECT';
     public const GAME_MASTER = 'ROLE_GAME_MASTER';
     public const MUGGLE = 'ROLE_MUGGLE';
-    public const USER = 'ROLE_USER';
 
     private ?UuidInterface $id = null;
     private string $name;
@@ -59,9 +59,9 @@ class Role
         return $this;
     }
 
-    public function isGlobal(): bool
+    public function isGamificationRole(): bool
     {
-        return true;
+        return false;
     }
 
     public function addUserRole(UserRole $userRole): self

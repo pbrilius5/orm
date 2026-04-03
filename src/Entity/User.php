@@ -173,4 +173,17 @@ class User
 
         return $this;
     }
+
+    public function getGamificationRoles(): array
+    {
+        return array_values($this->userRoles
+            ->filter(fn($ur) => $ur->isActive() && $ur->getRole()->isGamificationRole())
+            ->map(fn($ur) => $ur->getRole()->getName())
+            ->toArray());
+    }
+
+    public function hasGamificationRole(string $roleName): bool
+    {
+        return in_array($roleName, $this->getGamificationRoles(), true);
+    }
 }

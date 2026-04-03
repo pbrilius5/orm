@@ -55,10 +55,10 @@ class RoleCollectionTest extends TestCase
         $this->assertCount(0, $role->getUserRoles());
     }
 
-    public function testRoleIsGlobal(): void
+    public function testRoleIsNotGamification(): void
     {
         $role = $this->createRole(Role::WIZARD);
 
-        $this->assertTrue($role->isGlobal());
+        $this->assertFalse($role->isGamificationRole());
     }
 }
