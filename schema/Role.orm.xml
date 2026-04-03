@@ -6,7 +6,7 @@
     <entity name="App\Entity\Role" table="roles">
         <id name="id" type="uuid" column="id">
             <generator strategy="CUSTOM"/>
-            <custom-id-generator class="doctrine.uuid_generator"/>
+            <custom-id-generator class="Oryx\ORM\SodiumUuidGenerator"/>
         </id>
         <field name="name" type="string" length="100" unique="true"/>
         <field name="description" type="text" nullable="true"/>

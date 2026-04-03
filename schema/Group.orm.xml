@@ -6,7 +6,7 @@
     <entity name="App\Entity\Group" table="groups">
         <id name="id" type="uuid" column="id">
             <generator strategy="CUSTOM"/>
-            <custom-id-generator class="doctrine.uuid_generator"/>
+            <custom-id-generator class="Oryx\ORM\SodiumUuidGenerator"/>
         </id>
         <field name="name" type="string" length="255"/>
         <field name="createdAt" type="datetime_immutable"/>

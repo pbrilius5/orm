@@ -19,7 +19,7 @@ class User
      * @ORM\Id
      * @ORM\Column(type="uuid")
      * @ORM\GeneratedValue(strategy="CUSTOM")
-     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
+     * @ORM\CustomIdGenerator(class="Oryx\ORM\SodiumUuidGenerator")
      */
     private ?UuidInterface $id = null;
     private string $email;

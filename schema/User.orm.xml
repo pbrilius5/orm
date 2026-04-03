@@ -6,7 +6,7 @@
     <entity name="App\Entity\User" table="users">
         <id name="id" type="uuid" column="id">
             <generator strategy="CUSTOM"/>
-            <custom-id-generator class="doctrine.uuid_generator"/>
+            <custom-id-generator class="Oryx\ORM\SodiumUuidGenerator"/>
         </id>
         <field name="email" type="string" length="255" unique="true"/>
         <field name="password" type="string" length="255"/>
