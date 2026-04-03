@@ -43,18 +43,9 @@ class UserForm extends BaseForm
 
         $this->add([
             'name' => 'roles',
-            'type' => Element\MultiCheckbox::class,
-            'options' => [
-                'label' => 'Roles',
-                'value_options' => [
-                    'ROLE_USER' => 'User',
-                    'ROLE_WIZARD' => 'Wizard',
-                    'ROLE_ARCHITECT' => 'Architect',
-                    'ROLE_GAME_MASTER' => 'Game Master',
-                ],
-            ],
+            'type' => Element\Hidden::class,
             'attributes' => [
-                'required' => false,
+                'value' => 'ROLE_USER',
             ],
         ]);
 

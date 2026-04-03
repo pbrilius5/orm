@@ -39,7 +39,7 @@ class UserController
         $user->setPassword(password_hash($data['password'] ?? '', PASSWORD_BCRYPT));
         $user->setCreatedAt(new \DateTimeImmutable());
 
-        $roleNames = $data['roles'] ?? [Role::USER];
+        $roleNames = isset($data['roles']) ? (is_array($data['roles']) ? $data['roles'] : [$data['roles']]) : [Role::USER];
         $uniqueRoleNames = array_unique($roleNames);
         foreach ($uniqueRoleNames as $roleName) {
             $existingRole = $this->em->getRepository(Role::class)->findOneBy(['name' => $roleName]);

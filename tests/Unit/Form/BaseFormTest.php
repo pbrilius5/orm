@@ -61,22 +61,18 @@ class BaseFormTest extends TestCase
         $this->assertTrue($password->getAttribute('required'));
     }
 
-    public function testUserFormRolesElementIsMultiCheckbox(): void
+    public function testUserFormRolesElementIsHidden(): void
     {
         $form = new UserForm();
         $roles = $form->get('roles');
-        $this->assertSame('multi_checkbox', $roles->getAttribute('type'));
+        $this->assertSame('hidden', $roles->getAttribute('type'));
     }
 
-    public function testUserFormRolesValueOptions(): void
+    public function testUserFormRolesDefaultValue(): void
     {
         $form = new UserForm();
         $roles = $form->get('roles');
-        $valueOptions = $roles->getOption('value_options');
-        $this->assertArrayHasKey('ROLE_USER', $valueOptions);
-        $this->assertArrayHasKey('ROLE_WIZARD', $valueOptions);
-        $this->assertArrayHasKey('ROLE_ARCHITECT', $valueOptions);
-        $this->assertArrayHasKey('ROLE_GAME_MASTER', $valueOptions);
+        $this->assertSame('ROLE_USER', $roles->getValue());
     }
 
     public function testUserFormSubmitElementAttributes(): void
@@ -161,7 +157,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
-            'roles' => ['ROLE_USER', 'ROLE_WIZARD'],
+            'roles' => 'ROLE_USER',
         ]);
         $this->assertTrue($form->isValid());
     }

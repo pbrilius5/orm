@@ -83,22 +83,19 @@ class FormHelperTest extends TestCase
         $this->assertStringContainsString('type="password"', $html);
     }
 
-    public function testRenderUserFormContainsRolesCheckbox(): void
+    public function testRenderUserFormContainsHiddenRoles(): void
     {
         $form = new UserForm();
         $html = FormHelper::renderForm($form);
-        $this->assertStringContainsString('name="roles[]"', $html);
-        $this->assertStringContainsString('type="checkbox"', $html);
+        $this->assertStringContainsString('type="hidden"', $html);
+        $this->assertStringContainsString('name="roles"', $html);
     }
 
-    public function testRenderUserFormContainsRoleOptions(): void
+    public function testRenderUserFormContainsDefaultRole(): void
     {
         $form = new UserForm();
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('ROLE_USER', $html);
-        $this->assertStringContainsString('ROLE_WIZARD', $html);
-        $this->assertStringContainsString('ROLE_ARCHITECT', $html);
-        $this->assertStringContainsString('ROLE_GAME_MASTER', $html);
     }
 
     public function testRenderFormDisplaysValidationErrors(): void
@@ -165,10 +162,9 @@ class FormHelperTest extends TestCase
     public function testRenderFormWithCheckboxSelectedValues(): void
     {
         $form = new UserForm();
-        $form->setData(['email' => 'test@example.com', 'password' => 'secret', 'roles' => ['ROLE_USER', 'ROLE_WIZARD']]);
+        $form->setData(['email' => 'test@example.com', 'password' => 'secret', 'roles' => 'ROLE_USER']);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('value="ROLE_USER"', $html);
-        $this->assertStringContainsString('value="ROLE_WIZARD"', $html);
     }
 
     public function testRenderFormSubmitButtonHasCorrectClass(): void
