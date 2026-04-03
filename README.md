@@ -102,6 +102,8 @@ Then recreate: `bin/console oryx:db:create --force && bin/console oryx:fixtures:
 - PHP 8.2+
 - Extensions: mbstring, intl, pdo_sqlite (included), pdo_mysql (optional)
 
+See [REQUIREMENTS.md](./REQUIREMENTS.md) for complete system requirements and dependencies.
+
 ---
 
 ## 2. Console CLI Commands
@@ -197,6 +199,10 @@ composer test
 vendor/bin/phpunit --testsuite Action
 vendor/bin/phpunit --coverage-text
 ```
+
+### API Testing
+
+For complete API testing documentation including all endpoint references, curl examples, Postman collection, and validation specimens, see [TESTER.md](./TESTER.md).
 
 ---
 
@@ -627,6 +633,14 @@ class JsonHalResponder
 | `PUT` | `/api/users/{id}` | UpdateAction | `200 + HAL resource` | Full update |
 | `PATCH` | `/api/users/{id}` | PatchAction | `200 + HAL resource` | Partial update |
 | `DELETE` | `/api/users/{id}` | DeleteAction | `204 No Content` | Delete user |
+| `GET` | `/api/groups` | ListAction | `200 + HAL collection` | List all groups |
+| `GET` | `/api/groups/{id}` | ShowAction | `200 + HAL resource` | Get single group |
+| `POST` | `/api/groups` | CreateAction | `201 + HAL resource` | Create group |
+| `PUT` | `/api/groups/{id}` | UpdateAction | `200 + HAL resource` | Full update |
+| `PATCH` | `/api/groups/{id}` | PatchAction | `200 + HAL resource` | Partial update |
+| `DELETE` | `/api/groups/{id}` | DeleteAction | `204 No Content` | Delete group |
+
+> **Full API Testing Guide:** See [TESTER.md](./TESTER.md) for complete request/response specimens, Postman collection, and validation examples.
 
 ### 7.2 HAL+JSON: Codinga API atsakus
 
@@ -750,41 +764,7 @@ const postsUrl = data._links.posts.href;
 }
 ```
 
-### 7.6 Užklausų pavyzdžiai
-
-```bash
-# All users
-curl -X GET http://localhost:8080/api/users
-
-# Users with posts
-curl -X GET "http://localhost:8080/api/users?include=posts"
-
-# Users with all relations
-curl -X GET "http://localhost:8080/api/users?include=posts,group"
-
-# Users with role system
-curl -X GET "http://localhost:8080/api/users?include=userRoles,wands,patronuses"
-
-# Create user
-curl -X POST http://localhost:8080/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"email":"new@wizardplatform.com","password":"secret123"}'
-
-# Full update
-curl -X PUT http://localhost:8080/api/users/1 \
-  -H "Content-Type: application/json" \
-  -d '{"email":"updated@wizardplatform.com","roles":["ROLE_WIZARD","ROLE_ARCHITECT"]}'
-
-# Partial update
-curl -X PATCH http://localhost:8080/api/users/1 \
-  -H "Content-Type: application/json" \
-  -d '{"email":"patched@wizardplatform.com"}'
-
-# Delete
-curl -X DELETE http://localhost:8080/api/users/1
-```
-
-### 7.7 Maršrutų struktūra
+### 7.6 Maršrutų struktūra
 
 ```
 src/
