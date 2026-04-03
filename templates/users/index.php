@@ -17,8 +17,9 @@
                             <thead class="bg-dark text-white">
                                 <tr>
                                     <th class="d-none d-sm-table-cell py-3">#</th>
+                                    <th class="d-none d-md-table-cell py-3">UUID</th>
                                     <th class="py-3">Email</th>
-                                    <th class="d-none d-md-table-cell py-3">Roles</th>
+                                    <th class="d-none d-lg-table-cell py-3">Roles</th>
                                     <th class="d-none d-lg-table-cell py-3">Created</th>
                                     <th class="text-end py-3">Actions</th>
                                 </tr>
@@ -32,22 +33,24 @@
                                     </td>
                                 </tr>
                                 <?php endif; ?>
-                                <?php foreach ($users as $user): ?>
+                                <?php $rowNum = 0;
+                                foreach ($users as $user): ?>
                                 <tr>
-                                    <td class="d-none d-sm-table-cell text-muted"><?= $user->getId() ?></td>
+                                    <td class="d-none d-sm-table-cell text-muted fw-bold"><?= ++$rowNum ?></td>
+                                    <td class="d-none d-md-table-cell text-muted small font-monospace"><?= $user->getId() ?></td>
                                     <td>
                                         <a href="/users/<?= $user->getId() ?>" class="text-decoration-none fw-semibold">
                                             <?= htmlspecialchars($user->getEmail()) ?>
                                         </a>
                                     </td>
-                                    <td class="d-none d-md-table-cell">
+                                    <td class="d-none d-lg-table-cell">
                                         <div class="d-flex flex-wrap gap-1">
                                             <?php foreach ($user->getRoles() as $role): ?>
                                             <span class="badge bg-secondary"><?= htmlspecialchars($role) ?></span>
                                             <?php endforeach; ?>
                                         </div>
                                     </td>
-                                    <td class="d-none d-lg-table-cell text-muted small"><?= $user->getCreatedAt()->format('Y-m-d') ?></td>
+                                    <td class="d-none d-xl-table-cell text-muted small"><?= $user->getCreatedAt()->format('Y-m-d') ?></td>
                                     <td class="text-end">
                                         <div class="d-flex flex-wrap justify-content-end gap-1">
                                             <a href="/users/<?= $user->getId() ?>" class="btn btn-sm btn-outline-primary">
