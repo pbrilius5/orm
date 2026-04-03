@@ -6,10 +6,13 @@ namespace App\Form;
 
 use App\Entity\ArchitectRole;
 use App\Entity\GameMasterRole;
+use App\Entity\Group;
 use App\Entity\WizardRole;
 
 class UserForm extends BaseForm
 {
+    private array $groups = [];
+
     protected function initForm(): void
     {
         $this->setName('user');
@@ -36,6 +39,19 @@ class UserForm extends BaseForm
             'attributes' => [
                 'required' => true,
                 'placeholder' => 'Password',
+            ],
+        ]);
+
+        $this->add([
+            'name' => 'group_id',
+            'type' => 'select',
+            'options' => [
+                'label' => 'Group',
+                'empty_option' => 'Select a group',
+                'value_options' => $this->getGroupValueOptions(),
+            ],
+            'attributes' => [
+                'required' => false,
             ],
         ]);
 
@@ -87,6 +103,11 @@ class UserForm extends BaseForm
             ],
         ];
 
+        $groupSpec = [
+            'name' => 'group_id',
+            'required' => false,
+        ];
+
         $rolesSpec = [
             'name' => 'gamification_roles',
             'required' => false,
@@ -95,10 +116,25 @@ class UserForm extends BaseForm
         $inputFilter = $inputFilterFactory->createInputFilter([
             $emailSpec,
             $passwordSpec,
+            $groupSpec,
             $rolesSpec,
         ]);
 
         $this->setInputFilter($inputFilter);
+    }
+
+    public function setGroups(array $groups): void
+    {
+        $this->groups = $groups;
+    }
+
+    private function getGroupValueOptions(): array
+    {
+        $options = [];
+        foreach ($this->groups as $group) {
+            $options[$group->getId()->toString()] = $group->getName();
+        }
+        return $options;
     }
 
     public function setGamificationRoles(array $roleNames): void

@@ -9,6 +9,7 @@
             <custom-id-generator class="Oryx\ORM\SodiumUuidGenerator"/>
         </id>
         <field name="name" type="string" length="255"/>
+        <field name="description" type="string" nullable="true"/>
         <field name="createdAt" type="datetime_immutable"/>
         <one-to-many target-entity="App\Entity\User" field="users" mapped-by="group"/>
     </entity>

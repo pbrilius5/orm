@@ -43,6 +43,7 @@ class BaseFormTest extends TestCase
         $form = new UserForm(null, [], $this->laminasSm);
         $this->assertTrue($form->has('email'));
         $this->assertTrue($form->has('password'));
+        $this->assertTrue($form->has('group_id'));
         $this->assertTrue($form->has('gamification_roles'));
         $this->assertTrue($form->has('submit'));
     }
@@ -50,7 +51,7 @@ class BaseFormTest extends TestCase
     public function testUserFormElementCount(): void
     {
         $form = new UserForm(null, [], $this->laminasSm);
-        $this->assertCount(4, $form->getElements());
+        $this->assertCount(5, $form->getElements());
     }
 
     public function testUserFormEmailElementAttributes(): void

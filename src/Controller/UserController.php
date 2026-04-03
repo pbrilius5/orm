@@ -6,10 +6,12 @@ namespace App\Controller;
 
 use App\Entity\ArchitectRole;
 use App\Entity\GameMasterRole;
+use App\Entity\Group;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Entity\UserRole;
 use App\Entity\WizardRole;
+use App\Repository\GroupRepository;
 use App\Repository\UserRepository;
 use Oryx\ORM\EntityManager;
 
@@ -17,6 +19,7 @@ class UserController
 {
     private EntityManager $em;
     private UserRepository $repository;
+    private GroupRepository $groupRepository;
 
     private const GAMIFICATION_ROLE_CLASSES = [
         WizardRole::NAME => WizardRole::class,
@@ -28,6 +31,12 @@ class UserController
     {
         $this->em = $em;
         $this->repository = new UserRepository($em);
+        $this->groupRepository = new GroupRepository($em);
+    }
+
+    public function getGroups(): array
+    {
+        return $this->groupRepository->findAll();
     }
 
     public function index(): array
@@ -47,6 +56,13 @@ class UserController
         $user->setEmail($data['email']);
         $user->setPassword(password_hash($data['password'] ?? '', PASSWORD_BCRYPT));
         $user->setCreatedAt(new \DateTimeImmutable());
+
+        if (!empty($data['group_id'])) {
+            $group = $this->groupRepository->find($data['group_id']);
+            if ($group) {
+                $user->setGroup($group);
+            }
+        }
 
         $baseRole = $this->em->getRepository(Role::class)->findOneBy(['name' => Role::USER]);
         if (!$baseRole) {
@@ -108,6 +124,17 @@ class UserController
         }
         if (isset($data['password'])) {
             $user->setPassword(password_hash($data['password'], PASSWORD_BCRYPT));
+        }
+
+        if (array_key_exists('group_id', $data)) {
+            if (empty($data['group_id'])) {
+                $user->setGroup(null);
+            } else {
+                $group = $this->groupRepository->find($data['group_id']);
+                if ($group) {
+                    $user->setGroup($group);
+                }
+            }
         }
 
         $requestRoleNames = isset($data['gamification_roles'])
