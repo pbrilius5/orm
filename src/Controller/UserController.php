@@ -12,10 +12,10 @@ use Oryx\ORM\EntityManager;
 
 class UserController
 {
-    private EntityManagerInterface $em;
+    private EntityManager $em;
     private UserRepository $repository;
 
-    public function __construct(EntityManagerInterface $em)
+    public function __construct(EntityManager $em)
     {
         $this->em = $em;
         $this->repository = new UserRepository($em);

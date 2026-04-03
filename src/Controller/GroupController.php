@@ -6,14 +6,14 @@ namespace App\Controller;
 
 use App\Entity\Group;
 use App\Repository\GroupRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use Oryx\ORM\EntityManager;
 
 class GroupController
 {
-    private EntityManagerInterface $em;
+    private EntityManager $em;
     private GroupRepository $repository;
 
-    public function __construct(EntityManagerInterface $em)
+    public function __construct(EntityManager $em)
     {
         $this->em = $em;
         $this->repository = new GroupRepository($em);
