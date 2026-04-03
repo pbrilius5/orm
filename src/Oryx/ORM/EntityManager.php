@@ -8,9 +8,10 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Configuration;
-use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
+use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
-use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\DBAL\Types\Type;
+use Ramsey\Uuid\Doctrine\UuidType;
 use League\Event\Emitter;
 use League\Event\Event;
 use League\Event\EmitterInterface;
@@ -23,7 +24,15 @@ class EntityManager
     public function __construct(Connection $connection, array $config = [], ?EmitterInterface $eventDispatcher = null)
     {
         $doctrineConfig = new Configuration();
-        $driver = $config['metadata.driver'] ?? new AnnotationDriver(new \Doctrine\Common\Annotations\AnnotationReader(), false);
+
+        if (!Type::hasType('uuid')) {
+            Type::addType('uuid', UuidType::class);
+        }
+
+        $schemaPath = $config['metadata.schema_path'] ?? dirname(__DIR__, 3) . '/schema';
+        $driver = $config['metadata.driver'] ?? new SimplifiedXmlDriver([
+            $schemaPath => 'App\Entity',
+        ], '.orm.xml');
         $doctrineConfig->setMetadataDriverImpl($driver);
 
         // Proxy configuration - disabled as requested

@@ -8,10 +8,6 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Ramsey\Uuid\UuidInterface;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="roles")
- */
 class Role
 {
     public const WIZARD = 'ROLE_WIZARD';
@@ -20,12 +16,6 @@ class Role
     public const MUGGLE = 'ROLE_MUGGLE';
     public const USER = 'ROLE_USER';
 
-    /**
-     * @ORM\Id
-     * @ORM\Column(type="uuid")
-     * @ORM\GeneratedValue(strategy="CUSTOM")
-     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
-     */
     private ?UuidInterface $id = null;
     private string $name;
     private ?string $description = null;

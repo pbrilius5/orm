@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\Configuration;
-use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
+use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
-use Doctrine\ORM\EntityManager as DoctrineEntityManager;
 use Oryx\ORM\EntityManager;
 use Oryx\ORM\QueryBuilder;
+use Ramsey\Uuid\Doctrine\UuidType;
 
 class QueryBuilderTest extends TestCase
 {
@@ -24,14 +25,22 @@ class QueryBuilderTest extends TestCase
         ];
 
         $conn = DriverManager::getConnection($connectionParams);
+
         $config = new Configuration();
-        $driver = new AnnotationDriver([], false);
+
+        if (!Type::hasType('uuid')) {
+            Type::addType('uuid', UuidType::class);
+        }
+
+        $schemaPath = dirname(__DIR__, 2) . '/schema';
+        $driver = new SimplifiedXmlDriver([
+            $schemaPath => 'App\Entity',
+        ], '.orm.xml');
         $config->setMetadataDriverImpl($driver);
         $config->setAutoGenerateProxyClasses(ProxyFactory::AUTOGENERATE_ALWAYS);
         $config->setProxyDir(sys_get_temp_dir());
         $config->setProxyNamespace('Oryx\ORM\Proxy');
 
-        $doctrineEm = DoctrineEntityManager::create($conn, $config);
         $this->entityManager = new EntityManager($conn);
         $this->queryBuilder = $this->entityManager->createQueryBuilder();
     }

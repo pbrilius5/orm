@@ -9,18 +9,8 @@ use Doctrine\Common\Collections\Collection;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="users")
- */
 class User
 {
-    /**
-     * @ORM\Id
-     * @ORM\Column(type="uuid")
-     * @ORM\GeneratedValue(strategy="CUSTOM")
-     * @ORM\CustomIdGenerator(class="Oryx\ORM\SodiumUuidGenerator")
-     */
     private ?UuidInterface $id = null;
     private string $email;
     private string $password;

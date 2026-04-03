@@ -9,35 +9,17 @@ use Ramsey\Uuid\UuidInterface;
 
 /**
  * Group
- * @ORM\Entity
- * @ORM\Table(name="groups")
  */
 class Group
 {
-    /**
-     * @var UuidInterface
-     * @ORM\Id
-     * @ORM\Column(type="uuid")
-     * @ORM\GeneratedValue(strategy="CUSTOM")
-     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
-     */
     private ?UuidInterface $id = null;
 
-    /**
-     * @var string
-     * @ORM\Column(type="string")
-     */
     private $name;
 
-    /**
-     * @var \DateTimeInterface
-     * @ORM\Column(type="datetime_immutable")
-     */
     private $createdAt;
 
     /**
      * @var \Doctrine\Common\Collections\Collection<int, User>
-     * @ORM\OneToMany(targetEntity="User", mappedBy="group")
      */
     private $users;
 

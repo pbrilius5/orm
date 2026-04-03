@@ -6,18 +6,8 @@ namespace App\Entity;
 
 use Ramsey\Uuid\UuidInterface;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="user_roles")
- */
 class UserRole
 {
-    /**
-     * @ORM\Id
-     * @ORM\Column(type="uuid")
-     * @ORM\GeneratedValue(strategy="CUSTOM")
-     * @ORM\CustomIdGenerator(class="doctrine.uuid_generator")
-     */
     private ?UuidInterface $id = null;
     private User $user;
     private Role $role;

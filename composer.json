@@ -9,7 +9,6 @@
     "doctrine/orm": "^2.14",
     "doctrine/migrations": "^3.5",
     "fakerphp/faker": "^1.23",
-    "doctrine/annotations": "^2.0",
     "league/config": "^1.2",
     "league/event": "^2.2",
     "league/factory-muffin": "^3.0",
