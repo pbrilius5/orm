@@ -165,6 +165,11 @@ class EntityManager implements EntityManagerInterface
         return $this->em;
     }
 
+    public function getMetadataCache(): ?\Doctrine\Common\Cache\Cache
+    {
+        return $this->metadataCache;
+    }
+
     public function getRepository($className): EntityRepository
     {
         return $this->em->getRepository($className);

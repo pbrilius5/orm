@@ -15,5 +15,8 @@ $application->add(new App\Console\Command\FixturesLoadCommand());
 $application->add(new App\Console\Command\DatabaseCreateCommand());
 $application->add(new App\Console\Command\ProxyClearCommand());
 $application->add(new App\Console\Command\ProxyGenerateCommand());
+$application->add(new App\Command\Console\CacheStatusCommand());
+$application->add(new App\Command\Console\CacheQueryCommand());
+$application->add(new App\Command\Console\CacheClearCommand());
 
 $application->run();
