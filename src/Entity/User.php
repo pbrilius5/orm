@@ -221,6 +221,11 @@ class User
             ->toArray());
     }
 
+    public function getRoles(): array
+    {
+        return $this->getRoleNames();
+    }
+
     public function addWand(Wand $wand): self
     {
         if (!$this->wands->contains($wand)) {
