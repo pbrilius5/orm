@@ -109,56 +109,57 @@ class UserController
         if (isset($data['password'])) {
             $user->setPassword(password_hash($data['password'], PASSWORD_BCRYPT));
         }
-        if (isset($data['gamification_roles'])) {
-            $requestRoleNames = is_array($data['gamification_roles']) ? $data['gamification_roles'] : [$data['gamification_roles']];
 
-            $currentUserRoles = $user->getUserRoles()->toArray();
+        $requestRoleNames = isset($data['gamification_roles'])
+            ? (is_array($data['gamification_roles']) ? $data['gamification_roles'] : [$data['gamification_roles']])
+            : [];
 
-            foreach ($requestRoleNames as $roleName) {
-                if (!isset(self::GAMIFICATION_ROLE_CLASSES[$roleName])) {
-                    continue;
-                }
+        $currentUserRoles = $user->getUserRoles()->toArray();
 
-                $roleClass = self::GAMIFICATION_ROLE_CLASSES[$roleName];
-                $existingRole = $this->em->getRepository($roleClass)->findOneBy(['name' => $roleName]);
-                if ($existingRole) {
-                    $role = $existingRole;
-                } else {
-                    $role = new $roleClass();
-                    $role->setName($roleName);
-                    $this->em->persist($role);
-                }
+        foreach ($requestRoleNames as $roleName) {
+            if (!isset(self::GAMIFICATION_ROLE_CLASSES[$roleName])) {
+                continue;
+            }
 
-                $hasRole = false;
-                foreach ($currentUserRoles as $existingUserRole) {
-                    if ($existingUserRole->getRole() === $role) {
-                        $hasRole = true;
-                        break;
-                    }
-                }
+            $roleClass = self::GAMIFICATION_ROLE_CLASSES[$roleName];
+            $existingRole = $this->em->getRepository($roleClass)->findOneBy(['name' => $roleName]);
+            if ($existingRole) {
+                $role = $existingRole;
+            } else {
+                $role = new $roleClass();
+                $role->setName($roleName);
+                $this->em->persist($role);
+            }
 
-                if (!$hasRole) {
-                    $userRole = new UserRole();
-                    $userRole->setUser($user);
-                    $userRole->setRole($role);
-                    $this->em->persist($userRole);
-                    $user->getUserRoles()->add($userRole);
-                    $role->getUserRoles()->add($userRole);
+            $hasRole = false;
+            foreach ($currentUserRoles as $existingUserRole) {
+                if ($existingUserRole->getRole() === $role) {
+                    $hasRole = true;
+                    break;
                 }
             }
 
-            foreach ($currentUserRoles as $existingUserRole) {
-                $existingRole = $existingUserRole->getRole();
-                if ($existingRole->getName() === Role::USER) {
-                    continue;
-                }
+            if (!$hasRole) {
+                $userRole = new UserRole();
+                $userRole->setUser($user);
+                $userRole->setRole($role);
+                $this->em->persist($userRole);
+                $user->getUserRoles()->add($userRole);
+                $role->getUserRoles()->add($userRole);
+            }
+        }
 
-                $shouldKeep = in_array($existingRole->getName(), $requestRoleNames, true);
+        foreach ($currentUserRoles as $existingUserRole) {
+            $existingRole = $existingUserRole->getRole();
+            if ($existingRole->getName() === Role::USER) {
+                continue;
+            }
 
-                if (!$shouldKeep) {
-                    $user->getUserRoles()->removeElement($existingUserRole);
-                    $existingRole->removeUserRole($existingUserRole);
-                }
+            $shouldKeep = in_array($existingRole->getName(), $requestRoleNames, true);
+
+            if (!$shouldKeep) {
+                $user->getUserRoles()->removeElement($existingUserRole);
+                $existingRole->removeUserRole($existingUserRole);
             }
         }
         $user->setUpdatedAt(new \DateTimeImmutable());
