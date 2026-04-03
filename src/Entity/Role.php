@@ -13,6 +13,7 @@ class Role
     public const ARCHITECT = 'ROLE_ARCHITECT';
     public const GAME_MASTER = 'ROLE_GAME_MASTER';
     public const MUGGLE = 'ROLE_MUGGLE';
+    public const USER = 'ROLE_USER';
 
     private ?int $id = null;
     private string $name;
