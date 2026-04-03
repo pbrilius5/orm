@@ -32,6 +32,7 @@ class GroupForm extends BaseForm
             'attributes' => [
                 'required' => false,
                 'placeholder' => 'Optional description',
+                'rows' => 3,
             ],
         ]);
 
@@ -55,8 +56,14 @@ class GroupForm extends BaseForm
             ],
         ];
 
+        $descriptionSpec = [
+            'name' => 'description',
+            'required' => false,
+        ];
+
         $inputFilter = $inputFilterFactory->createInputFilter([
             $nameSpec,
+            $descriptionSpec,
         ]);
 
         $this->setInputFilter($inputFilter);

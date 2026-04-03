@@ -19,10 +19,12 @@ class GroupController
         $this->repository = new GroupRepository($em);
     }
 
-    public function index(): array
+    public function index(?string $search = null): array
     {
-        $groups = $this->repository->findAll();
-        return ['groups' => $groups];
+        $groups = $search
+            ? $this->repository->findAllWithFilter($search)
+            : $this->repository->findAll();
+        return ['groups' => $groups, 'search' => $search];
     }
 
     public function show(int $id): ?Group
@@ -34,6 +36,7 @@ class GroupController
     {
         $group = new Group();
         $group->setName($data['name']);
+        $group->setDescription($data['description'] ?? null);
         $group->setCreatedAt(new \DateTimeImmutable());
 
         $this->em->persist($group);
@@ -52,6 +55,10 @@ class GroupController
 
         if (isset($data['name'])) {
             $group->setName($data['name']);
+        }
+
+        if (array_key_exists('description', $data)) {
+            $group->setDescription($data['description'] ?? null);
         }
 
         $this->em->flush();

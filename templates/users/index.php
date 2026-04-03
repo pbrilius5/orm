@@ -19,6 +19,7 @@
                                     <th class="d-none d-sm-table-cell py-3">#</th>
                                     <th class="d-none d-md-table-cell py-3">UUID</th>
                                     <th class="py-3">Email</th>
+                                    <th class="d-none d-lg-table-cell py-3">Group</th>
                                     <th class="d-none d-lg-table-cell py-3">Roles</th>
                                     <th class="d-none d-lg-table-cell py-3">Created</th>
                                     <th class="text-end py-3">Actions</th>
@@ -42,6 +43,13 @@
                                         <a href="/users/<?= $user->getId() ?>" class="text-decoration-none fw-semibold">
                                             <?= htmlspecialchars($user->getEmail()) ?>
                                         </a>
+                                    </td>
+                                    <td class="d-none d-lg-table-cell">
+                                        <?php if ($user->getGroup()): ?>
+                                        <span class="badge bg-info"><?= htmlspecialchars($user->getGroup()->getName()) ?></span>
+                                        <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="d-none d-lg-table-cell">
                                         <div class="d-flex flex-wrap gap-1">

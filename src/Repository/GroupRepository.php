@@ -22,6 +22,20 @@ class GroupRepository
         return $this->em->getRepository(Group::class)->findAll();
     }
 
+    public function findAllWithFilter(?string $search = null): array
+    {
+        $qb = $this->em->createQueryBuilder()
+            ->select('g')
+            ->from(Group::class, 'g');
+
+        if ($search !== null && $search !== '') {
+            $qb->andWhere($qb->expr()->like('g.name', ':search'))
+               ->setParameter('search', "%{$search}%");
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
     public function find(UuidInterface|string|int $id): ?Group
     {
         return $this->em->getRepository(Group::class)->find($id);

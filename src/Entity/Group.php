@@ -13,12 +13,9 @@ use Ramsey\Uuid\UuidInterface;
 class Group
 {
     private ?UuidInterface $id = null;
-
-    private $name;
-
-    private $description;
-
-    private $createdAt;
+    private string $name;
+    private ?string $description = null;
+    private \DateTimeInterface $createdAt;
 
     /**
      * @var \Doctrine\Common\Collections\Collection<int, User>

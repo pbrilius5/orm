@@ -185,7 +185,8 @@ class MvcApplication
     {
         $this->router->get('/groups', function (Request $req) {
             $controller = $this->container->get(\App\Controller\GroupController::class);
-            $data = $controller->index();
+            $search = $req->get('search') ?? null;
+            $data = $controller->index($search);
             $data['breadcrumbs'] = [
                 ['label' => 'Home', 'url' => '/'],
                 ['label' => 'Groups', 'url' => '/groups'],

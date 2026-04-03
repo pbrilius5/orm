@@ -14,6 +14,12 @@
                         <label class="form-label fw-semibold">Name</label>
                         <p class="form-control-plaintext"><?= htmlspecialchars($group->getName()) ?></p>
                     </div>
+                    <?php if ($group->getDescription()): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <p class="form-control-plaintext"><?= htmlspecialchars($group->getDescription()) ?></p>
+                    </div>
+                    <?php endif; ?>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Created</label>
                         <p class="form-control-plaintext"><?= $group->getCreatedAt()->format('Y-m-d H:i:s') ?></p>
