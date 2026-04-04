@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\DtoFactory;
 use App\Entity\ArchitectRole;
 use App\Entity\GameMasterRole;
 use App\Entity\Group;
@@ -28,6 +29,7 @@ class UserController
     private UserRepository $repository;
     private GroupRepository $groupRepository;
     private CommandBus $commandBus;
+    private DtoFactory $dtoFactory;
 
     private const GAMIFICATION_ROLE_CLASSES = [
         WizardRole::NAME => WizardRole::class,
@@ -35,10 +37,11 @@ class UserController
         GameMasterRole::NAME => GameMasterRole::class,
     ];
 
-    public function __construct(EntityManager $em, CommandBus $commandBus)
+    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory)
     {
         $this->em = $em;
         $this->commandBus = $commandBus;
+        $this->dtoFactory = $dtoFactory;
         $this->repository = new UserRepository($em);
         $this->groupRepository = new GroupRepository($em);
     }
@@ -51,12 +54,24 @@ class UserController
     public function index(): array
     {
         $users = $this->repository->findAll();
-        return ['users' => $users];
+        return ['users' => array_map(
+            fn($user) => $this->dtoFactory->create($user),
+            $users
+        )];
     }
 
     public function show(string $id): ?User
     {
         return $this->repository->find($id);
+    }
+
+    public function showDto(string $id): ?array
+    {
+        $user = $this->repository->find($id);
+        if (!$user) {
+            return null;
+        }
+        return ['user' => $this->dtoFactory->create($user)];
     }
 
     public function create(array $data): User
