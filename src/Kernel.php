@@ -24,6 +24,7 @@ use League\Fractal\Manager as FractalManager;
 use League\Fractal\Serializer\JsonApiSerializer;
 use Oryx\ORM\EntityManagerFactory;
 use App\Fixture\FixtureLoader;
+use App\Dto\DtoFactory;
 
 use function DI\autowire;
 
@@ -91,6 +92,7 @@ class Kernel
         $this->container->set(EntityManager::class, $this->entityManager);
         $this->container->set(FractalManager::class, $this->fractal);
         $this->container->set(FixtureLoader::class, autowire());
+        $this->container->set(DtoFactory::class, autowire());
     }
 
     private function registerRoutes(): void

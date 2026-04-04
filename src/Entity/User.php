@@ -6,17 +6,38 @@ namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+use Oryx\ORM\SodiumUuidGenerator;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 
+#[ORM\Entity]
+#[ORM\Table(name: 'users')]
 class User
 {
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid')]
+    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    #[ORM\CustomIdGenerator(class: SodiumUuidGenerator::class)]
     private ?UuidInterface $id = null;
+
+    #[ORM\Column(type: 'string', length: 255, unique: true)]
     private string $email;
+
+    #[ORM\Column(type: 'string', length: 255)]
     private string $password;
+
+    #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeInterface $createdAt;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeInterface $updatedAt = null;
+
+    #[ORM\OneToMany(targetEntity: UserRole::class, mappedBy: 'user', cascade: ['persist'], orphanRemoval: true)]
     private Collection $userRoles;
+
+    #[ORM\ManyToOne(targetEntity: Group::class, inversedBy: 'users')]
+    #[ORM\JoinColumn(name: 'group_id', nullable: true)]
     private ?Group $group = null;
 
     public function __construct()

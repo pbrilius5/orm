@@ -4,14 +4,33 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use Doctrine\ORM\Mapping as ORM;
+use Oryx\ORM\SodiumUuidGenerator;
 use Ramsey\Uuid\UuidInterface;
 
+#[ORM\Entity]
+#[ORM\Table(name: 'user_roles')]
+#[ORM\UniqueConstraint(name: 'user_role_unique', columns: ['user_id', 'role_id'])]
 class UserRole
 {
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid')]
+    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    #[ORM\CustomIdGenerator(class: SodiumUuidGenerator::class)]
     private ?UuidInterface $id = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userRoles')]
+    #[ORM\JoinColumn(name: 'user_id', nullable: false)]
     private User $user;
+
+    #[ORM\ManyToOne(targetEntity: Role::class, inversedBy: 'userRoles')]
+    #[ORM\JoinColumn(name: 'role_id', nullable: false)]
     private Role $role;
+
+    #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeInterface $grantedAt;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeInterface $expiresAt = null;
 
     public function __construct()

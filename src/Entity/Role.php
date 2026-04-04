@@ -6,8 +6,20 @@ namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+use Oryx\ORM\SodiumUuidGenerator;
 use Ramsey\Uuid\UuidInterface;
 
+#[ORM\Entity]
+#[ORM\Table(name: 'roles')]
+#[ORM\InheritanceType('SINGLE_TABLE')]
+#[ORM\DiscriminatorColumn(name: 'discr', type: 'string')]
+#[ORM\DiscriminatorMap([
+    'role' => Role::class,
+    'wizard' => WizardRole::class,
+    'architect' => ArchitectRole::class,
+    'game_master' => GameMasterRole::class,
+])]
 class Role
 {
     public const USER = 'ROLE_USER';
@@ -16,9 +28,19 @@ class Role
     public const GAME_MASTER = 'ROLE_GAME_MASTER';
     public const MUGGLE = 'ROLE_MUGGLE';
 
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid')]
+    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    #[ORM\CustomIdGenerator(class: SodiumUuidGenerator::class)]
     private ?UuidInterface $id = null;
+
+    #[ORM\Column(type: 'string', length: 100, unique: true)]
     private string $name;
+
+    #[ORM\Column(type: 'text', nullable: true)]
     private ?string $description = null;
+
+    #[ORM\OneToMany(targetEntity: UserRole::class, mappedBy: 'role', cascade: ['persist'], orphanRemoval: true)]
     private Collection $userRoles;
 
     public function __construct()

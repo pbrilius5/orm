@@ -10,6 +10,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
+use Oryx\ORM\Mapping\Driver\XmlThenAttributeDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
 use Doctrine\DBAL\Types\Type;
 use Ramsey\Uuid\Doctrine\UuidType;
@@ -32,9 +33,8 @@ class EntityManager implements EntityManagerInterface
         }
 
         $schemaPath = $config['metadata.schema_path'] ?? dirname(__DIR__, 3) . '/schema';
-        $driver = $config['metadata.driver'] ?? new SimplifiedXmlDriver([
-            $schemaPath => 'App\Entity',
-        ], '.orm.xml');
+        $entityPath = $config['metadata.entity_path'] ?? dirname(__DIR__, 2) . '/Entity';
+        $driver = $config['metadata.driver'] ?? new XmlThenAttributeDriver($schemaPath, $entityPath);
         $doctrineConfig->setMetadataDriverImpl($driver);
 
         // Proxy configuration
