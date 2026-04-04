@@ -80,6 +80,8 @@ class TacticianServiceProvider extends AbstractServiceProvider
 
         $container->addShared(EntityManager::class);
 
+        $this->registerHandlers($container);
+
         $commandHandlerMiddleware = new CommandHandlerMiddleware(
             new HandleClassNameInflector(),
             $container,
@@ -89,5 +91,12 @@ class TacticianServiceProvider extends AbstractServiceProvider
         $commandBus = new CommandBus([$commandHandlerMiddleware]);
 
         $container->addShared(CommandBus::class, $commandBus);
+    }
+
+    private function registerHandlers($container): void
+    {
+        foreach ($this->commandToHandlerMap as $handlerClass) {
+            $container->add($handlerClass)->autowire();
+        }
     }
 }

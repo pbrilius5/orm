@@ -51,6 +51,7 @@ class Kernel
         $this->environment = $environment;
 
         $builder = new ContainerBuilder();
+        $builder->useAutowiring(true);
         $builder->useAttributes(true);
         $this->container = $builder->build();
 
