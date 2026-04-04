@@ -6,21 +6,20 @@ namespace App\Action\User;
 
 use App\Command\CommandBusInterface;
 use App\Command\User\ListUsersCommand;
+use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
-use League\Fractal\Manager;
-use League\Fractal\Resource\Collection;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class ListAction
 {
     private CommandBusInterface $commandBus;
-    private Manager $fractal;
+    private DtoFactory $dtoFactory;
 
-    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
+    public function __construct(CommandBusInterface $commandBus, DtoFactory $dtoFactory)
     {
         $this->commandBus = $commandBus;
-        $this->fractal = $fractal;
+        $this->dtoFactory = $dtoFactory;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -30,19 +29,21 @@ class ListAction
         $search = $request->getQueryParams()['search'] ?? null;
 
         $command = new ListUsersCommand(
-            limit: $limit ? (int) $limit : null,
-            offset: $offset ? (int) $offset : null,
+            limit: $limit !== null ? (int) $limit : null,
+            offset: $offset !== null ? (int) $offset : null,
             search: $search
         );
 
         $users = $this->commandBus->handle($command);
 
-        $resource = new Collection($users, new \App\Transformer\Resource\UserTransformer());
-        $data = $this->fractal->createData($resource)->toArray();
+        $dtos = array_map(
+            fn($user) => $this->dtoFactory->create($user),
+            $users
+        );
 
-        return JsonHalResponder::collection('users', $data['data'] ?? [], [
-            'total' => count($data['data'] ?? []),
-            'count' => count($data['data'] ?? []),
+        return JsonHalResponder::collection('users', $dtos, [
+            'total' => count($dtos),
+            'count' => count($dtos),
         ]);
     }
 }

@@ -6,9 +6,8 @@ namespace App\Action\User;
 
 use App\Command\CommandBusInterface;
 use App\Command\User\UpdateUserCommand;
+use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
-use League\Fractal\Manager;
-use League\Fractal\Resource\Item;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Uuid;
@@ -16,12 +15,12 @@ use Ramsey\Uuid\Uuid;
 class UpdateAction
 {
     private CommandBusInterface $commandBus;
-    private Manager $fractal;
+    private DtoFactory $dtoFactory;
 
-    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
+    public function __construct(CommandBusInterface $commandBus, DtoFactory $dtoFactory)
     {
         $this->commandBus = $commandBus;
-        $this->fractal = $fractal;
+        $this->dtoFactory = $dtoFactory;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -52,13 +51,12 @@ class UpdateAction
             return JsonHalResponder::notFound('User not found');
         }
 
-        $resource = new Item($user, new \App\Transformer\Resource\UserTransformer());
-        $data = $this->fractal->createData($resource)->toArray();
+        $dto = $this->dtoFactory->create($user);
 
         return JsonHalResponder::resource(
             'user',
             $id,
-            $data,
+            $dto,
             [
                 'collection' => '/api/users',
                 'self' => "/api/users/{$id}",

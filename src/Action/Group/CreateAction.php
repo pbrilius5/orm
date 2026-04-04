@@ -6,21 +6,20 @@ namespace App\Action\Group;
 
 use App\Command\CommandBusInterface;
 use App\Command\Group\CreateGroupCommand;
+use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
-use League\Fractal\Manager;
-use League\Fractal\Resource\Item;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class CreateAction
 {
     private CommandBusInterface $commandBus;
-    private Manager $fractal;
+    private DtoFactory $dtoFactory;
 
-    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
+    public function __construct(CommandBusInterface $commandBus, DtoFactory $dtoFactory)
     {
         $this->commandBus = $commandBus;
-        $this->fractal = $fractal;
+        $this->dtoFactory = $dtoFactory;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -43,14 +42,12 @@ class CreateAction
         );
 
         $group = $this->commandBus->handle($command);
-
-        $resource = new Item($group, new \App\Transformer\Resource\GroupTransformer());
-        $data = $this->fractal->createData($resource)->toArray();
+        $dto = $this->dtoFactory->create($group);
 
         return JsonHalResponder::created(
             'group',
             $group->getId()?->toString() ?? 'new',
-            $data,
+            $dto,
             [
                 'collection' => '/api/groups',
                 'self' => '/api/groups/' . ($group->getId()?->toString() ?? 'new'),

@@ -11,15 +11,16 @@ class JsonHalResponder
     public static function resource(
         string $type,
         string $id,
-        array $attributes,
+        mixed $attributes,
         array $links = [],
         array $embedded = []
     ): JsonResponse {
+        $attributesArray = is_object($attributes) ? get_object_vars($attributes) : $attributes;
         $data = [
             '_links' => [
                 'self' => ['href' => "/{$type}/{$id}"],
             ],
-            $type => array_merge(['id' => $id], $attributes),
+            $type => array_merge(['id' => $id], $attributesArray),
         ];
 
         foreach ($links as $rel => $href) {
@@ -66,10 +67,11 @@ class JsonHalResponder
     public static function created(
         string $type,
         string $id,
-        array $attributes,
-        array $links = []
+        mixed $attributes,
+        array $links = [],
+        array $embedded = []
     ): JsonResponse {
-        $response = self::resource($type, $id, $attributes, $links);
+        $response = self::resource($type, $id, $attributes, $links, $embedded);
         return $response->withStatus(201);
     }
 

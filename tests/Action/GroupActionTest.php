@@ -11,6 +11,7 @@ use App\Action\Group\CreateAction;
 use App\Action\Group\UpdateAction;
 use App\Action\Group\PatchAction;
 use App\Action\Group\DeleteAction;
+use App\Dto\DtoFactory;
 use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\Response;
 
@@ -124,6 +125,9 @@ class GroupActionTest extends TestCase
 
     private function createActionMock(string $actionClass)
     {
+        $dtoFactory = $this->createMock(DtoFactory::class);
+        $dtoFactory->method('create')->willReturn(new \stdClass());
+
         return new $actionClass(
             new class implements \App\Command\CommandBusInterface {
                 public function handle($command)
@@ -135,7 +139,7 @@ class GroupActionTest extends TestCase
                     return null;
                 }
             },
-            new \League\Fractal\Manager()
+            $dtoFactory
         );
     }
 }

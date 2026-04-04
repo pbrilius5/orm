@@ -6,9 +6,8 @@ namespace App\Action\Group;
 
 use App\Command\CommandBusInterface;
 use App\Command\Group\GetGroupCommand;
+use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
-use League\Fractal\Manager;
-use League\Fractal\Resource\Item;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Uuid;
@@ -16,12 +15,12 @@ use Ramsey\Uuid\Uuid;
 class ShowAction
 {
     private CommandBusInterface $commandBus;
-    private Manager $fractal;
+    private DtoFactory $dtoFactory;
 
-    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
+    public function __construct(CommandBusInterface $commandBus, DtoFactory $dtoFactory)
     {
         $this->commandBus = $commandBus;
-        $this->fractal = $fractal;
+        $this->dtoFactory = $dtoFactory;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -39,13 +38,12 @@ class ShowAction
             return JsonHalResponder::notFound('Group not found');
         }
 
-        $resource = new Item($group, new \App\Transformer\Resource\GroupTransformer());
-        $data = $this->fractal->createData($resource)->toArray();
+        $dto = $this->dtoFactory->create($group);
 
         return JsonHalResponder::resource(
             'group',
             $id,
-            $data,
+            $dto,
             [
                 'collection' => '/api/groups',
             ]

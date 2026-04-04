@@ -12,13 +12,14 @@ use App\Action\User\UpdateAction;
 use App\Action\User\PatchAction;
 use App\Action\User\DeleteAction;
 use App\Command\CommandBusInterface;
+use App\Dto\DtoFactory;
 use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\Response;
 
 class UserActionTest extends TestCase
 {
     private $commandBus;
-    private $fractal;
+    private $dtoFactory;
 
     protected function setUp(): void
     {
@@ -28,12 +29,13 @@ class UserActionTest extends TestCase
                 return [];
             }
         };
-        $this->fractal = new \League\Fractal\Manager();
+        $this->dtoFactory = $this->createMock(DtoFactory::class);
+        $this->dtoFactory->method('create')->willReturn(new \stdClass());
     }
 
     public function testListActionReturnsHalJson(): void
     {
-        $action = new ListAction($this->commandBus, $this->fractal);
+        $action = new ListAction($this->commandBus, $this->dtoFactory);
         $request = new ServerRequest();
         $response = new Response();
 
@@ -44,7 +46,7 @@ class UserActionTest extends TestCase
 
     public function testShowActionWithInvalidIdReturns400(): void
     {
-        $action = new ShowAction($this->commandBus, $this->fractal);
+        $action = new ShowAction($this->commandBus, $this->dtoFactory);
 
         $request = new ServerRequest();
         $request = $request->withAttribute('id', 'invalid');
@@ -57,7 +59,7 @@ class UserActionTest extends TestCase
 
     public function testCreateActionWithoutEmailReturns422(): void
     {
-        $action = new CreateAction($this->commandBus, $this->fractal);
+        $action = new CreateAction($this->commandBus, $this->dtoFactory);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write(json_encode(['password' => 'secret123']));
@@ -75,7 +77,7 @@ class UserActionTest extends TestCase
 
     public function testUpdateActionWithInvalidIdReturns400(): void
     {
-        $action = new UpdateAction($this->commandBus, $this->fractal);
+        $action = new UpdateAction($this->commandBus, $this->dtoFactory);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write(json_encode(['email' => 'test@test.com']));
@@ -94,7 +96,7 @@ class UserActionTest extends TestCase
 
     public function testPatchActionWithEmptyBodyReturns422(): void
     {
-        $action = new PatchAction($this->commandBus, $this->fractal);
+        $action = new PatchAction($this->commandBus, $this->dtoFactory);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write('{}');

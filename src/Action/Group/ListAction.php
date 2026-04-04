@@ -6,21 +6,20 @@ namespace App\Action\Group;
 
 use App\Command\CommandBusInterface;
 use App\Command\Group\ListGroupsCommand;
+use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
-use League\Fractal\Manager;
-use League\Fractal\Resource\Collection;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class ListAction
 {
     private CommandBusInterface $commandBus;
-    private Manager $fractal;
+    private DtoFactory $dtoFactory;
 
-    public function __construct(CommandBusInterface $commandBus, Manager $fractal)
+    public function __construct(CommandBusInterface $commandBus, DtoFactory $dtoFactory)
     {
         $this->commandBus = $commandBus;
-        $this->fractal = $fractal;
+        $this->dtoFactory = $dtoFactory;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -30,19 +29,21 @@ class ListAction
         $search = $request->getQueryParams()['search'] ?? null;
 
         $command = new ListGroupsCommand(
-            limit: $limit ? (int) $limit : null,
-            offset: $offset ? (int) $offset : null,
+            limit: $limit !== null ? (int) $limit : null,
+            offset: $offset !== null ? (int) $offset : null,
             search: $search
         );
 
         $groups = $this->commandBus->handle($command);
 
-        $resource = new Collection($groups, new \App\Transformer\Resource\GroupTransformer());
-        $data = $this->fractal->createData($resource)->toArray();
+        $dtos = array_map(
+            fn($group) => $this->dtoFactory->create($group),
+            $groups
+        );
 
-        return JsonHalResponder::collection('groups', $data['data'] ?? [], [
-            'total' => count($data['data'] ?? []),
-            'count' => count($data['data'] ?? []),
+        return JsonHalResponder::collection('groups', $dtos, [
+            'total' => count($dtos),
+            'count' => count($dtos),
         ]);
     }
 }
