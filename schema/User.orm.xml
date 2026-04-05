@@ -13,9 +13,7 @@
         <field name="createdAt" type="datetime_immutable"/>
         <field name="updatedAt" type="datetime_immutable" nullable="true"/>
         
-        <many-to-one target-entity="App\Entity\Group" field="group" inversed-by="users">
-            <join-column name="group_id" nullable="true"/>
-        </many-to-one>
+        <one-to-many target-entity="App\Entity\UserGroup" field="userGroups" mapped-by="user" cascade="persist" orphan-removal="true"/>
         
         <one-to-many target-entity="App\Entity\UserRole" field="userRoles" mapped-by="user" cascade="persist" orphan-removal="true"/>
     </entity>

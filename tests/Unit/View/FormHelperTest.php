@@ -22,7 +22,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormReturnsHtmlString(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertIsString($html);
         $this->assertStringContainsString('<form', $html);
@@ -31,14 +31,14 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormHasCorrectMethod(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('method="post"', $html);
     }
 
     public function testRenderFormHasCorrectAction(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setAttribute('action', '/groups/create');
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('action="/groups/create"', $html);
@@ -46,7 +46,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormContainsNameField(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('name="name"', $html);
         $this->assertStringContainsString('type="text"', $html);
@@ -54,7 +54,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormContainsDescriptionField(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('name="description"', $html);
         $this->assertStringContainsString('<textarea', $html);
@@ -62,7 +62,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormContainsSubmitButton(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('type="submit"', $html);
         $this->assertStringContainsString('Save Group', $html);
@@ -70,7 +70,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormContainsLabels(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('Group Name', $html);
         $this->assertStringContainsString('Description', $html);
@@ -78,7 +78,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderUserFormContainsEmailField(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('name="email"', $html);
         $this->assertStringContainsString('type="email"', $html);
@@ -86,7 +86,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderUserFormContainsPasswordField(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('name="password"', $html);
         $this->assertStringContainsString('type="password"', $html);
@@ -94,7 +94,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderUserFormContainsGamificationRoles(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('name="gamification_roles[]"', $html);
         $this->assertStringContainsString('type="checkbox"', $html);
@@ -102,7 +102,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderUserFormContainsRoleOptions(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('ROLE_WIZARD', $html);
         $this->assertStringContainsString('ROLE_ARCHITECT', $html);
@@ -111,7 +111,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormDisplaysValidationErrors(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData([]);
         $form->isValid();
         $html = FormHelper::renderForm($form);
@@ -120,7 +120,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormDisplaysIsInvalidClassOnError(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData([]);
         $form->isValid();
         $html = FormHelper::renderForm($form);
@@ -129,7 +129,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormNoValidationErrorsOnValidData(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData(['name' => 'Developers']);
         $form->isValid();
         $html = FormHelper::renderForm($form);
@@ -139,7 +139,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormEscapesHtmlInValues(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData(['name' => '<script>alert("xss")</script>']);
         $form->isValid();
         $html = FormHelper::renderForm($form);
@@ -149,14 +149,14 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormEscapesHtmlInLabels(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('Group Name', $html);
     }
 
     public function testRenderFormWithPrepopulatedData(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData(['name' => 'Test Group']);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('value="Test Group"', $html);
@@ -164,7 +164,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormWithTextareaPrepopulatedData(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData(['name' => 'Test', 'description' => 'Test description']);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('Test description', $html);
@@ -172,7 +172,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormWithCheckboxSelectedValues(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData(['email' => 'test@example.com', 'password' => 'secret', 'gamification_roles' => ['ROLE_WIZARD']]);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('value="ROLE_WIZARD"', $html);
@@ -180,14 +180,14 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormSubmitButtonHasCorrectClass(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('btn btn-primary', $html);
     }
 
     public function testRenderFormHasBootstrapClasses(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('form-control', $html);
         $this->assertStringContainsString('form-label', $html);
@@ -196,7 +196,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormMultipleValidationErrors(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData(['name' => '']);
         $form->isValid();
         $html = FormHelper::renderForm($form);
@@ -205,14 +205,14 @@ class FormHelperTest extends TestCase
 
     public function testRenderFormWithEmptyAction(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('action=""', $html);
     }
 
     public function testRenderFormWithCustomAction(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setAttribute('action', '/custom/path');
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('action="/custom/path"', $html);
@@ -220,7 +220,7 @@ class FormHelperTest extends TestCase
 
     public function testRenderUserFormSubmitText(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('Save', $html);
     }

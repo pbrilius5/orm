@@ -52,7 +52,7 @@ class ManageUserHandler
             'id' => $user->getId()?->toString(),
             'email' => $user->getEmail(),
             'roles' => $user->getRoles(),
-            'group' => $user->getGroup()?->getId(),
+            'groups' => $user->getGroups(),
         ];
     }
 
@@ -104,7 +104,9 @@ class ManageUserHandler
     private function changeGroup(User $user, ?string $groupId): array
     {
         if (!$groupId) {
-            $user->setGroup(null);
+            foreach ($user->getAllGroups() as $existingGroup) {
+                $user->removeGroup($existingGroup);
+            }
             $this->em->flush();
             return ['message' => 'Group removed'];
         }
@@ -114,7 +116,7 @@ class ManageUserHandler
             return ['error' => 'Group not found'];
         }
 
-        $user->setGroup($group);
+        $user->addGroup($group);
         $this->em->flush();
 
         $this->logger?->info('Group changed to: ' . $groupId . ' for user: ' . $user->getId());

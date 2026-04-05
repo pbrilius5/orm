@@ -11,6 +11,15 @@
         <field name="name" type="string" length="255"/>
         <field name="description" type="string" nullable="true"/>
         <field name="createdAt" type="datetime_immutable"/>
-        <one-to-many target-entity="App\Entity\User" field="users" mapped-by="group"/>
+        
+        <discriminator-column name="discr" type="string"/>
+        <discriminator-map>
+            <discriminator-mapping value="group" class="App\Entity\Group"/>
+            <discriminator-mapping value="developer" class="App\Entity\DeveloperGroup"/>
+            <discriminator-mapping value="designer" class="App\Entity\DesignerGroup"/>
+            <discriminator-mapping value="tester" class="App\Entity\TesterGroup"/>
+        </discriminator-map>
+        
+        <one-to-many target-entity="App\Entity\UserGroup" field="userGroups" mapped-by="group" cascade="persist" orphan-removal="true"/>
     </entity>
 </doctrine-mapping>

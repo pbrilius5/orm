@@ -18,6 +18,11 @@ class GroupFormTest extends TestCase
         $this->laminasSm = LaminasServiceManagerFactory::create();
     }
 
+    private function createForm(): GroupForm
+    {
+        return new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
+    }
+
     public function testGroupFormHasCorrectName(): void
     {
         $form = new GroupForm(null, [], $this->laminasSm);
@@ -36,12 +41,21 @@ class GroupFormTest extends TestCase
         $this->assertTrue($form->has('name'));
         $this->assertTrue($form->has('description'));
         $this->assertTrue($form->has('submit'));
+        $this->assertTrue($form->has('csrf'));
+    }
+
+    public function testGroupFormHasCsrfElement(): void
+    {
+        $form = new GroupForm(null, [], $this->laminasSm);
+        $this->assertTrue($form->has('csrf'));
+        $csrf = $form->get('csrf');
+        $this->assertInstanceOf(\Laminas\Form\Element\Csrf::class, $csrf);
     }
 
     public function testGroupFormElementCount(): void
     {
         $form = new GroupForm(null, [], $this->laminasSm);
-        $this->assertCount(3, $form->getElements());
+        $this->assertCount(4, $form->getElements());
     }
 
     public function testGroupNameElementAttributes(): void
@@ -72,7 +86,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithValidData(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => 'Developers',
             'description' => 'Development team',
@@ -82,7 +96,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithValidDataNoDescription(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => 'Testers',
         ]);
@@ -91,7 +105,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithEmptyName(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => '',
         ]);
@@ -102,7 +116,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithMissingName(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -111,7 +125,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithShortName(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => 'A',
         ]);
@@ -122,7 +136,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithSingleCharName(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => 'X',
         ]);
@@ -131,7 +145,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithTwoCharName(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => 'AB',
         ]);
@@ -140,7 +154,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithLongName(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => str_repeat('A', 255),
         ]);
@@ -149,7 +163,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithTooLongName(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => str_repeat('A', 256),
         ]);
@@ -160,7 +174,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithDescription(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => 'Developers',
             'description' => 'A team of developers working on the project',
@@ -170,7 +184,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormValidationWithEmptyDescription(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([
             'name' => 'Developers',
             'description' => '',
@@ -180,7 +194,7 @@ class GroupFormTest extends TestCase
 
     public function testGetValidationErrorsReturnsArray(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $form->setData([]);
         $form->isValid();
         $errors = $form->getValidationErrors();
@@ -189,7 +203,7 @@ class GroupFormTest extends TestCase
 
     public function testGroupFormInputFilterIsSet(): void
     {
-        $form = new GroupForm(null, [], $this->laminasSm);
+        $form = $this->createForm();
         $this->assertNotNull($form->getInputFilter());
     }
 }

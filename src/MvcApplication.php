@@ -152,8 +152,9 @@ class MvcApplication
             $form->setGroups($controller->getGroups());
             $form->setAttribute('action', '/users/' . $user->getId() . '/edit');
             $form->setGamificationRoles($user->getGamificationRoles());
-            if ($user->getGroup()) {
-                $form->get('group_id')->setValue($user->getGroup()->getId()->toString());
+            $userGroups = $user->getAllGroups();
+            if (!empty($userGroups)) {
+                $form->get('group_id')->setValue($userGroups[0]->getId()->toString());
             }
             return new Response($this->view->renderWithLayout('users/edit', [
                 'user' => $user,

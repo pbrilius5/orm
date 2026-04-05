@@ -158,7 +158,7 @@ class FixturesLoadCommand extends Command
     private function createGroups(SymfonyStyle $io, $em, int $count): array
     {
         $groups = [];
-        $groupNames = ['Developers', 'Designers', 'Testers'];
+        $groupNames = [Group::USERS, 'Developers', 'Designers', 'Testers'];
 
         for ($i = 0; $i < $count; $i++) {
             $group = new Group();
@@ -216,7 +216,7 @@ class FixturesLoadCommand extends Command
             $user->setEmail($this->faker->unique()->safeEmail);
             $user->setPassword(password_hash($this->faker->password, PASSWORD_BCRYPT));
             $user->setCreatedAt(new \DateTimeImmutable());
-            $user->setGroup($this->faker->randomElement($groups));
+            $user->addGroup($this->faker->randomElement($groups));
             $em->persist($user);
             $users[] = $user;
             $io->text(sprintf('  User: <info>%s</info>', $user->getEmail()));

@@ -51,7 +51,7 @@ class UserForm extends BaseForm
                 'value_options' => $this->getGroupValueOptions(),
             ],
             'attributes' => [
-                'required' => false,
+                'required' => true,
             ],
         ]);
 
@@ -105,7 +105,7 @@ class UserForm extends BaseForm
 
         $groupSpec = [
             'name' => 'group_id',
-            'required' => false,
+            'required' => true,
         ];
 
         $rolesSpec = [
@@ -126,6 +126,9 @@ class UserForm extends BaseForm
     public function setGroups(array $groups): void
     {
         $this->groups = $groups;
+        if ($this->has('group_id')) {
+            $this->get('group_id')->setValueOptions($this->getGroupValueOptions());
+        }
     }
 
     private function getGroupValueOptions(): array

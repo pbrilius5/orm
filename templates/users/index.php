@@ -45,8 +45,9 @@
                                         </a>
                                     </td>
                                     <td class="d-none d-lg-table-cell">
-                                        <?php if ($user->getGroup()): ?>
-                                        <span class="badge bg-info"><?= htmlspecialchars($user->getGroup()->getName()) ?></span>
+                                        <?php $groups = $user->getGroups();
+                                    if (!empty($groups)): ?>
+                                        <span class="badge bg-info"><?= htmlspecialchars($groups[0]) ?></span>
                                         <?php else: ?>
                                         <span class="text-muted">-</span>
                                         <?php endif; ?>

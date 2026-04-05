@@ -40,12 +40,13 @@ class PatchUserHandler
             $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
         }
         if ($command->groupId !== null) {
+            foreach ($user->getAllGroups() as $existingGroup) {
+                $user->removeGroup($existingGroup);
+            }
             if ($command->groupId) {
                 $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
                 $group = $groupRepo->find($command->groupId);
-                $user->setGroup($group);
-            } else {
-                $user->setGroup(null);
+                $user->addGroup($group);
             }
         }
 

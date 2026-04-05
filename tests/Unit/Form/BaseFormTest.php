@@ -51,7 +51,7 @@ class BaseFormTest extends TestCase
     public function testUserFormElementCount(): void
     {
         $form = new UserForm(null, [], $this->laminasSm);
-        $this->assertCount(5, $form->getElements());
+        $this->assertCount(6, $form->getElements());
     }
 
     public function testUserFormEmailElementAttributes(): void
@@ -98,20 +98,28 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithValidData(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $group = new \App\Entity\DeveloperGroup();
+        $group->setId(\Ramsey\Uuid\Uuid::uuid4());
+        $group->setName('Developers');
+        $group->setCreatedAt(new \DateTimeImmutable());
+
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
+        $form->setGroups([$group]);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
+            'group_id' => $group->getId()->toString(),
         ]);
         $this->assertTrue($form->isValid());
     }
 
     public function testUserFormValidationWithInvalidEmail(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData([
             'email' => 'not-an-email',
             'password' => 'secret123',
+            'group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -120,10 +128,11 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithEmptyEmail(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData([
             'email' => ' ',
             'password' => 'secret123',
+            'group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -132,10 +141,11 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithShortPassword(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'abc',
+            'group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -144,10 +154,11 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithEmptyPassword(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData([
             'email' => 'test@example.com',
             'password' => '',
+            'group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -156,7 +167,7 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithMissingFields(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $form->setData([]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -166,10 +177,17 @@ class BaseFormTest extends TestCase
 
     public function testUserFormValidationWithGamificationRoles(): void
     {
-        $form = new UserForm(null, [], $this->laminasSm);
+        $group = new \App\Entity\DeveloperGroup();
+        $group->setId(\Ramsey\Uuid\Uuid::uuid4());
+        $group->setName('Developers');
+        $group->setCreatedAt(new \DateTimeImmutable());
+
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
+        $form->setGroups([$group]);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
+            'group_id' => $group->getId()->toString(),
             'gamification_roles' => ['ROLE_WIZARD', 'ROLE_ARCHITECT'],
         ]);
         $this->assertTrue($form->isValid());

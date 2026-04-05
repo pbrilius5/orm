@@ -8,7 +8,6 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Oryx\ORM\SodiumUuidGenerator;
-use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 
 #[ORM\Entity]
@@ -36,13 +35,13 @@ class User
     #[ORM\OneToMany(targetEntity: UserRole::class, mappedBy: 'user', cascade: ['persist'], orphanRemoval: true)]
     private Collection $userRoles;
 
-    #[ORM\ManyToOne(targetEntity: Group::class, inversedBy: 'users')]
-    #[ORM\JoinColumn(name: 'group_id', nullable: true)]
-    private ?Group $group = null;
+    #[ORM\OneToMany(targetEntity: UserGroup::class, mappedBy: 'user', cascade: ['persist'], orphanRemoval: true)]
+    private Collection $userGroups;
 
     public function __construct()
     {
         $this->userRoles = new ArrayCollection();
+        $this->userGroups = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -101,15 +100,64 @@ class User
         return $this;
     }
 
-    public function getGroup(): ?Group
+    public function getUserGroups(): Collection
     {
-        return $this->group;
+        return $this->userGroups;
     }
 
-    public function setGroup(?Group $group): self
+    public function hasGroup(string $groupName): bool
     {
-        $this->group = $group;
+        foreach ($this->userGroups as $userGroup) {
+            if ($userGroup->getGroup()->getName() === $groupName && $userGroup->isActive()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function addGroup(Group $group): self
+    {
+        foreach ($this->userGroups as $existingUserGroup) {
+            if ($existingUserGroup->getGroup() === $group) {
+                return $this;
+            }
+        }
+
+        $userGroup = new UserGroup();
+        $userGroup->setUser($this);
+        $userGroup->setGroup($group);
+        $this->userGroups->add($userGroup);
+        $group->addUserGroup($userGroup);
+
         return $this;
+    }
+
+    public function removeGroup(Group $group): self
+    {
+        foreach ($this->userGroups as $userGroup) {
+            if ($userGroup->getGroup() === $group) {
+                $this->userGroups->removeElement($userGroup);
+                $group->removeUserGroup($userGroup);
+                break;
+            }
+        }
+        return $this;
+    }
+
+    public function getGroups(): array
+    {
+        return array_values($this->userGroups
+            ->filter(fn($ug) => $ug->isActive())
+            ->map(fn($ug) => $ug->getGroup()->getName())
+            ->toArray());
+    }
+
+    public function getAllGroups(): array
+    {
+        return array_values($this->userGroups
+            ->filter(fn($ug) => $ug->isActive())
+            ->map(fn($ug) => $ug->getGroup())
+            ->toArray());
     }
 
     public function getUserRoles(): Collection

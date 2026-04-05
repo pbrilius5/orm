@@ -8,6 +8,7 @@ use App\Command\Console\LoadFixturesCommand;
 use App\Entity\Group;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Entity\UserGroup;
 use App\Entity\UserRole;
 use App\Entity\WizardRole;
 use App\Entity\ArchitectRole;
@@ -108,7 +109,7 @@ class LoadFixturesHandler
             $user->setEmail($faker->unique()->safeEmail);
             $user->setPassword(password_hash($faker->password, PASSWORD_BCRYPT));
             $user->setCreatedAt(new \DateTimeImmutable());
-            $user->setGroup($faker->randomElement($groups));
+            $user->addGroup($faker->randomElement($groups));
             $em->persist($user);
 
             $userRole = new UserRole();

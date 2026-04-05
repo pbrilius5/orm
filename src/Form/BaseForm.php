@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use Laminas\Form\Form;
+use Laminas\Form\Element\Csrf;
 use Laminas\ServiceManager\ServiceManager;
 
 class BaseForm extends Form
@@ -26,9 +27,23 @@ class BaseForm extends Form
         }
 
         $this->initForm();
+
+        if (!($options['skip_csrf'] ?? false)) {
+            $this->addCsrfElement();
+        }
     }
 
     protected function initForm(): void {}
+
+    protected function addCsrfElement(): void
+    {
+        $csrf = new Csrf('csrf', [
+            'csrf_options' => [
+                'timeout' => 600,
+            ],
+        ]);
+        $this->add($csrf);
+    }
 
     public function getValidationErrors(): array
     {

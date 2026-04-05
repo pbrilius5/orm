@@ -37,7 +37,7 @@ class CreateUserHandler
             $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
             $group = $groupRepo->find($command->groupId);
             if ($group) {
-                $user->setGroup($group);
+                $user->addGroup($group);
             }
         }
 
