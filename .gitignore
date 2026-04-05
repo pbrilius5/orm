@@ -21,3 +21,6 @@ phpunit.xml
 /public/manifest.json
 /public/sw.js
 /public/icons/
+
+# VCS
+auth.json
