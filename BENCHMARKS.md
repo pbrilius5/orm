@@ -17,17 +17,20 @@
 ## Test Environment
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  PHP Version:          8.2+                         │
-│  Database:             SQLite (in-memory)           │
-│  ORM:                  Doctrine ORM 2.14            │
-│  Container:            PHP-DI 7 + League.Container  │
-│  Iterations:           20 per driver                │
-│  Throttle Profile:     Lighthouse Mobile (simulated)│
-│  Entities Tested:      7 (User, Group, Role ×4)     │
-│  STI Support:          WizardRole, ArchitectRole,   │
-│                        GameMasterRole               │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  PHP Version:          8.2+                                 │
+│  Database:             SQLite (in-memory)                   │
+│  ORM:                  Doctrine ORM 2.14                    │
+│  Container:            PHP-DI 7 + League.Container          │
+│  Iterations:           20 per driver                        │
+│  Throttle Profile:     Lighthouse Mobile (simulated)        │
+│  Entities Tested:      11 (User, Group ×4, Role ×4,        │
+│                          UserRole, UserGroup)               │
+│  STI Support:          Role: WizardRole, ArchitectRole,     │
+│                        GameMasterRole                       │
+│                      Group: DeveloperGroup, DesignerGroup,  │
+│                        TesterGroup                          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Lighthouse Throttle Context

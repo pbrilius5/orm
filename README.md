@@ -21,7 +21,8 @@
 15. [Doctrine Regional Cache](#15-doctrine-regional-cache)
 16. [XML Schema-Driven Entity Generation](#16-xml-schema-driven-entity-generation)
 17. [Role-Based Access su Doctrine Collections](#17-role-based-access-su-doctrine-collections)
-18. [Summary](#18-summary)
+18. [Group STI ir UserGroup](#18-group-sti-ir-usergroup)
+19. [Summary](#19-summary)
 
 ---
 
@@ -843,7 +844,11 @@ class UserTransformer extends TransformerAbstract
 
     public function includeGroup(User $user)
     {
-        return $this->item($user->getGroup(), new GroupTransformer());
+        $groups = $user->getAllGroups();
+        if (empty($groups)) {
+            return null;
+        }
+        return $this->collection($groups, new GroupTransformer());
     }
 
     public function includeUserRoles(User $user)
@@ -2218,6 +2223,88 @@ public function getActiveWands(): array
 
 ---
 
+## 16. Group STI ir UserGroup
+
+**Group entity naudoja Single Table Inheritance (STI) kaip ir Role.**
+
+### 16.1 Group STI Hierarchija
+
+| Entity | Table | Discriminator | Description |
+|--------|-------|---------------|-------------|
+| `Group` | `groups` | `group` | Bazinė grupė (Users) |
+| `DeveloperGroup` | `groups` | `developer` | Developerių grupė |
+| `DesignerGroup` | `groups` | `designer` | Designerių grupė |
+| `TesterGroup` | `groups` | `tester` | Testerių grupė |
+
+```php
+#[ORM\Entity]
+#[ORM\Table(name: 'groups')]
+#[ORM\InheritanceType('SINGLE_TABLE')]
+#[ORM\DiscriminatorColumn(name: 'discr', type: 'string')]
+#[ORM\DiscriminatorMap([
+    'group' => Group::class,
+    'developer' => DeveloperGroup::class,
+    'designer' => DesignerGroup::class,
+    'tester' => TesterGroup::class,
+])]
+class Group
+{
+    public const USERS = 'Users';
+}
+```
+
+### 16.2 UserGroup (Many-to-Many)
+
+Vartotojai gali priklausyti kelioms grupėms per `UserGroup` join entity:
+
+```php
+// User -> Group (per UserGroup)
+$user->addGroup($group);
+$user->removeGroup($group);
+$user->hasGroup('Developers');
+$user->getGroups();       // ['Users', 'Developers']
+$user->getAllGroups();    // [Group, DeveloperGroup]
+```
+
+### 16.3 DTO Factory su Group STI
+
+```php
+// src/Dto/DtoFactory.php
+match (true) {
+    $entity instanceof DeveloperGroup => $this->toDeveloperGroupDto($entity),
+    $entity instanceof DesignerGroup => $this->toDesignerGroupDto($entity),
+    $entity instanceof TesterGroup => $this->toTesterGroupDto($entity),
+    $entity instanceof Group => $this->toGroupDto($entity),
+}
+```
+
+Specifiniai tipai tikrinami **prieš** bazinį `Group` (STI order matters).
+
+### 16.4 Privaloma Grupė
+
+`UserForm` reikalauja `group_id` lauko:
+
+```php
+// UserForm.php
+$groupSpec = [
+    'name' => 'group_id',
+    'required' => true,
+];
+```
+
+Fixtures sukuria "Users" grupę kaip pirmąją (`Group::USERS`).
+
+### 16.5 Schema Files
+
+```
+schema/
+├── Group.orm.xml       # STI mapping
+├── UserGroup.orm.xml   # Many-to-many join
+└── User.orm.xml        # UserGroup OneToMany
+```
+
+---
+
 ## 15. Summary
 
 | Layer | Pattern | HTTP | Templates | Dependencies |
@@ -2239,9 +2326,23 @@ public function getActiveWands(): array
 │   ├── Action/        # ADR Actions
 │   ├── Responder/     # JSON:HAL Responders
 │   ├── Transformer/   # League Fractal Transformers
+│   ├── Entity/        # Doctrine Entities (11)
+│   │   ├── User.php
+│   │   ├── Group.php          # STI base
+│   │   ├── DeveloperGroup.php # STI
+│   │   ├── DesignerGroup.php  # STI
+│   │   ├── TesterGroup.php    # STI
+│   │   ├── Role.php           # STI base
+│   │   ├── WizardRole.php     # STI
+│   │   ├── ArchitectRole.php  # STI
+│   │   ├── GameMasterRole.php # STI
+│   │   ├── UserRole.php       # join entity
+│   │   └── UserGroup.php      # join entity
 │   └── Fixture/       # League Factory Muffin
 ├── schema/            # Doctrine XML mappings
 │   ├── User.orm.xml
+│   ├── Group.orm.xml        # STI mapping
+│   ├── UserGroup.orm.xml    # Many-to-many
 │   ├── Role.orm.xml
 │   ├── UserRole.orm.xml
 │   ├── Team.orm.xml
@@ -2249,7 +2350,9 @@ public function getActiveWands(): array
 │   ├── Patronus.orm.xml
 │   ├── InvisibilityCloak.orm.xml
 │   ├── Post.orm.xml
-│   └── Group.orm.xml
+│   ├── DeveloperGroup.orm.xml
+│   ├── DesignerGroup.orm.xml
+│   └── TesterGroup.orm.xml
 ├── templates/         # MVC PHP templates
 │   ├── home.php
 │   ├── users/
@@ -2257,6 +2360,7 @@ public function getActiveWands(): array
 └── tests/
     ├── Action/        # ADR Action Tests
     ├── Unit/          # Unit Tests
+    │   ├── GroupInheritanceTest.php  # STI drill tests
     │   ├── UserRolesCollectionTest.php
     │   ├── DoctrineCollectionAdvancedTest.php
     │   ├── TeamCollectionTest.php

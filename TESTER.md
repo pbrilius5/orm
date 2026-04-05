@@ -34,7 +34,12 @@ This guide provides comprehensive instructions for testing the ADR API endpoints
 | 11 | PUT | `/api/groups/{id}` | Update group (full replacement) |
 | 12 | PATCH | `/api/groups/{id}` | Update group (partial) |
 | 13 | DELETE | `/api/groups/{id}` | Delete group |
-| 14 | GET | `/manifest.json` | PWA manifest |
+| 14 | POST | `/api/groups` | Create DeveloperGroup |
+| 15 | POST | `/api/groups` | Create DesignerGroup |
+| 16 | POST | `/api/groups` | Create TesterGroup |
+| 17 | PATCH | `/api/users/{id}` | Change user group |
+| 18 | PATCH | `/api/users/{id}` | Remove user from groups |
+| 19 | GET | `/manifest.json` | PWA manifest |
 
 ---
 
@@ -109,6 +114,7 @@ curl -X POST http://localhost:8080/api/users \
   -d '{
     "email": "tester@example.com",
     "password": "securePass123",
+    "group_id": "550e8400-e29b-41d4-a716-446655440000",
     "gamification_roles": ["ROLE_WIZARD"]
   }'
 ```
@@ -119,6 +125,7 @@ curl -X POST http://localhost:8080/api/users \
   "data": {
     "id": 2,
     "email": "tester@example.com",
+    "groups": ["Users"],
     "gamification_roles": ["ROLE_WIZARD"],
     "created_at": "2026-04-03T12:00:00+00:00",
     "_links": {
@@ -134,7 +141,7 @@ curl -X POST http://localhost:8080/api/users \
 ```bash
 curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
-  -d '{"email": "not-an-email", "password": "secret123"}'
+  -d '{"email": "not-an-email", "password": "secret123", "group_id": "550e8400-e29b-41d4-a716-446655440000"}'
 ```
 
 ```json
@@ -168,6 +175,11 @@ curl -X POST http://localhost:8080/api/users \
       "status": 422,
       "title": "Validation Error", 
       "detail": "Password is required"
+    },
+    {
+      "status": 422,
+      "title": "Validation Error",
+      "detail": "Group is required"
     }
   ]
 }
@@ -188,6 +200,7 @@ curl -X GET http://localhost:8080/api/users/1
   "data": {
     "id": 1,
     "email": "admin@example.com",
+    "groups": ["Users", "Developers"],
     "gamification_roles": ["ROLE_WIZARD", "ROLE_ARCHITECT"],
     "created_at": "2026-01-01T00:00:00+00:00",
     "_links": {
@@ -210,6 +223,7 @@ curl -X PUT http://localhost:8080/api/users/1 \
   -d '{
     "email": "updated@example.com",
     "password": "newpassword456",
+    "group_id": "550e8400-e29b-41d4-a716-446655440000",
     "gamification_roles": ["ROLE_GAME_MASTER"]
   }'
 ```
@@ -252,14 +266,27 @@ curl -X GET http://localhost:8080/api/groups
 {
   "data": [
     {
-      "id": 1,
-      "name": "Administrators",
-      "description": "Admin group",
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Users",
+      "description": "Default group for all users",
+      "type": "group",
       "created_at": "2026-01-01T00:00:00+00:00",
       "_links": {
-        "self": { "href": "/api/groups/1" },
-        "update": { "href": "/api/groups/1" },
-        "delete": { "href": "/api/groups/1" }
+        "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+        "update": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+        "delete": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" }
+      }
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440000",
+      "name": "Developers",
+      "description": "Development team",
+      "type": "developer",
+      "created_at": "2026-01-01T00:00:00+00:00",
+      "_links": {
+        "self": { "href": "/api/groups/660e8400-e29b-41d4-a716-446655440000" },
+        "update": { "href": "/api/groups/660e8400-e29b-41d4-a716-446655440000" },
+        "delete": { "href": "/api/groups/660e8400-e29b-41d4-a716-446655440000" }
       }
     }
   ],
@@ -268,8 +295,8 @@ curl -X GET http://localhost:8080/api/groups
     "create": { "href": "/api/groups" }
   },
   "meta": {
-    "total": 1,
-    "count": 1
+    "total": 2,
+    "count": 2
   }
 }
 ```
@@ -292,14 +319,15 @@ curl -X POST http://localhost:8080/api/groups \
 ```json
 {
   "data": {
-    "id": 2,
+    "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "Developers",
     "description": "Development team group",
+    "type": "group",
     "created_at": "2026-04-03T12:00:00+00:00",
     "_links": {
-      "self": { "href": "/api/groups/2" },
-      "update": { "href": "/api/groups/2" },
-      "delete": { "href": "/api/groups/2" }
+      "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+      "update": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+      "delete": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" }
     }
   }
 }
@@ -330,21 +358,22 @@ curl -X POST http://localhost:8080/api/groups \
 
 **Request:**
 ```bash
-curl -X GET http://localhost:8080/api/groups/1
+curl -X GET http://localhost:8080/api/groups/550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Response:**
 ```json
 {
   "data": {
-    "id": 1,
-    "name": "Administrators",
-    "description": "Admin group",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Users",
+    "description": "Default group for all users",
+    "type": "group",
     "created_at": "2026-01-01T00:00:00+00:00",
     "_links": {
-      "self": { "href": "/api/groups/1" },
-      "update": { "href": "/api/groups/1" },
-      "delete": { "href": "/api/groups/1" }
+      "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+      "update": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+      "delete": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" }
     }
   }
 }
@@ -381,14 +410,114 @@ curl -X PATCH http://localhost:8080/api/groups/1 \
 
 **Request:**
 ```bash
-curl -X DELETE http://localhost:8080/api/groups/1
+curl -X DELETE http://localhost:8080/api/groups/550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Response:** `204 No Content`
 
 ---
 
-#### 14. PWA Manifest
+### Group STI (Single Table Inheritance)
+
+Groups use STI like Roles. The discriminator determines the group type:
+
+| Type | Discriminator | Class |
+|------|---------------|-------|
+| Base | `group` | `Group` |
+| Developer | `developer` | `DeveloperGroup` |
+| Designer | `designer` | `DesignerGroup` |
+| Tester | `tester` | `TesterGroup` |
+
+#### 14. Create DeveloperGroup
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/api/groups \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Developers",
+    "description": "Development team",
+    "type": "developer"
+  }'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Developers",
+    "description": "Development team",
+    "type": "developer",
+    "created_at": "2026-04-03T12:00:00+00:00",
+    "_links": {
+      "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+      "update": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
+      "delete": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" }
+    }
+  }
+}
+```
+
+#### 15. Create DesignerGroup
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/api/groups \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Designers",
+    "description": "Design team",
+    "type": "designer"
+  }'
+```
+
+#### 16. Create TesterGroup
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/api/groups \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Testers",
+    "description": "QA team",
+    "type": "tester"
+  }'
+```
+
+---
+
+### UserGroup (Many-to-Many)
+
+Users can belong to multiple groups via the `UserGroup` join entity. The `group_id` field is required when creating a user.
+
+#### 17. Assign User to Multiple Groups
+
+**Request (PATCH):**
+```bash
+curl -X PATCH http://localhost:8080/api/users/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_id": "660e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+This replaces the user's current group with the new one. To add to multiple groups, use the MVC form or console command.
+
+#### 18. Remove User from All Groups
+
+**Request (PATCH):**
+```bash
+curl -X PATCH http://localhost:8080/api/users/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_id": ""
+  }'
+```
+
+---
+
+#### 19. PWA Manifest
 
 **Request:**
 ```bash
@@ -463,7 +592,7 @@ Import the following JSON into Postman for quick testing:
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\": \"newuser@example.com\", \"password\": \"password123\", \"gamification_roles\": [\"ROLE_WIZARD\"]}"
+              "raw": "{\"email\": \"newuser@example.com\", \"password\": \"password123\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": [\"ROLE_WIZARD\"]}"
             }
           }
         },
@@ -482,7 +611,7 @@ Import the following JSON into Postman for quick testing:
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\": \"updated@example.com\", \"password\": \"newpass\", \"gamification_roles\": [\"ROLE_ARCHITECT\"]}"
+              "raw": "{\"email\": \"updated@example.com\", \"password\": \"newpass\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": [\"ROLE_ARCHITECT\"]}"
             }
           }
         },
@@ -565,6 +694,42 @@ Import the following JSON into Postman for quick testing:
           "request": {
             "method": "DELETE",
             "url": "{{base_url}}/api/groups/1"
+          }
+        },
+        {
+          "name": "Create DeveloperGroup",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/groups",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Developers\", \"description\": \"Development team\", \"type\": \"developer\"}"
+            }
+          }
+        },
+        {
+          "name": "Create DesignerGroup",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/groups",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Designers\", \"description\": \"Design team\", \"type\": \"designer\"}"
+            }
+          }
+        },
+        {
+          "name": "Create TesterGroup",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/groups",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Testers\", \"description\": \"QA team\", \"type\": \"tester\"}"
+            }
           }
         }
       ]

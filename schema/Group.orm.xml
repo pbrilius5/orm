@@ -3,7 +3,7 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://doctrine-project.org/schemas/orm/doctrine-mapping
                                       https://doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
-    <entity name="App\Entity\Group" table="groups">
+    <entity name="App\Entity\Group" table="groups" inheritance-type="SINGLE_TABLE">
         <id name="id" type="uuid" column="id">
             <generator strategy="CUSTOM"/>
             <custom-id-generator class="Oryx\ORM\SodiumUuidGenerator"/>

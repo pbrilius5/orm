@@ -13,11 +13,15 @@ use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use App\Dto\DtoFactory;
 use App\Entity\User;
 use App\Entity\Group;
+use App\Entity\DeveloperGroup;
+use App\Entity\DesignerGroup;
+use App\Entity\TesterGroup;
 use App\Entity\Role;
 use App\Entity\WizardRole;
 use App\Entity\ArchitectRole;
 use App\Entity\GameMasterRole;
 use App\Entity\UserRole;
+use App\Entity\UserGroup;
 use Symfony\Component\Dotenv\Dotenv;
 
 (new Dotenv())->bootEnv(__DIR__ . '/../.env');
@@ -111,7 +115,11 @@ $dtoFactory = $container->get(DtoFactory::class);
 
 $entityTypes = [
     'User' => User::class,
+    'UserGroup' => UserGroup::class,
     'Group' => Group::class,
+    'DeveloperGroup' => DeveloperGroup::class,
+    'DesignerGroup' => DesignerGroup::class,
+    'TesterGroup' => TesterGroup::class,
     'Role' => Role::class,
     'UserRole' => UserRole::class,
     'WizardRole' => WizardRole::class,
