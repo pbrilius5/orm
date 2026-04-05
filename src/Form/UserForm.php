@@ -11,7 +11,7 @@ use App\Entity\WizardRole;
 
 class UserForm extends BaseForm
 {
-    private array $groups = [];
+    private array $workGroups = [];
 
     protected function initForm(): void
     {
@@ -43,12 +43,12 @@ class UserForm extends BaseForm
         ]);
 
         $this->add([
-            'name' => 'group_id',
+            'name' => 'work_group_id',
             'type' => 'select',
             'options' => [
-                'label' => 'Group',
-                'empty_option' => 'Select a group',
-                'value_options' => $this->getGroupValueOptions(),
+                'label' => 'Work Group',
+                'empty_option' => 'Select your work group',
+                'value_options' => $this->getWorkGroupValueOptions(),
             ],
             'attributes' => [
                 'required' => true,
@@ -59,11 +59,11 @@ class UserForm extends BaseForm
             'name' => 'gamification_roles',
             'type' => 'multicheckbox',
             'options' => [
-                'label' => 'Roles',
+                'label' => 'Roles (gamification)',
                 'value_options' => [
-                    WizardRole::NAME => 'Wizard',
-                    ArchitectRole::NAME => 'Architect',
-                    GameMasterRole::NAME => 'Game Master',
+                    WizardRole::NAME => 'Wizard (rank: 1)',
+                    ArchitectRole::NAME => 'Architect (rank: 2)',
+                    GameMasterRole::NAME => 'Game Master (rank: 3)',
                 ],
             ],
             'attributes' => [
@@ -103,8 +103,8 @@ class UserForm extends BaseForm
             ],
         ];
 
-        $groupSpec = [
-            'name' => 'group_id',
+        $workGroupSpec = [
+            'name' => 'work_group_id',
             'required' => true,
         ];
 
@@ -116,26 +116,28 @@ class UserForm extends BaseForm
         $inputFilter = $inputFilterFactory->createInputFilter([
             $emailSpec,
             $passwordSpec,
-            $groupSpec,
+            $workGroupSpec,
             $rolesSpec,
         ]);
 
         $this->setInputFilter($inputFilter);
     }
 
-    public function setGroups(array $groups): void
+    public function setWorkGroups(array $workGroups): void
     {
-        $this->groups = $groups;
-        if ($this->has('group_id')) {
-            $this->get('group_id')->setValueOptions($this->getGroupValueOptions());
+        $this->workGroups = $workGroups;
+        if ($this->has('work_group_id')) {
+            $this->get('work_group_id')->setValueOptions($this->getWorkGroupValueOptions());
         }
     }
 
-    private function getGroupValueOptions(): array
+    private function getWorkGroupValueOptions(): array
     {
         $options = [];
-        foreach ($this->groups as $group) {
-            $options[$group->getId()->toString()] = $group->getName();
+        $sortedGroups = $this->workGroups;
+        usort($sortedGroups, fn($a, $b) => $b->getRank() <=> $a->getRank());
+        foreach ($sortedGroups as $group) {
+            $options[$group->getId()->toString()] = $group->getName() . ' (rank: ' . $group->getRank() . ')';
         }
         return $options;
     }

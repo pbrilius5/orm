@@ -31,7 +31,8 @@ class DtoFactory
             $entity instanceof User => $this->toUserDto(
                 $entity,
                 $context['userRoles'] ?? [],
-                $context['group'] ?? null
+                $context['workGroup'] ?? null,
+                $context['gamificationRoles'] ?? []
             ),
             $entity instanceof DeveloperGroup => $this->toDeveloperGroupDto(
                 $entity,
@@ -57,9 +58,9 @@ class DtoFactory
         };
     }
 
-    public function toUserDto(User $user, array $userRoles = [], ?Group $group = null): UserApiDTO
+    public function toUserDto(User $user, array $userRoles = [], ?Group $workGroup = null, array $gamificationRoles = []): UserApiDTO
     {
-        return UserApiDTO::fromEntity($user, $userRoles, $group);
+        return UserApiDTO::fromEntity($user, $userRoles, $workGroup, $gamificationRoles);
     }
 
     public function toGroupDto(Group $group, array $users = []): GroupApiDTO

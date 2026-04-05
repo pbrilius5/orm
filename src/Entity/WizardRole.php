@@ -15,4 +15,9 @@ class WizardRole extends Role
     {
         return true;
     }
+
+    public function getRank(): int
+    {
+        return 1;
+    }
 }

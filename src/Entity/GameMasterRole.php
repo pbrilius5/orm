@@ -15,4 +15,9 @@ class GameMasterRole extends Role
     {
         return true;
     }
+
+    public function getRank(): int
+    {
+        return 3;
+    }
 }

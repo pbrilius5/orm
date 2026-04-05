@@ -114,4 +114,14 @@ class Group
     {
         return $this->userGroups;
     }
+
+    public function getRank(): int
+    {
+        return 0;
+    }
+
+    public function isWorkGroup(): bool
+    {
+        return false;
+    }
 }

@@ -81,7 +81,7 @@ class MvcApplication
         $this->router->get('/users/create', function (Request $req) {
             $controller = $this->resolve(\App\Controller\UserController::class);
             $form = new UserForm(null, [], $this->laminasSm);
-            $form->setGroups($controller->getGroups());
+            $form->setWorkGroups($controller->getWorkGroups());
             $form->setAttribute('action', '/users/create');
             return new Response($this->view->renderWithLayout('users/create', [
                 'form' => $form,
@@ -97,7 +97,7 @@ class MvcApplication
         $this->router->post('/users/create', function (Request $req) {
             $controller = $this->resolve(\App\Controller\UserController::class);
             $form = new UserForm(null, [], $this->laminasSm);
-            $form->setGroups($controller->getGroups());
+            $form->setWorkGroups($controller->getWorkGroups());
             $form->setData($req->all());
 
             if ($form->isValid()) {
@@ -149,12 +149,12 @@ class MvcApplication
                 return new Response('User not found', 404);
             }
             $form = new UserForm(null, [], $this->laminasSm);
-            $form->setGroups($controller->getGroups());
+            $form->setWorkGroups($controller->getWorkGroups());
             $form->setAttribute('action', '/users/' . $user->getId() . '/edit');
             $form->setGamificationRoles($user->getGamificationRoles());
-            $userGroups = $user->getAllGroups();
-            if (!empty($userGroups)) {
-                $form->get('group_id')->setValue($userGroups[0]->getId()->toString());
+            $workGroup = $user->getWorkGroup();
+            if ($workGroup) {
+                $form->get('work_group_id')->setValue($workGroup->getId()->toString());
             }
             return new Response($this->view->renderWithLayout('users/edit', [
                 'user' => $user,
@@ -172,7 +172,7 @@ class MvcApplication
         $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
             $controller = $this->resolve(\App\Controller\UserController::class);
             $form = new UserForm(null, [], $this->laminasSm);
-            $form->setGroups($controller->getGroups());
+            $form->setWorkGroups($controller->getWorkGroups());
             $form->setData($req->all());
 
             if ($form->isValid()) {

@@ -160,6 +160,49 @@ class User
             ->toArray());
     }
 
+    public function getWorkGroups(): array
+    {
+        return array_values($this->userGroups
+            ->filter(fn($ug) => $ug->isActive() && $ug->getGroup()->isWorkGroup())
+            ->map(fn($ug) => $ug->getGroup())
+            ->toArray());
+    }
+
+    public function getBaseGroups(): array
+    {
+        return array_values($this->userGroups
+            ->filter(fn($ug) => $ug->isActive() && !$ug->getGroup()->isWorkGroup())
+            ->map(fn($ug) => $ug->getGroup())
+            ->toArray());
+    }
+
+    public function getHighestRankGroup(): ?Group
+    {
+        $groups = $this->getWorkGroups();
+        if (empty($groups)) {
+            return null;
+        }
+
+        usort($groups, fn($a, $b) => $b->getRank() <=> $a->getRank());
+        return $groups[0];
+    }
+
+    public function getWorkGroup(): ?Group
+    {
+        return $this->getHighestRankGroup();
+    }
+
+    public function getHighestRankRole(): ?Role
+    {
+        $roles = $this->getAllRoles();
+        if (empty($roles)) {
+            return null;
+        }
+
+        usort($roles, fn($a, $b) => $b->getRank() <=> $a->getRank());
+        return $roles[0];
+    }
+
     public function getUserRoles(): Collection
     {
         return $this->userRoles;
@@ -244,6 +287,14 @@ class User
     }
 
     public function getGamificationRoles(): array
+    {
+        return array_values($this->userRoles
+            ->filter(fn($ur) => $ur->isActive() && $ur->getRole()->isGamificationRole())
+            ->map(fn($ur) => $ur->getRole())
+            ->toArray());
+    }
+
+    public function getGamificationRoleNames(): array
     {
         return array_values($this->userRoles
             ->filter(fn($ur) => $ur->isActive() && $ur->getRole()->isGamificationRole())

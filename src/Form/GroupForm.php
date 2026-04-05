@@ -12,6 +12,22 @@ class GroupForm extends BaseForm
         $this->setAttribute('method', 'post');
 
         $this->add([
+            'name' => 'type',
+            'type' => 'select',
+            'options' => [
+                'label' => 'Work Group Type',
+                'value_options' => [
+                    'developer' => 'Developer (rank: 3)',
+                    'designer' => 'Designer (rank: 2)',
+                    'tester' => 'Tester (rank: 1)',
+                ],
+            ],
+            'attributes' => [
+                'required' => true,
+            ],
+        ]);
+
+        $this->add([
             'name' => 'name',
             'type' => 'text',
             'options' => [
@@ -47,6 +63,14 @@ class GroupForm extends BaseForm
 
         $inputFilterFactory = $this->getFormFactory()->getInputFilterFactory();
 
+        $typeSpec = [
+            'name' => 'type',
+            'required' => true,
+            'validators' => [
+                ['name' => 'InArray', 'options' => ['haystack' => ['developer', 'designer', 'tester']]],
+            ],
+        ];
+
         $nameSpec = [
             'name' => 'name',
             'required' => true,
@@ -62,6 +86,7 @@ class GroupForm extends BaseForm
         ];
 
         $inputFilter = $inputFilterFactory->createInputFilter([
+            $typeSpec,
             $nameSpec,
             $descriptionSpec,
         ]);

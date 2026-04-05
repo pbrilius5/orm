@@ -86,6 +86,11 @@ class Role
         return false;
     }
 
+    public function getRank(): int
+    {
+        return 0;
+    }
+
     public function addUserRole(UserRole $userRole): self
     {
         if (!$this->userRoles->contains($userRole)) {

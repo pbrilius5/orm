@@ -44,7 +44,9 @@ class UpdateUserHandler
             if ($command->groupId) {
                 $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
                 $group = $groupRepo->find($command->groupId);
-                $user->addGroup($group);
+                if ($group && $group->isWorkGroup()) {
+                    $user->addGroup($group);
+                }
             }
         }
 

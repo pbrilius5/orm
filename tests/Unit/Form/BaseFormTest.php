@@ -43,7 +43,7 @@ class BaseFormTest extends TestCase
         $form = new UserForm(null, [], $this->laminasSm);
         $this->assertTrue($form->has('email'));
         $this->assertTrue($form->has('password'));
-        $this->assertTrue($form->has('group_id'));
+        $this->assertTrue($form->has('work_group_id'));
         $this->assertTrue($form->has('gamification_roles'));
         $this->assertTrue($form->has('submit'));
     }
@@ -104,11 +104,11 @@ class BaseFormTest extends TestCase
         $group->setCreatedAt(new \DateTimeImmutable());
 
         $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
-        $form->setGroups([$group]);
+        $form->setWorkGroups([$group]);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
-            'group_id' => $group->getId()->toString(),
+            'work_group_id' => $group->getId()->toString(),
         ]);
         $this->assertTrue($form->isValid());
     }
@@ -119,7 +119,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'not-an-email',
             'password' => 'secret123',
-            'group_id' => 'some-group-id',
+            'work_group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -132,7 +132,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => ' ',
             'password' => 'secret123',
-            'group_id' => 'some-group-id',
+            'work_group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -145,7 +145,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'abc',
-            'group_id' => 'some-group-id',
+            'work_group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -158,7 +158,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'test@example.com',
             'password' => '',
-            'group_id' => 'some-group-id',
+            'work_group_id' => 'some-group-id',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -183,11 +183,11 @@ class BaseFormTest extends TestCase
         $group->setCreatedAt(new \DateTimeImmutable());
 
         $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
-        $form->setGroups([$group]);
+        $form->setWorkGroups([$group]);
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
-            'group_id' => $group->getId()->toString(),
+            'work_group_id' => $group->getId()->toString(),
             'gamification_roles' => ['ROLE_WIZARD', 'ROLE_ARCHITECT'],
         ]);
         $this->assertTrue($form->isValid());

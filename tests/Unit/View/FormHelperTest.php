@@ -130,7 +130,7 @@ class FormHelperTest extends TestCase
     public function testRenderFormNoValidationErrorsOnValidData(): void
     {
         $form = new GroupForm(null, ['skip_csrf' => true], $this->laminasSm);
-        $form->setData(['name' => 'Developers']);
+        $form->setData(['type' => 'developer', 'name' => 'Developers']);
         $form->isValid();
         $html = FormHelper::renderForm($form);
         $this->assertStringNotContainsString('invalid-feedback', $html);

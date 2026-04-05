@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use App\Entity\ArchitectRole;
 use App\Entity\DesignerGroup;
 use App\Entity\DeveloperGroup;
+use App\Entity\GameMasterRole;
 use App\Entity\Group;
+use App\Entity\Role;
 use App\Entity\TesterGroup;
 use App\Entity\User;
 use App\Entity\UserGroup;
+use App\Entity\WizardRole;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
 
@@ -281,5 +285,130 @@ class GroupInheritanceTest extends TestCase
         $this->assertSame($group, $userGroup->getGroup());
         $this->assertSame($grantedAt, $userGroup->getGrantedAt());
         $this->assertSame($expiresAt, $userGroup->getExpiresAt());
+    }
+
+    public function testGroupRankHierarchy(): void
+    {
+        $this->assertSame(0, (new Group())->getRank());
+        $this->assertSame(1, (new TesterGroup())->getRank());
+        $this->assertSame(2, (new DesignerGroup())->getRank());
+        $this->assertSame(3, (new DeveloperGroup())->getRank());
+    }
+
+    public function testGroupIsWorkGroup(): void
+    {
+        $this->assertFalse((new Group())->isWorkGroup());
+        $this->assertTrue((new TesterGroup())->isWorkGroup());
+        $this->assertTrue((new DesignerGroup())->isWorkGroup());
+        $this->assertTrue((new DeveloperGroup())->isWorkGroup());
+    }
+
+    public function testDeveloperIsHighestRank(): void
+    {
+        $developer = new DeveloperGroup();
+        $designer = new DesignerGroup();
+        $tester = new TesterGroup();
+        $users = new Group();
+
+        $this->assertTrue($developer->getRank() > $designer->getRank());
+        $this->assertTrue($designer->getRank() > $tester->getRank());
+        $this->assertTrue($tester->getRank() > $users->getRank());
+    }
+
+    public function testUserGetWorkGroups(): void
+    {
+        $user = new User();
+        $user->setEmail('test@test.com');
+        $user->setPassword('password');
+
+        $usersGroup = new Group();
+        $usersGroup->setName(Group::USERS);
+        $usersGroup->setCreatedAt(new \DateTimeImmutable());
+
+        $devGroup = new DeveloperGroup();
+        $devGroup->setName('Developers');
+        $devGroup->setCreatedAt(new \DateTimeImmutable());
+
+        $user->addGroup($usersGroup);
+        $user->addGroup($devGroup);
+
+        $workGroups = $user->getWorkGroups();
+        $baseGroups = $user->getBaseGroups();
+
+        $this->assertCount(1, $workGroups);
+        $this->assertInstanceOf(DeveloperGroup::class, $workGroups[0]);
+        $this->assertCount(1, $baseGroups);
+        $this->assertInstanceOf(Group::class, $baseGroups[0]);
+    }
+
+    public function testUserGetHighestRankGroup(): void
+    {
+        $user = new User();
+        $user->setEmail('test@test.com');
+        $user->setPassword('password');
+
+        $usersGroup = new Group();
+        $usersGroup->setName(Group::USERS);
+        $usersGroup->setCreatedAt(new \DateTimeImmutable());
+
+        $testerGroup = new TesterGroup();
+        $testerGroup->setName('Testers');
+        $testerGroup->setCreatedAt(new \DateTimeImmutable());
+
+        $devGroup = new DeveloperGroup();
+        $devGroup->setName('Developers');
+        $devGroup->setCreatedAt(new \DateTimeImmutable());
+
+        $user->addGroup($usersGroup);
+        $user->addGroup($testerGroup);
+        $user->addGroup($devGroup);
+
+        $highest = $user->getHighestRankGroup();
+        $this->assertInstanceOf(DeveloperGroup::class, $highest);
+        $this->assertSame('Developers', $highest->getName());
+    }
+
+    public function testUserGetHighestRankRole(): void
+    {
+        $user = new User();
+        $user->setEmail('test@test.com');
+        $user->setPassword('password');
+
+        $wizardRole = new WizardRole();
+        $wizardRole->setName(WizardRole::NAME);
+
+        $architectRole = new ArchitectRole();
+        $architectRole->setName(ArchitectRole::NAME);
+
+        $gameMasterRole = new GameMasterRole();
+        $gameMasterRole->setName(GameMasterRole::NAME);
+
+        $user->addRole($wizardRole);
+        $user->addRole($architectRole);
+        $user->addRole($gameMasterRole);
+
+        $highest = $user->getHighestRankRole();
+        $this->assertInstanceOf(GameMasterRole::class, $highest);
+        $this->assertSame(GameMasterRole::NAME, $highest->getName());
+    }
+
+    public function testRoleRankHierarchy(): void
+    {
+        $this->assertSame(0, (new Role())->getRank());
+        $this->assertSame(1, (new WizardRole())->getRank());
+        $this->assertSame(2, (new ArchitectRole())->getRank());
+        $this->assertSame(3, (new GameMasterRole())->getRank());
+    }
+
+    public function testGameMasterIsHighestRankRole(): void
+    {
+        $gameMaster = new GameMasterRole();
+        $architect = new ArchitectRole();
+        $wizard = new WizardRole();
+        $base = new Role();
+
+        $this->assertTrue($gameMaster->getRank() > $architect->getRank());
+        $this->assertTrue($architect->getRank() > $wizard->getRank());
+        $this->assertTrue($wizard->getRank() > $base->getRank());
     }
 }

@@ -15,4 +15,9 @@ class ArchitectRole extends Role
     {
         return true;
     }
+
+    public function getRank(): int
+    {
+        return 2;
+    }
 }

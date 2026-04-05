@@ -36,7 +36,7 @@ class CreateUserHandler
         if ($command->groupId) {
             $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
             $group = $groupRepo->find($command->groupId);
-            if ($group) {
+            if ($group && $group->isWorkGroup()) {
                 $user->addGroup($group);
             }
         }

@@ -51,11 +51,22 @@ class UserController
         return $this->groupRepository->findAll();
     }
 
+    public function getWorkGroups(): array
+    {
+        return array_values(array_filter(
+            $this->groupRepository->findAll(),
+            fn($g) => $g->isWorkGroup()
+        ));
+    }
+
     public function index(): array
     {
         $users = $this->repository->findAll();
         return ['users' => array_map(
-            fn($user) => $this->dtoFactory->create($user),
+            fn($user) => $this->dtoFactory->create($user, [
+                'workGroup' => $user->getWorkGroup(),
+                'gamificationRoles' => $user->getGamificationRoles(),
+            ]),
             $users
         )];
     }
@@ -79,7 +90,7 @@ class UserController
         $command = new CreateUserCommand(
             email: $data['email'],
             password: $data['password'] ?? '',
-            groupId: $data['group_id'] ?? null,
+            groupId: $data['work_group_id'] ?? null,
             roles: $data['gamification_roles'] ?? []
         );
 
@@ -92,7 +103,7 @@ class UserController
             id: $id,
             email: $data['email'] ?? '',
             password: $data['password'] ?? '',
-            groupId: $data['group_id'] ?? null,
+            groupId: $data['work_group_id'] ?? null,
             roles: $data['gamification_roles'] ?? []
         );
 

@@ -55,7 +55,27 @@ class GroupFormTest extends TestCase
     public function testGroupFormElementCount(): void
     {
         $form = new GroupForm(null, [], $this->laminasSm);
-        $this->assertCount(4, $form->getElements());
+        $this->assertCount(5, $form->getElements());
+    }
+
+    public function testGroupFormHasTypeField(): void
+    {
+        $form = new GroupForm(null, [], $this->laminasSm);
+        $this->assertTrue($form->has('type'));
+        $type = $form->get('type');
+        $this->assertSame('select', $type->getAttribute('type'));
+        $this->assertTrue($type->getAttribute('required'));
+    }
+
+    public function testGroupFormTypeOptions(): void
+    {
+        $form = new GroupForm(null, [], $this->laminasSm);
+        $type = $form->get('type');
+        $options = $type->getOption('value_options');
+        $this->assertArrayHasKey('developer', $options);
+        $this->assertArrayHasKey('designer', $options);
+        $this->assertArrayHasKey('tester', $options);
+        $this->assertCount(3, $options);
     }
 
     public function testGroupNameElementAttributes(): void
@@ -88,6 +108,7 @@ class GroupFormTest extends TestCase
     {
         $form = $this->createForm();
         $form->setData([
+            'type' => 'developer',
             'name' => 'Developers',
             'description' => 'Development team',
         ]);
@@ -98,6 +119,7 @@ class GroupFormTest extends TestCase
     {
         $form = $this->createForm();
         $form->setData([
+            'type' => 'tester',
             'name' => 'Testers',
         ]);
         $this->assertTrue($form->isValid());
@@ -147,6 +169,7 @@ class GroupFormTest extends TestCase
     {
         $form = $this->createForm();
         $form->setData([
+            'type' => 'designer',
             'name' => 'AB',
         ]);
         $this->assertTrue($form->isValid());
@@ -156,6 +179,7 @@ class GroupFormTest extends TestCase
     {
         $form = $this->createForm();
         $form->setData([
+            'type' => 'developer',
             'name' => str_repeat('A', 255),
         ]);
         $this->assertTrue($form->isValid());
@@ -176,6 +200,7 @@ class GroupFormTest extends TestCase
     {
         $form = $this->createForm();
         $form->setData([
+            'type' => 'developer',
             'name' => 'Developers',
             'description' => 'A team of developers working on the project',
         ]);
@@ -186,6 +211,7 @@ class GroupFormTest extends TestCase
     {
         $form = $this->createForm();
         $form->setData([
+            'type' => 'developer',
             'name' => 'Developers',
             'description' => '',
         ]);

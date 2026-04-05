@@ -4,23 +4,29 @@ declare(strict_types=1);
 
 namespace App\DTO;
 
+use App\Entity\User;
+
 class UserApiDTO
 {
     public function __construct(
         public readonly string $id,
         public readonly string $email,
-        public readonly array $roles,
-        public readonly ?string $groupId,
-        public readonly ?string $groupName,
+        public readonly ?string $workGroupId,
+        public readonly ?string $workGroupName,
+        public readonly int $workGroupRank,
+        public readonly array $gamificationRoles,
+        public readonly ?string $highestRankRole,
+        public readonly int $highestRankRoleValue,
         public readonly array $userRoles,
         public readonly \DateTimeInterface $createdAt,
         public readonly ?\DateTimeInterface $updatedAt,
     ) {}
 
     public static function fromEntity(
-        \App\Entity\User $user,
+        User $user,
         array $userRoles = [],
-        ?\App\Entity\Group $group = null
+        ?\App\Entity\Group $workGroup = null,
+        array $gamificationRoles = []
     ): self {
         $roles = [];
         foreach ($userRoles as $ur) {
@@ -29,13 +35,27 @@ class UserApiDTO
             }
         }
 
+        $highestRole = null;
+        $highestRank = 0;
+        $gamificationRoleNames = [];
+        foreach ($gamificationRoles as $role) {
+            $gamificationRoleNames[] = $role->getName();
+            if ($role->getRank() > $highestRank) {
+                $highestRank = $role->getRank();
+                $highestRole = $role->getName();
+            }
+        }
+
         return new self(
             id: $user->getId()?->toString() ?? '',
             email: $user->getEmail(),
-            roles: $roles,
-            groupId: $group?->getId()?->toString(),
-            groupName: $group?->getName(),
-            userRoles: $userRoles,
+            workGroupId: $workGroup?->getId()?->toString(),
+            workGroupName: $workGroup?->getName(),
+            workGroupRank: $workGroup?->getRank() ?? 0,
+            gamificationRoles: $gamificationRoleNames,
+            highestRankRole: $highestRole,
+            highestRankRoleValue: $highestRank,
+            userRoles: $roles,
             createdAt: $user->getCreatedAt(),
             updatedAt: $user->getUpdatedAt(),
         );
