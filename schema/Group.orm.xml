@@ -20,6 +20,6 @@
             <discriminator-mapping value="tester" class="App\Entity\TesterGroup"/>
         </discriminator-map>
         
-        <one-to-many target-entity="App\Entity\UserGroup" field="userGroups" mapped-by="group" cascade="persist" orphan-removal="true"/>
+        <one-to-many target-entity="App\Entity\UserGroup" field="userGroups" mapped-by="group" orphan-removal="true"/>
     </entity>
 </doctrine-mapping>

@@ -36,19 +36,23 @@ class DtoFactory
             ),
             $entity instanceof DeveloperGroup => $this->toDeveloperGroupDto(
                 $entity,
-                $context['users'] ?? []
+                $context['users'] ?? [],
+                $context['gamificationRoles'] ?? []
             ),
             $entity instanceof DesignerGroup => $this->toDesignerGroupDto(
                 $entity,
-                $context['users'] ?? []
+                $context['users'] ?? [],
+                $context['gamificationRoles'] ?? []
             ),
             $entity instanceof TesterGroup => $this->toTesterGroupDto(
                 $entity,
-                $context['users'] ?? []
+                $context['users'] ?? [],
+                $context['gamificationRoles'] ?? []
             ),
             $entity instanceof Group => $this->toGroupDto(
                 $entity,
-                $context['users'] ?? []
+                $context['users'] ?? [],
+                $context['gamificationRoles'] ?? []
             ),
             $entity instanceof WizardRole => $this->toWizardRoleDto($entity),
             $entity instanceof ArchitectRole => $this->toArchitectRoleDto($entity),
@@ -63,24 +67,24 @@ class DtoFactory
         return UserApiDTO::fromEntity($user, $userRoles, $workGroup, $gamificationRoles);
     }
 
-    public function toGroupDto(Group $group, array $users = []): GroupApiDTO
+    public function toGroupDto(Group $group, array $users = [], array $gamificationRoles = []): GroupApiDTO
     {
-        return GroupApiDTO::fromEntity($group, $users);
+        return GroupApiDTO::fromEntity($group, $users, $gamificationRoles);
     }
 
-    public function toDeveloperGroupDto(DeveloperGroup $group, array $users = []): DeveloperGroupApiDTO
+    public function toDeveloperGroupDto(DeveloperGroup $group, array $users = [], array $gamificationRoles = []): DeveloperGroupApiDTO
     {
-        return DeveloperGroupApiDTO::fromEntity($group, $users);
+        return DeveloperGroupApiDTO::fromEntity($group, $users, $gamificationRoles);
     }
 
-    public function toDesignerGroupDto(DesignerGroup $group, array $users = []): DesignerGroupApiDTO
+    public function toDesignerGroupDto(DesignerGroup $group, array $users = [], array $gamificationRoles = []): DesignerGroupApiDTO
     {
-        return DesignerGroupApiDTO::fromEntity($group, $users);
+        return DesignerGroupApiDTO::fromEntity($group, $users, $gamificationRoles);
     }
 
-    public function toTesterGroupDto(TesterGroup $group, array $users = []): TesterGroupApiDTO
+    public function toTesterGroupDto(TesterGroup $group, array $users = [], array $gamificationRoles = []): TesterGroupApiDTO
     {
-        return TesterGroupApiDTO::fromEntity($group, $users);
+        return TesterGroupApiDTO::fromEntity($group, $users, $gamificationRoles);
     }
 
     public function toRoleDto(Role $role): RoleApiDTO

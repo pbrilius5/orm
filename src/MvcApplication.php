@@ -48,6 +48,10 @@ class MvcApplication
 
     private function resolve(string $class): object
     {
+        if (str_ends_with($class, 'Controller')) {
+            return $this->leagueContainer->get($class);
+        }
+
         if ($this->phpDiContainer->has($class)) {
             return $this->phpDiContainer->get($class);
         }

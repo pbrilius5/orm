@@ -18,9 +18,35 @@ class UserApiDTO
         public readonly ?string $highestRankRole,
         public readonly int $highestRankRoleValue,
         public readonly array $userRoles,
+        public readonly array $groups,
         public readonly \DateTimeInterface $createdAt,
         public readonly ?\DateTimeInterface $updatedAt,
     ) {}
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getEmail(): string
+    {
+        return $this->email;
+    }
+
+    public function getGamificationRoles(): array
+    {
+        return $this->gamificationRoles;
+    }
+
+    public function getCreatedAt(): \DateTimeInterface
+    {
+        return $this->createdAt;
+    }
+
+    public function getGroups(): array
+    {
+        return $this->groups;
+    }
 
     public static function fromEntity(
         User $user,
@@ -56,6 +82,7 @@ class UserApiDTO
             highestRankRole: $highestRole,
             highestRankRoleValue: $highestRank,
             userRoles: $roles,
+            groups: array_map(fn($g) => $g->getName(), $user->getAllGroups()),
             createdAt: $user->getCreatedAt(),
             updatedAt: $user->getUpdatedAt(),
         );

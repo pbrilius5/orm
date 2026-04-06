@@ -38,7 +38,7 @@ class Group
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeInterface $createdAt;
 
-    #[ORM\OneToMany(targetEntity: UserGroup::class, mappedBy: 'group', cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: UserGroup::class, mappedBy: 'group', orphanRemoval: true)]
     private Collection $userGroups;
 
     public function __construct()

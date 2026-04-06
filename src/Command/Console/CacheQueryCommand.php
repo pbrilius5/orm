@@ -16,6 +16,11 @@ class CacheQueryCommand extends Command
     protected static $defaultName = 'oryx:cache:query';
     protected static $defaultDescription = 'Query Doctrine cache keys and values';
 
+    public function __construct()
+    {
+        parent::__construct('oryx:cache:query');
+    }
+
     protected function configure(): void
     {
         $this->addArgument('key', InputArgument::OPTIONAL, 'Cache key to retrieve');

@@ -6,6 +6,7 @@ namespace App\Container;
 
 use App\Controller\GroupController;
 use App\Controller\UserController;
+use App\Dto\DtoFactory;
 use App\Http\Router;
 use App\View\ViewRenderer;
 use App\Logger\LoggerFactory;
@@ -96,8 +97,8 @@ class MvcServiceProvider extends AbstractServiceProvider
         $container->add(Router::class);
         $container->add(ViewRenderer::class);
 
-        $container->add(UserController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class);
-        $container->add(GroupController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class);
+        $container->add(UserController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class)->addArgument(DtoFactory::class);
+        $container->add(GroupController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class)->addArgument(DtoFactory::class);
 
         $container->addShared(ServiceManager::class, function (): ServiceManager {
             return LaminasServiceManagerFactory::create();

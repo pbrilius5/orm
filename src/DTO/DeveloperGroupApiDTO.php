@@ -6,22 +6,12 @@ namespace App\DTO;
 
 use App\Entity\DeveloperGroup;
 
-class DeveloperGroupApiDTO
+class DeveloperGroupApiDTO extends GroupApiDTO
 {
-    public function __construct(
-        public readonly string $id,
-        public readonly string $name,
-        public readonly ?string $description,
-        public readonly string $discriminator,
-        public readonly int $rank,
-        public readonly bool $isWorkGroup,
-        public readonly array $users,
-        public readonly \DateTimeInterface $createdAt,
-    ) {}
-
     public static function fromEntity(
         DeveloperGroup $group,
-        array $users = []
+        array $users = [],
+        array $gamificationRoles = []
     ): self {
         return new self(
             id: $group->getId()?->toString() ?? '',
@@ -31,6 +21,7 @@ class DeveloperGroupApiDTO
             rank: $group->getRank(),
             isWorkGroup: $group->isWorkGroup(),
             users: $users,
+            gamificationRoles: $gamificationRoles,
             createdAt: $group->getCreatedAt(),
         );
     }

@@ -9,8 +9,8 @@ use App\EnvironmentConfig;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
-use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
+use Oryx\ORM\Mapping\Driver\XmlThenAttributeDriver;
 use Psr\Log\LoggerInterface;
 
 class CreateDatabaseHandler
@@ -33,10 +33,8 @@ class CreateDatabaseHandler
         $connection = DriverManager::getConnection($connectionParams);
 
         $doctrineConfig = new Configuration();
-        $xmlDriver = new SimplifiedXmlDriver([
-            $projectRoot . '/schema' => 'App\Entity',
-        ], '.orm.xml');
-        $doctrineConfig->setMetadataDriverImpl($xmlDriver);
+        $driver = new XmlThenAttributeDriver($projectRoot . '/schema', $projectRoot . '/src/Entity');
+        $doctrineConfig->setMetadataDriverImpl($driver);
         $doctrineConfig->setAutoGenerateProxyClasses(ProxyFactory::AUTOGENERATE_NEVER);
         $doctrineConfig->setProxyDir(sys_get_temp_dir());
         $doctrineConfig->setProxyNamespace('Oryx\ORM\Proxy');

@@ -19,6 +19,11 @@ class DatabaseCreateCommand extends Command
     protected static $defaultName = 'oryx:db:create';
     protected static $defaultDescription = 'Create SQLite database and schema';
 
+    public function __construct()
+    {
+        parent::__construct('oryx:db:create');
+    }
+
     protected function configure(): void
     {
         $this
@@ -78,10 +83,8 @@ class DatabaseCreateCommand extends Command
         $io->text(sprintf('Created SQLite database: <info>%s</info>', $dbPath));
 
         $config = new \Doctrine\ORM\Configuration();
-        $xmlDriver = new \Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver([
-            $projectRoot . '/schema' => 'App\Entity',
-        ], '.orm.xml');
-        $config->setMetadataDriverImpl($xmlDriver);
+        $driver = new \Oryx\ORM\Mapping\Driver\XmlThenAttributeDriver($projectRoot . '/schema', $projectRoot . '/src/Entity');
+        $config->setMetadataDriverImpl($driver);
         $config->setAutoGenerateProxyClasses(\Doctrine\ORM\Proxy\ProxyFactory::AUTOGENERATE_NEVER);
         $config->setProxyDir(sys_get_temp_dir());
         $config->setProxyNamespace('Oryx\ORM\Proxy');

@@ -15,6 +15,11 @@ class ProxyClearCommand extends Command
     protected static $defaultName = 'orm:proxy:clear';
     protected static $defaultDescription = 'Clear all Doctrine proxy classes';
 
+    public function __construct()
+    {
+        parent::__construct('orm:proxy:clear');
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);

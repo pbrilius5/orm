@@ -15,6 +15,11 @@ class CacheStatusCommand extends Command
     protected static $defaultName = 'oryx:cache:status';
     protected static $defaultDescription = 'Show Doctrine cache status and statistics';
 
+    public function __construct()
+    {
+        parent::__construct('oryx:cache:status');
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $em = \Oryx\ORM\EntityManagerFactory::getInstance();

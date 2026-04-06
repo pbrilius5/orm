@@ -16,12 +16,14 @@ class GroupApiDTO
         public readonly int $rank,
         public readonly bool $isWorkGroup,
         public readonly array $users,
+        public readonly array $gamificationRoles = [],
         public readonly \DateTimeInterface $createdAt,
     ) {}
 
     public static function fromEntity(
         Group $group,
-        array $users = []
+        array $users = [],
+        array $gamificationRoles = []
     ): self {
         return new self(
             id: $group->getId()?->toString() ?? '',
@@ -31,6 +33,7 @@ class GroupApiDTO
             rank: $group->getRank(),
             isWorkGroup: $group->isWorkGroup(),
             users: $users,
+            gamificationRoles: $gamificationRoles,
             createdAt: $group->getCreatedAt(),
         );
     }

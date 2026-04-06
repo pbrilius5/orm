@@ -9,7 +9,7 @@ use App\Entity\User;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
-use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
+use Oryx\ORM\Mapping\Driver\XmlThenAttributeDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,6 +21,11 @@ class ProxyGenerateCommand extends Command
 {
     protected static $defaultName = 'orm:proxy:generate';
     protected static $defaultDescription = 'Generate Doctrine proxy classes for production';
+
+    public function __construct()
+    {
+        parent::__construct('orm:proxy:generate');
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -40,10 +45,8 @@ class ProxyGenerateCommand extends Command
         }
 
         $config = new Configuration();
-        $xmlDriver = new SimplifiedXmlDriver([
-            $projectRoot . '/schema' => 'App\Entity',
-        ], '.orm.xml');
-        $config->setMetadataDriverImpl($xmlDriver);
+        $driver = new XmlThenAttributeDriver($projectRoot . '/schema', $projectRoot . '/src/Entity');
+        $config->setMetadataDriverImpl($driver);
         $config->setAutoGenerateProxyClasses(ProxyFactory::AUTOGENERATE_NEVER);
         $config->setProxyDir($proxyDir);
         $config->setProxyNamespace($proxyNamespace);

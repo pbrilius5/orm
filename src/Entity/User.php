@@ -127,7 +127,6 @@ class User
         $userGroup->setUser($this);
         $userGroup->setGroup($group);
         $this->userGroups->add($userGroup);
-        $group->addUserGroup($userGroup);
 
         return $this;
     }
@@ -304,6 +303,6 @@ class User
 
     public function hasGamificationRole(string $roleName): bool
     {
-        return in_array($roleName, $this->getGamificationRoles(), true);
+        return in_array($roleName, $this->getGamificationRoleNames(), true);
     }
 }

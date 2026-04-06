@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace App\Console\Command;
 
 use App\Entity\ArchitectRole;
+use App\Entity\DeveloperGroup;
+use App\Entity\DesignerGroup;
 use App\Entity\GameMasterRole;
 use App\Entity\Group;
 use App\Entity\Role;
+use App\Entity\TesterGroup;
 use App\Entity\User;
+use App\Entity\UserGroup;
 use App\Entity\UserRole;
 use App\Entity\WizardRole;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
-use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
+use Oryx\ORM\Mapping\Driver\XmlThenAttributeDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
 use Faker\Factory;
 use Faker\Generator;
@@ -36,7 +40,7 @@ class FixturesLoadCommand extends Command
 
     public function __construct()
     {
-        parent::__construct();
+        parent::__construct('oryx:fixtures:load');
         $this->faker = Factory::create();
     }
 
@@ -48,7 +52,7 @@ class FixturesLoadCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Number of groups to generate',
-                3
+                4
             )
             ->addOption(
                 'users',
@@ -106,10 +110,8 @@ class FixturesLoadCommand extends Command
         }
 
         $doctrineConfig = new Configuration();
-        $xmlDriver = new SimplifiedXmlDriver([
-            $projectRoot . '/schema' => 'App\Entity',
-        ], '.orm.xml');
-        $doctrineConfig->setMetadataDriverImpl($xmlDriver);
+        $driver = new XmlThenAttributeDriver($projectRoot . '/schema', $projectRoot . '/src/Entity');
+        $doctrineConfig->setMetadataDriverImpl($driver);
         $doctrineConfig->setAutoGenerateProxyClasses(ProxyFactory::AUTOGENERATE_NEVER);
         $doctrineConfig->setProxyDir(sys_get_temp_dir());
         $doctrineConfig->setProxyNamespace('Oryx\ORM\Proxy');
@@ -141,7 +143,7 @@ class FixturesLoadCommand extends Command
         $groups = $this->createGroups($io, $em, $groupCount);
         $roles = $this->createRoles($io, $em);
         $users = $this->createUsers($io, $em, $groups, $userCount);
-        $this->createUserRoles($io, $em, $users, $roles);
+        $this->createUserRoles($io, $em, $users, $roles, $groups);
 
         $em->flush();
 
@@ -158,15 +160,22 @@ class FixturesLoadCommand extends Command
     private function createGroups(SymfonyStyle $io, $em, int $count): array
     {
         $groups = [];
+        $groupClasses = [
+            Group::class,
+            DeveloperGroup::class,
+            DesignerGroup::class,
+            TesterGroup::class,
+        ];
         $groupNames = [Group::USERS, 'Developers', 'Designers', 'Testers'];
 
         for ($i = 0; $i < $count; $i++) {
-            $group = new Group();
+            $groupClass = $groupClasses[$i] ?? Group::class;
+            $group = new $groupClass();
             $group->setName($groupNames[$i] ?? 'Group ' . ($i + 1));
             $group->setCreatedAt(new \DateTimeImmutable());
             $em->persist($group);
             $groups[] = $group;
-            $io->text(sprintf('  Group: <info>%s</info>', $group->getName()));
+            $io->text(sprintf('  Group: <info>%s</info> (%s)', $group->getName(), (new \ReflectionClass($group))->getShortName()));
         }
 
         return $groups;
@@ -216,17 +225,44 @@ class FixturesLoadCommand extends Command
             $user->setEmail($this->faker->unique()->safeEmail);
             $user->setPassword(password_hash($this->faker->password, PASSWORD_BCRYPT));
             $user->setCreatedAt(new \DateTimeImmutable());
-            $user->addGroup($this->faker->randomElement($groups));
             $em->persist($user);
             $users[] = $user;
             $io->text(sprintf('  User: <info>%s</info>', $user->getEmail()));
         }
 
+        $em->flush();
+
+        foreach ($users as $user) {
+            $userGroup = new UserGroup();
+            $userGroup->setUser($user);
+            $userGroup->setGroup($this->faker->randomElement($groups));
+            $em->persist($userGroup);
+        }
+
         return $users;
     }
 
-    private function createUserRoles(SymfonyStyle $io, $em, array $users, array $roles): void
+    private function createUserRoles(SymfonyStyle $io, $em, array $users, array $roles, array $groups): void
     {
+        $groupGamificationMap = [];
+        foreach ($groups as $group) {
+            $groupClass = get_class($group);
+            if (!isset($groupGamificationMap[$groupClass])) {
+                $groupGamificationMap[$groupClass] = [];
+            }
+            switch ($groupClass) {
+                case TesterGroup::class:
+                    $groupGamificationMap[$groupClass][] = $roles[WizardRole::NAME];
+                    break;
+                case DesignerGroup::class:
+                    $groupGamificationMap[$groupClass][] = $roles[ArchitectRole::NAME];
+                    break;
+                case DeveloperGroup::class:
+                    $groupGamificationMap[$groupClass][] = $roles[GameMasterRole::NAME];
+                    break;
+            }
+        }
+
         foreach ($users as $user) {
             $baseRole = $roles[Role::USER];
             $userRole = new UserRole();
@@ -235,29 +271,53 @@ class FixturesLoadCommand extends Command
             $userRole->setGrantedAt(new \DateTimeImmutable());
             $em->persist($userRole);
 
-            $wizardRole = $roles[WizardRole::NAME];
-            $userRole = new UserRole();
-            $userRole->setUser($user);
-            $userRole->setRole($wizardRole);
-            $userRole->setGrantedAt(new \DateTimeImmutable());
-            $em->persist($userRole);
+            $assignedRoles = [$baseRole];
 
-            if ($this->faker->boolean(30)) {
+            foreach ($user->getUserGroups() as $userGroup) {
+                $group = $userGroup->getGroup();
+                $groupClass = get_class($group);
+                if (isset($groupGamificationMap[$groupClass])) {
+                    foreach ($groupGamificationMap[$groupClass] as $groupRole) {
+                        if (!in_array($groupRole, $assignedRoles, true)) {
+                            $userRole = new UserRole();
+                            $userRole->setUser($user);
+                            $userRole->setRole($groupRole);
+                            $userRole->setGrantedAt(new \DateTimeImmutable());
+                            $em->persist($userRole);
+                            $assignedRoles[] = $groupRole;
+                        }
+                    }
+                }
+            }
+
+            if (!in_array($roles[WizardRole::NAME], $assignedRoles, true)) {
+                $wizardRole = $roles[WizardRole::NAME];
+                $userRole = new UserRole();
+                $userRole->setUser($user);
+                $userRole->setRole($wizardRole);
+                $userRole->setGrantedAt(new \DateTimeImmutable());
+                $em->persist($userRole);
+                $assignedRoles[] = $wizardRole;
+            }
+
+            if (!in_array($roles[ArchitectRole::NAME], $assignedRoles, true) && $this->faker->boolean(30)) {
                 $architectRole = $roles[ArchitectRole::NAME];
                 $userRole = new UserRole();
                 $userRole->setUser($user);
                 $userRole->setRole($architectRole);
                 $userRole->setGrantedAt(new \DateTimeImmutable());
                 $em->persist($userRole);
+                $assignedRoles[] = $architectRole;
             }
 
-            if ($this->faker->boolean(10)) {
+            if (!in_array($roles[GameMasterRole::NAME], $assignedRoles, true) && $this->faker->boolean(10)) {
                 $gameMasterRole = $roles[GameMasterRole::NAME];
                 $userRole = new UserRole();
                 $userRole->setUser($user);
                 $userRole->setRole($gameMasterRole);
                 $userRole->setGrantedAt(new \DateTimeImmutable());
                 $em->persist($userRole);
+                $assignedRoles[] = $gameMasterRole;
             }
         }
     }

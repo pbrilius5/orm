@@ -7,7 +7,7 @@ namespace App\Console\Command;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\EntityManager as DoctrineEntityManager;
-use Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver;
+use Oryx\ORM\Mapping\Driver\XmlThenAttributeDriver;
 use Doctrine\ORM\Proxy\ProxyFactory;
 use Doctrine\ORM\Tools\EntityGenerator;
 use Symfony\Component\Console\Command\Command;
@@ -32,7 +32,7 @@ class GenerateEntitiesCommand extends Command
     {
         $this->outputDir = $outputDir ?? (getcwd() . '/src/Entity');
 
-        parent::__construct();
+        parent::__construct('orm:generate:entities');
     }
 
     protected function configure(): void
@@ -88,10 +88,8 @@ class GenerateEntitiesCommand extends Command
 
         $doctrineConfig = new Configuration();
 
-        $xmlDriver = new SimplifiedXmlDriver([
-            $projectRoot . '/schema' => 'App\Entity',
-        ], '.orm.xml');
-        $doctrineConfig->setMetadataDriverImpl($xmlDriver);
+        $driver = new XmlThenAttributeDriver($projectRoot . '/schema', $projectRoot . '/src/Entity');
+        $doctrineConfig->setMetadataDriverImpl($driver);
 
         $doctrineConfig->setAutoGenerateProxyClasses(
             ProxyFactory::AUTOGENERATE_NEVER

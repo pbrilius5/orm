@@ -15,6 +15,11 @@ class CacheClearCommand extends Command
     protected static $defaultName = 'oryx:cache:clear';
     protected static $defaultDescription = 'Clear Doctrine cache (metadata and query cache)';
 
+    public function __construct()
+    {
+        parent::__construct('oryx:cache:clear');
+    }
+
     protected function configure(): void
     {
         $this->addOption('force', 'f', InputOption::VALUE_NONE, 'Skip confirmation prompt');
