@@ -1,19 +1,14 @@
 migrations_paths:
     'App\Migrations': './migrations'
 
-storage:
-    table_storage:
-        table_name: 'migration_versions'
-        version_column_name: 'version'
-        version_column_length: 191
-        executed_at_column_name: 'executed_at'
+table_storage:
+    table_name: 'migration_versions'
+    version_column_name: 'version'
+    version_column_length: 191
+    executed_at_column_name: 'executed_at'
 
-organize_migrations: BY_YEAR_AND_MONTH
-
+organize_migrations: 'BY_YEAR_AND_MONTH'
 check_database_platform: true
-
-custom_template: ~
-
+custom_template: null
 all_or_nothing: true
-
 transactional: true

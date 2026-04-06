@@ -22,7 +22,10 @@
 16. [XML Schema-Driven Entity Generation](#16-xml-schema-driven-entity-generation)
 17. [Role-Based Access su Doctrine Collections](#17-role-based-access-su-doctrine-collections)
 18. [Group STI ir UserGroup](#18-group-sti-ir-usergroup)
-19. [Summary](#19-summary)
+19. [Persistent Storage](#19-persistent-storage)
+20. [Flysystem File Cache](#20-flysystem-file-cache)
+21. [Domain Event Bus](#21-domain-event-bus)
+22. [Summary](#22-summary)
 
 ---
 
@@ -2305,7 +2308,655 @@ schema/
 
 ---
 
-## 15. Summary
+## 19. Persistent Storage
+
+**DB-backed singleton registry with in-memory cache layer.**
+
+### 19.1 PersistentSingletonRegistry
+
+```php
+use App\Service\PersistentSingletonRegistry;
+
+$registry = $container->get(PersistentSingletonRegistry::class);
+
+// Store a value (serialized to DB)
+$registry->set('my_service_config', ['timeout' => 30, 'retries' => 3]);
+
+// Retrieve (cached in memory after first DB hit)
+$config = $registry->get('my_service_config');
+
+// Check existence
+if ($registry->has('my_service_config')) {
+    // ...
+}
+
+// Remove
+$registry->remove('my_service_config');
+```
+
+### 19.2 How It Works
+
+```
+┌─────────────────────────────────────────────────┐
+│            PersistentSingletonRegistry           │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  1. Check in-memory $cache array                 │
+│     ↓ (miss)                                     │
+│  2. Query persistent_singleton table by key      │
+│     ↓ (found)                                    │
+│  3. Unserialize value, store in cache            │
+│     ↓                                            │
+│  4. Return value                                 │
+│                                                  │
+│  On set():                                       │
+│  1. Serialize value                              │
+│  2. Upsert to persistent_singleton table         │
+│  3. Update in-memory cache                       │
+│                                                  │
+└─────────────────────────────────────────────────┘
+```
+
+### 19.3 Use Cases
+
+| Scenario | Key Pattern | Value |
+|----------|-------------|-------|
+| Service config | `config.service_name` | Array of settings |
+| Feature flags | `flag.feature_name` | Boolean |
+| Rate limit state | `rate_limit.ip_hash` | Counter array |
+| Last processed ID | `cursor.entity_type` | Integer |
+
+### 19.4 Schema
+
+```sql
+CREATE TABLE persistent_singleton (
+    id CHAR(36) PRIMARY KEY,
+    key VARCHAR(255) UNIQUE NOT NULL,
+    value TEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+```
+
+---
+
+## 20. Flysystem File Cache
+
+**Hybrid entity-backed file storage: metadata in DB, files on disk.**
+
+### 20.1 Quick Start
+
+```php
+use App\Service\FlysystemService;
+
+$fileService = $container->get(FlysystemService::class);
+
+// Store file with metadata
+$fileCache = $fileService->store(
+    key: 'user_avatar_123',
+    content: $imageData,
+    expiresAt: new \DateTimeImmutable('+30 days')
+);
+
+// Retrieve
+$content = $fileService->retrieve('user_avatar_123');
+
+// Check existence
+if ($fileService->exists('user_avatar_123')) {
+    // ...
+}
+
+// Invalidate (deletes file + DB record)
+$fileService->invalidate('user_avatar_123');
+
+// Get metadata only
+$metadata = $fileService->getMetadata('user_avatar_123');
+echo $metadata->getSize(); // bytes
+echo $metadata->getHash(); // sha256
+```
+
+### 20.2 Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    FlysystemService                       │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  store(key, content)                                      │
+│    ├── Write file → var/storage/cache/{key}               │
+│    ├── Create/update FileCache entity in DB               │
+│    │   - key, path, hash (sha256), size, expiresAt        │
+│    └── Emit FileCacheStored domain event                  │
+│                                                           │
+│  retrieve(key)                                            │
+│    ├── Find FileCache entity by key                       │
+│    ├── Check expiration → invalidate if expired           │
+│    └── Read file from Flysystem                           │
+│                                                           │
+│  invalidate(key)                                          │
+│    ├── Delete file from Flysystem                         │
+│    ├── Remove FileCache entity from DB                    │
+│    └── Emit FileCacheInvalidated domain event             │
+│                                                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+### 20.3 FileCache Entity
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | UUID | Primary key |
+| `key` | string(255) | Unique cache key |
+| `path` | string(512) | Flysystem path |
+| `hash` | string(64) | SHA-256 checksum |
+| `size` | integer | File size in bytes |
+| `expiresAt` | datetime\|null | Expiration (null = never) |
+| `createdAt` | datetime | Creation timestamp |
+| `updatedAt` | datetime | Last update timestamp |
+
+### 20.4 Storage Location
+
+Files stored in `var/storage/cache/` (gitignored). Default adapter: `LocalFilesystemAdapter`.
+
+```
+var/storage/
+└── cache/
+    ├── user_avatar_123
+    ├── report_2026_04_06
+    └── export_users_csv
+```
+
+### 20.5 Events
+
+| Event | When | Handler |
+|-------|------|---------|
+| `FileCacheStored` | After `store()` | Logs key, path, size |
+| `FileCacheInvalidated` | After `invalidate()` | Logs key, path |
+
+---
+
+## 21. Domain Event Bus
+
+**Doctrine lifecycle → domain events → async handlers.**
+
+### 21.1 How It Works
+
+```
+Doctrine Entity Operation
+         ↓
+┌─────────────────────────────┐
+│  DoctrineEventSubscriber    │
+│  (listens to Doctrine)      │
+│  - postPersist              │
+│  - postUpdate               │
+│  - postRemove               │
+└────────────┬────────────────┘
+             ↓
+┌─────────────────────────────┐
+│    DomainEventEmitter       │
+│  emit()  → sync dispatch    │
+│  emitAsync() → async queue  │
+└────────────┬────────────────┘
+             ↓
+┌─────────────────────────────┐
+│   Symfony EventDispatcher   │
+│   (registered handlers)     │
+└─────────────────────────────┘
+```
+
+### 21.2 Domain Events
+
+| Event | Triggered On | Data |
+|-------|-------------|------|
+| `EntityCreated` | `postPersist` | entityClass, entityId, full entity data |
+| `EntityUpdated` | `postUpdate` | entityClass, entityId, change set |
+| `EntityDeleted` | `postRemove` | entityClass, entityId |
+
+### 21.3 Creating a Handler
+
+```php
+use App\Event\DomainEvent;
+use App\Event\DomainEventHandler;
+use App\Event\EntityCreated;
+
+class UserCreatedHandler implements DomainEventHandler
+{
+    public function handle(DomainEvent $event): void
+    {
+        if (!$event instanceof EntityCreated) {
+            return;
+        }
+
+        if ($event->getEntityClass() !== \App\Entity\User::class) {
+            return;
+        }
+
+        $userId = $event->getEntityId();
+        $data = $event->getData();
+        // Send welcome email, create audit log, etc.
+    }
+}
+```
+
+### 21.4 Registering a Handler
+
+```php
+// In your service provider or bootstrap
+use App\Event\EntityCreated;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+
+$dispatcher->addListener(EntityCreated::class, [new UserCreatedHandler(), 'handle']);
+```
+
+### 21.5 Async Handling
+
+```php
+// DomainEventEmitter supports both sync and async
+$emitter->emit($event);      // Immediate, blocking
+$emitter->emitAsync($event); // Queued for background processing
+
+// Async events prefixed with 'async.' in dispatcher
+$dispatcher->addListener('async.' . EntityCreated::class, [
+    new AsyncUserCreatedHandler(),
+    'handle'
+]);
+```
+
+### 21.6 Event Payload Structure
+
+```php
+// EntityCreated
+[
+    'entityClass' => 'App\\Entity\\User',
+    'entityId' => '550e8400-e29b-41d4-a716-446655440000',
+    'data' => [
+        'email' => 'user@example.com',
+        'createdAt' => '2026-04-06T10:00:00+00:00',
+        // ... other scalar properties
+    ],
+    'occurredOn' => '2026-04-06T10:00:00+00:00',
+]
+
+// EntityUpdated
+[
+    'entityClass' => 'App\\Entity\\User',
+    'entityId' => '550e8400-e29b-41d4-a716-446655440000',
+    'changes' => [
+        'email' => ['old@example.com', 'new@example.com'],
+        'updatedAt' => [null, '2026-04-06T10:00:00+00:00'],
+    ],
+    'occurredOn' => '2026-04-06T10:00:00+00:00',
+]
+```
+
+---
+
+## 22. Async Monolog Worker
+
+**Background processing for async events with failure logging.**
+
+### 22.1 How It Works
+
+```
+DomainEventEmitter::emitAsync(event)
+        ↓
+AsyncEventBus.spawnSubprocess(event)
+        ↓
+exec("php bin/async-event-worker.php <base64_payload>")  // fire-and-forget
+        ↓
+[bin/async-event-worker.php]
+        ├── Bootstrap minimal app (EntityManager, EventDispatcher)
+        ├── Deserialize event from argv[1]
+        ├── Dispatch to 'async.' . event class name
+        └── Log failures to var/log/async_failures.log
+```
+
+### 22.2 Quick Start
+
+```php
+use App\Event\DomainEventEmitter;
+
+// Emit sync (same request)
+$emitter->emit($event);
+
+// Emit async (background process)
+$emitter->emitAsync($event);
+```
+
+### 22.3 Creating an Async Handler
+
+```php
+use App\Event\DomainEvent;
+use App\Event\DomainEventHandler;
+use App\Event\EntityCreated;
+
+class AsyncUserCreatedHandler implements DomainEventHandler
+{
+    public function handle(DomainEvent $event): void
+    {
+        if (!$event instanceof EntityCreated) {
+            return;
+        }
+
+        if ($event->getEntityClass() !== \App\Entity\User::class) {
+            return;
+        }
+
+        // Heavy processing that shouldn't block request:
+        // - Send welcome email (queued)
+        # - Generate thumbnails
+        # - Update search index
+        # - Call external APIs
+    }
+}
+```
+
+### 22.4 Registering Async Handlers
+
+```php
+// In your service provider or bootstrap
+use App\Event\EntityCreated;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+
+// Handler registered for async.* events
+$dispatcher->addListener('async.' . EntityCreated::class, [
+    new AsyncUserCreatedHandler(),
+    'handle'
+]);
+```
+
+### 22.5 Failure Handling
+
+Async event failures are logged to `var/log/async_failures.log` with:
+- Full exception message and traceback
+- Event type and serialized payload
+- Timestamp with UID for correlation
+- The worker exits with code 1 on failure (logged but doesn't block main request)
+
+### 22.6 Log Files
+
+| Log File | Purpose | Level |
+|----------|---------|-------|
+| `var/log/app_{env}.log` | ORM events via ORMEventListener | debug, info |
+| `var/log/async_failures.log` | Failed async events | error |
+
+---
+
+## 23. File Cache Quick Starter
+
+**Get started with the hybrid entity-backed file cache in 60 seconds.**
+
+### 23.1 Installation & Setup
+
+1. **Ensure Flysystem is installed** (already in composer.json):
+   ```bash
+   composer require league/flysystem
+   ```
+
+2. **Create storage directory** (gitignored):
+   ```bash
+   mkdir -p var/storage/cache
+   chmod 755 var/storage/cache
+   ```
+
+3. **Run migrations** to create `file_cache` table:
+   ```bash
+   php bin/console doctrine:migrations:migrate
+   ```
+
+### 23.2 Basic Usage
+
+```php
+use App\Service\FlysystemService;
+
+$fileService = $container->get(FlysystemService::class);
+
+// Store a file with metadata
+$fileCache = $fileService->store(
+    key: 'user_avatar_123',
+    content: $fileContents,
+    expiresAt: new \DateTimeImmutable('+30 days')
+);
+
+// Retrieve file contents
+$contents = $fileService->retrieve('user_avatar_123');
+
+// Check if file exists and is not expired
+if ($fileService->exists('user_avatar_123')) {
+    // File is ready to use
+}
+
+// Get metadata only (doesn't read file)
+$metadata = $fileService->getMetadata('user_avatar_123');
+echo "Size: {$metadata->getSize()} bytes";
+echo "SHA-256: {$metadata->getHash()}";
+
+// Invalidate cache (deletes file + DB record)
+$fileService->invalidate('user_avatar_123');
+```
+
+### 23.3 Advanced Usage
+
+**With expiration:**
+```php
+// Expires in 1 hour
+$fileService->store('temp_report_456', $reportData, new \DateTimeImmutable('+1 hour'));
+
+// Never expires
+$fileService->store('permanent_config_789', $configData);
+```
+
+**Error handling:**
+```php
+try {
+    $fileService->store('important_file', $data);
+} catch (\RuntimeException $e) {
+    // Handle storage failures (disk full, permissions, etc.)
+    $logger->error('File storage failed', ['error' => $e->getMessage()]);
+}
+```
+
+**Event integration:**
+```php
+use App\Event\FileCacheStored;
+use App\Event\FileCacheInvalidated;
+
+// Listen to file cache events
+$dispatcher->addListener(FileCacheStored::class, [$handler, 'onFileCacheStored']);
+$dispatcher->addListener(FileCacheInvalidated::class, [$handler, 'onFileCacheInvalidated']);
+```
+
+### 23.4 Storage Structure
+
+Files are stored in `var/storage/cache/` with safe filenames:
+```
+var/storage/
+└── cache/
+    ├── user_avatar_123
+    ├── report_2026_04_06
+    ├── temp_export_xyz
+    └── permanent_config_789
+```
+
+Filenames are URL-safe versions of the cache key (slashes/backslashes replaced with underscores).
+
+### 23.5 Database Schema
+
+The `file_cache` table is created automatically via migrations:
+```sql
+CREATE TABLE file_cache (
+    id CHAR(36) PRIMARY KEY,
+    key VARCHAR(255) UNIQUE NOT NULL,
+    path VARCHAR(512) NOT NULL,
+    hash CHAR(64),
+    size INTEGER NOT NULL,
+    expires_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+```
+
+---
+
+## 24. .gitignore Quick Reference
+
+**Essential ignores for development and production.**
+
+### 24.1 Directories
+
+```
+/vendor/                 # Composer dependencies
+/var/log/               # Application logs
+/var/storage/           # Flysystem file storage
+/var/data/              # SQLite databases and data files
+reports/                # Test coverage reports
+coverage/               # PHPUnit coverage output
+.idea/                  # JetBrains IDE settings
+.vscode/                # VS Code settings
+*.swp                   # Vim swap files
+*.log                   # Log files
+```
+
+### 24.2 Files
+
+```
+composer.lock           # Lock file for reproducible builds
+.php-cs-fixer.cache     # PHP-CS-Fixer cache
+.php-cs-fixer.php       # PHP-CS-Fixer config
+phpunit.xml             # PHPUnit configuration
+.phpactor.json          # PHP Actor configuration
+/var/data/orm.db        # SQLite ORM database
+.env.yaml.local         # Local environment overrides
+```
+
+### 24.3 PWA Assets (User-Managed)
+
+```
+/public/manifest.json   # PWA manifest
+/public/sw.js           # Service worker
+/public/icons/          # PWA icons
+```
+
+### 24.4 Version Control
+
+```
+auth.json               # Private repository auth
+```
+
+### 24.5 Why These Are Ignored
+
+- **Dependencies**: `/vendor/` managed by Composer
+- **Logs**: `/var/log/` contains runtime application logs
+- **Storage**: `/var/storage/` contains user-uploaded/cached files
+- **Data**: `/var/data/` contains SQLite databases
+- **IDE Configs**: Personal editor settings
+- **Cache Files**: Tool-generated cache files
+- **Lock Files**: `composer.lock` for reproducible builds
+- **Environment**: Local overrides should not be committed
+- **PWA Assets**: Users should customize manifests and service workers
+- **Auth**: Private credentials for paid packages
+
+---
+
+## 25. Quick Start (SQLite, 30 seconds)
+
+**Get a development environment running in under 30 seconds.**
+
+### 25.1 Prerequisites
+
+- PHP 8.2+ with SQLite extension
+- Composer 2.0+
+
+### 25.2 Installation
+
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd orm-develop
+
+# 2. Install dependencies
+composer install
+
+# 3. Copy environment template
+cp .env.dist .env
+
+# 4. Create required directories
+mkdir -p var/log var/storage/cache var/data
+
+# 5. Run migrations
+php bin/console doctrine:migrations:migrate
+
+# 6. Load test data (optional)
+php bin/console doctrine:fixtures:load
+```
+
+### 25.3 Development Server
+
+```bash
+# Start PHP built-in server
+php -S localhost:8080 -t public
+
+# Visit: http://localhost:8080
+```
+
+### 25.4 Available Endpoints
+
+| Path | Method | Description |
+|------|--------|-------------|
+| `/` | GET | Home page with system info |
+| `/api/users` | GET | List users (JSON:HAL) |
+| `/api/users/{id}` | GET | Get user details |
+| `/mvc/users` | GET | MVC user list page |
+| `/mvc/users/create` | GET/POST | Create user form |
+| `/mvc/groups` | GET | MVC Baltimore groups page |
+
+### 25.5 Console Commands
+
+| Command | Description |
+|---------|-------------|
+| `php bin/console` | List all available commands |
+| `php bin/console doctrine:migrations:migrate` | Run database migrations |
+| `php bin/console doctrine:fixtures:load` | Load test fixtures |
+| `php bin/console cache:status` | Check cache status |
+| `php bin/console cache:clear` | Clear application cache |
+| `php bin/console benchmark:run` | Run performance benchmarks |
+
+### 25.6 Testing
+
+```bash
+# Run all tests
+composer test
+
+# Run specific test suite
+vendor/bin/phpunit tests/Unit/EntityManagerTest.php
+
+# Run with coverage
+vendor/bin/phpunit --coverage-html reports/coverage
+```
+
+### 25.7 Troubleshooting
+
+**Permission denied on var/storage/:**
+```bash
+chmod -R 755 var/storage/
+chown -R $USER:$USER var/storage/
+```
+
+**SQLite database locked:**
+```bash
+# Check for stale processes
+lsof var/data/orm.db
+# Kill conflicting processes or restart
+```
+
+**Missing dependencies:**
+```bash
+composer install --no-interaction --prefer-dist
+```
+
+---
+
+## 26. Summary
 
 | Layer | Pattern | HTTP | Templates | Dependencies |
 |-------|---------|------|-----------|---------------|

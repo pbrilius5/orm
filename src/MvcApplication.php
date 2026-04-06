@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Container\EventServiceProvider;
+use App\Container\FlysystemServiceProvider;
 use App\Container\MvcServiceProvider;
 use App\Form\GroupForm;
 use App\Form\UserForm;
@@ -32,6 +34,8 @@ class MvcApplication
         $this->leagueContainer = new Container();
         $this->leagueContainer->delegate(new ReflectionContainer());
         $this->leagueContainer->addServiceProvider(new MvcServiceProvider());
+        $this->leagueContainer->addServiceProvider(new FlysystemServiceProvider());
+        $this->leagueContainer->addServiceProvider(new EventServiceProvider());
 
         $builder = new ContainerBuilder();
         $builder->useAutowiring(true);

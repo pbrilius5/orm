@@ -11,6 +11,7 @@ use App\Http\Router;
 use App\View\ViewRenderer;
 use App\Logger\LoggerFactory;
 use App\Logger\CrashLogger;
+use App\Event\ORMEventListener;
 use App\Handler\User\CreateUserHandler;
 use App\Handler\User\UpdateUserHandler;
 use App\Handler\User\PatchUserHandler;
@@ -58,8 +59,10 @@ class MvcServiceProvider extends AbstractServiceProvider
     {
         $container = $this->getContainer();
 
-        $container->addShared(EntityManager::class, function (): EntityManager {
-            return EntityManagerFactory::getInstance();
+        $container->addShared(EntityManager::class, function () use ($container): EntityManager {
+            $logger = $container->get(LoggerInterface::class);
+            $listener = new ORMEventListener($logger);
+            return EntityManagerFactory::getInstance($listener);
         });
 
         $container->addShared(LoggerInterface::class, function () {

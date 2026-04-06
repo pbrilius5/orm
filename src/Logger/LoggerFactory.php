@@ -46,6 +46,19 @@ class LoggerFactory
         return $logger;
     }
 
+    public static function createAsyncFailureLogger(): LoggerInterface
+    {
+        self::ensureLogDirectory();
+
+        $logFile = self::LOG_DIR . '/async_failures.log';
+
+        $logger = new Logger('async_failures');
+        $logger->pushHandler(new StreamHandler($logFile, Level::Error));
+        $logger->pushProcessor(new UidProcessor());
+
+        return $logger;
+    }
+
     private static function ensureLogDirectory(): void
     {
         if (!is_dir(self::LOG_DIR)) {

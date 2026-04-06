@@ -5,7 +5,9 @@ declare(strict_types=1);
 use Doctrine\ORM\Tools\Console\ConsoleRunner;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Configuration;
-use Oryx\ORM\Mapping\XmlDriver;
+use Doctrine\DBAL\Types\Type;
+use Ramsey\Uuid\Doctrine\UuidType;
+use Oryx\ORM\Mapping\Driver\XmlThenAttributeDriver;
 use Symfony\Component\Dotenv\Dotenv;
 
 // Load environment variables
@@ -34,10 +36,14 @@ $connection = DriverManager::getConnection($connectionParams);
 // Create Doctrine ORM configuration
 $doctrineConfig = new Configuration();
 
-// Set up metadata driver using our XML driver
-$driver = new XmlDriver([
-    'App\Entity' => __DIR__ . '/src/Schema/definitions',
-]);
+if (!Type::hasType('uuid')) {
+    Type::addType('uuid', UuidType::class);
+}
+
+// Set up metadata driver using our XML driver (same as EntityManager)
+$schemaPath = __DIR__ . '/schema';
+$entityPath = __DIR__ . '/src/Entity';
+$driver = new XmlThenAttributeDriver($schemaPath, $entityPath);
 $doctrineConfig->setMetadataDriverImpl($driver);
 
 // Proxy configuration - matching EntityManager.php settings

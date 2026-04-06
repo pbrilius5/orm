@@ -17,6 +17,8 @@ use Ramsey\Uuid\Doctrine\UuidType;
 use League\Event\Emitter;
 use League\Event\Event;
 use League\Event\EmitterInterface;
+use League\Event\ListenerInterface;
+use App\Event\ORMEvent;
 
 class EntityManager implements EntityManagerInterface
 {
@@ -24,7 +26,7 @@ class EntityManager implements EntityManagerInterface
     private EmitterInterface $eventDispatcher;
     private $metadataCache = null;
 
-    public function __construct(Connection $connection, array $config = [], ?EmitterInterface $eventDispatcher = null)
+    public function __construct(Connection $connection, array $config = [], ?EmitterInterface $eventDispatcher = null, ?ListenerInterface $listener = null)
     {
         $doctrineConfig = new Configuration();
 
@@ -37,21 +39,16 @@ class EntityManager implements EntityManagerInterface
         $driver = $config['metadata.driver'] ?? new XmlThenAttributeDriver($schemaPath, $entityPath);
         $doctrineConfig->setMetadataDriverImpl($driver);
 
-        // Proxy configuration
         $autoGenerate = $config['metadata.auto_generate_proxy'] ?? ProxyFactory::AUTOGENERATE_NEVER;
         $doctrineConfig->setAutoGenerateProxyClasses($autoGenerate);
         $doctrineConfig->setProxyDir($config['metadata.proxy_dir'] ?? sys_get_temp_dir());
         $doctrineConfig->setProxyNamespace($config['metadata.proxy_namespace'] ?? 'Oryx\ORM\Proxy');
 
-        // Regional cache configuration
-        // - dev: Memcached (for local development)
-        // - prod: Redis (for production)
         $cacheConfig = $config['cache.config'] ?? [];
         $appEnv = $cacheConfig['app_env'] ?? 'dev';
 
         if ($cacheConfig['enabled'] ?? false) {
             if ($appEnv === 'dev' && extension_loaded('memcached')) {
-                // Development: Memcached
                 $host = $cacheConfig['host'] ?? 'localhost';
                 $port = $cacheConfig['port'] ?? 11211;
 
@@ -99,7 +96,6 @@ class EntityManager implements EntityManagerInterface
                     }
                 };
             } elseif ($appEnv === 'prod' && extension_loaded('redis')) {
-                // Production: Redis
                 $host = $cacheConfig['redis_host'] ?? 'localhost';
                 $port = $cacheConfig['redis_port'] ?? 6379;
 
@@ -157,7 +153,16 @@ class EntityManager implements EntityManagerInterface
         }
 
         $this->em = DoctrineEntityManager::create($connection, $doctrineConfig);
-        $this->eventDispatcher = $eventDispatcher ?? new Emitter();
+
+        if ($eventDispatcher !== null) {
+            $this->eventDispatcher = $eventDispatcher;
+        } else {
+            $emitter = new Emitter();
+            if ($listener !== null) {
+                $emitter->addListener('orm.*', $listener);
+            }
+            $this->eventDispatcher = $emitter;
+        }
     }
 
     public function getDoctrineEntityManager(): DoctrineEntityManager
@@ -177,16 +182,14 @@ class EntityManager implements EntityManagerInterface
 
     public function persist($entity): void
     {
-        // Dispatch prePersist event
-        $this->eventDispatcher->emit(new Event('orm.prePersist', [
+        $this->eventDispatcher->emit(new ORMEvent('orm.prePersist', [
             'entity' => $entity,
             'entityManager' => $this,
         ]));
 
         $this->em->persist($entity);
 
-        // Dispatch postPersist event
-        $this->eventDispatcher->emit(new Event('orm.postPersist', [
+        $this->eventDispatcher->emit(new ORMEvent('orm.postPersist', [
             'entity' => $entity,
             'entityManager' => $this,
         ]));
@@ -194,31 +197,27 @@ class EntityManager implements EntityManagerInterface
 
     public function flush(): void
     {
-        // Dispatch preFlush event
-        $this->eventDispatcher->emit(new Event('orm.preFlush', [
+        $this->eventDispatcher->emit(new ORMEvent('orm.preFlush', [
             'entityManager' => $this,
         ]));
 
         $this->em->flush();
 
-        // Dispatch postFlush event
-        $this->eventDispatcher->emit(new Event('orm.postFlush', [
+        $this->eventDispatcher->emit(new ORMEvent('orm.postFlush', [
             'entityManager' => $this,
         ]));
     }
 
     public function clear($entityName = null): void
     {
-        // Dispatch preClear event
-        $this->eventDispatcher->emit(new Event('orm.preClear', [
+        $this->eventDispatcher->emit(new ORMEvent('orm.preClear', [
             'entityName' => $entityName,
             'entityManager' => $this,
         ]));
 
         $this->em->clear($entityName);
 
-        // Dispatch postClear event
-        $this->eventDispatcher->emit(new Event('orm.postClear', [
+        $this->eventDispatcher->emit(new ORMEvent('orm.postClear', [
             'entityName' => $entityName,
             'entityManager' => $this,
         ]));

@@ -7,6 +7,8 @@ coverage/
 *.swp
 *.log
 /var/log/
+/var/storage/
+/var/data/
 composer.lock
 
 # prototype.in
