@@ -16,6 +16,7 @@ use DI\ContainerBuilder;
 use DI\Container as PhpDiContainer;
 use Laminas\ServiceManager\ServiceManager;
 use League\Container\Container;
+use League\Container\ReflectionContainer;
 use Oryx\ORM\EntityManager;
 
 class MvcApplication
@@ -29,6 +30,7 @@ class MvcApplication
     public function __construct(EntityManager $em)
     {
         $this->leagueContainer = new Container();
+        $this->leagueContainer->delegate(new ReflectionContainer());
         $this->leagueContainer->addServiceProvider(new MvcServiceProvider());
 
         $builder = new ContainerBuilder();

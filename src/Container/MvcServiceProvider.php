@@ -70,27 +70,27 @@ class MvcServiceProvider extends AbstractServiceProvider
 
         $container->add(CommandBus::class, function () use ($container) {
             $mapping = new MapByStaticList([
-                \App\Command\User\CreateUserCommand::class => CreateUserHandler::class,
-                \App\Command\User\UpdateUserCommand::class => UpdateUserHandler::class,
-                \App\Command\User\PatchUserCommand::class => PatchUserHandler::class,
-                \App\Command\User\DeleteUserCommand::class => DeleteUserHandler::class,
-                \App\Command\User\GetUserCommand::class => GetUserHandler::class,
-                \App\Command\User\ListUsersCommand::class => ListUsersHandler::class,
-                \App\Command\Group\CreateGroupCommand::class => CreateGroupHandler::class,
-                \App\Command\Group\UpdateGroupCommand::class => UpdateGroupHandler::class,
-                \App\Command\Group\PatchGroupCommand::class => PatchGroupHandler::class,
-                \App\Command\Group\DeleteGroupCommand::class => DeleteGroupHandler::class,
-                \App\Command\Group\GetGroupCommand::class => GetGroupHandler::class,
-                \App\Command\Group\ListGroupsCommand::class => ListGroupsHandler::class,
-                \App\Command\Console\LoadFixturesCommand::class => LoadFixturesHandler::class,
-                \App\Command\Console\CreateDatabaseCommand::class => CreateDatabaseHandler::class,
-                \App\Command\Console\GenerateProxiesCommand::class => GenerateProxiesHandler::class,
-                \App\Command\Console\ManageUserCommand::class => ManageUserHandler::class,
+                \App\Command\User\CreateUserCommand::class => [CreateUserHandler::class, 'handle'],
+                \App\Command\User\UpdateUserCommand::class => [UpdateUserHandler::class, 'handle'],
+                \App\Command\User\PatchUserCommand::class => [PatchUserHandler::class, 'handle'],
+                \App\Command\User\DeleteUserCommand::class => [DeleteUserHandler::class, 'handle'],
+                \App\Command\User\GetUserCommand::class => [GetUserHandler::class, 'handle'],
+                \App\Command\User\ListUsersCommand::class => [ListUsersHandler::class, 'handle'],
+                \App\Command\Group\CreateGroupCommand::class => [CreateGroupHandler::class, 'handle'],
+                \App\Command\Group\UpdateGroupCommand::class => [UpdateGroupHandler::class, 'handle'],
+                \App\Command\Group\PatchGroupCommand::class => [PatchGroupHandler::class, 'handle'],
+                \App\Command\Group\DeleteGroupCommand::class => [DeleteGroupHandler::class, 'handle'],
+                \App\Command\Group\GetGroupCommand::class => [GetGroupHandler::class, 'handle'],
+                \App\Command\Group\ListGroupsCommand::class => [ListGroupsHandler::class, 'handle'],
+                \App\Command\Console\LoadFixturesCommand::class => [LoadFixturesHandler::class, 'handle'],
+                \App\Command\Console\CreateDatabaseCommand::class => [CreateDatabaseHandler::class, 'handle'],
+                \App\Command\Console\GenerateProxiesCommand::class => [GenerateProxiesHandler::class, 'handle'],
+                \App\Command\Console\ManageUserCommand::class => [ManageUserHandler::class, 'handle'],
             ]);
 
-            $middleware = new CommandHandlerMiddleware($mapping, $container);
+            $middleware = new CommandHandlerMiddleware($container, $mapping);
 
-            return new CommandBus([$middleware]);
+            return new CommandBus($middleware);
         });
 
         $container->add(Router::class);
@@ -102,27 +102,5 @@ class MvcServiceProvider extends AbstractServiceProvider
         $container->addShared(ServiceManager::class, function (): ServiceManager {
             return LaminasServiceManagerFactory::create();
         });
-
-        $this->registerHandlers($container);
-    }
-
-    private function registerHandlers($container): void
-    {
-        $container->add(CreateUserHandler::class)->autowire();
-        $container->add(UpdateUserHandler::class)->autowire();
-        $container->add(PatchUserHandler::class)->autowire();
-        $container->add(DeleteUserHandler::class)->autowire();
-        $container->add(GetUserHandler::class)->autowire();
-        $container->add(ListUsersHandler::class)->autowire();
-        $container->add(CreateGroupHandler::class)->autowire();
-        $container->add(UpdateGroupHandler::class)->autowire();
-        $container->add(PatchGroupHandler::class)->autowire();
-        $container->add(DeleteGroupHandler::class)->autowire();
-        $container->add(GetGroupHandler::class)->autowire();
-        $container->add(ListGroupsHandler::class)->autowire();
-        $container->add(LoadFixturesHandler::class)->autowire();
-        $container->add(CreateDatabaseHandler::class)->autowire();
-        $container->add(GenerateProxiesHandler::class)->autowire();
-        $container->add(ManageUserHandler::class)->autowire();
     }
 }
