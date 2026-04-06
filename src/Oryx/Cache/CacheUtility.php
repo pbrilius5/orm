@@ -22,6 +22,12 @@ class CacheUtility
 
             if ($this->cache !== null) {
                 $this->driver = $this->detectDriver();
+                // Extract appEnv from entity manager's cache config
+                $config = $entityManager->getDoctrineEntityManager()->getConfiguration();
+                $secondLevelCacheConfig = $config->getSecondLevelCacheConfiguration();
+                if ($secondLevelCacheConfig && isset($secondLevelCacheConfig['regions']['default']['app_env'])) {
+                    $this->appEnv = $secondLevelCacheConfig['regions']['default']['app_env'];
+                }
             }
         }
     }
@@ -96,7 +102,23 @@ class CacheUtility
             return false;
         }
 
-        return $this->cache->flush();
+        if (method_exists($this->cache, 'flush')) {
+            return $this->cache->flush();
+        }
+
+        // Fallback: delete all known keys if flush is not available
+        try {
+            $keys = $this->getKeys();
+            $success = true;
+            foreach ($keys as $key) {
+                if (!$this->delete($key)) {
+                    $success = false;
+                }
+            }
+            return $success;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function getKeys(string $pattern = '*'): array

@@ -17,7 +17,7 @@ class CacheUtilityTest extends TestCase
         $this->assertEquals('none', $utility->getDriver());
     }
 
-    public function testCacheUtilityDetectsDriver(): void
+    public function testCacheUtilityDetectsDriverFromNullCache(): void
     {
         // Test with mock EntityManager that returns null cache
         $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
@@ -29,7 +29,7 @@ class CacheUtilityTest extends TestCase
         $this->assertEquals('none', $utility->getDriver());
     }
 
-    public function testGetStatsReturnsCorrectStructure(): void
+    public function testGetStatsReturnsCorrectStructureWhenDisabled(): void
     {
         $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
         $mockEm->method('getMetadataCache')->willReturn(null);
@@ -50,7 +50,6 @@ class CacheUtilityTest extends TestCase
         $mockEm->method('getMetadataCache')->willReturn(null);
 
         $utility = new CacheUtility($mockEm);
-
         $this->assertNull($utility->get('any_key'));
     }
 
@@ -60,7 +59,6 @@ class CacheUtilityTest extends TestCase
         $mockEm->method('getMetadataCache')->willReturn(null);
 
         $utility = new CacheUtility($mockEm);
-
         $this->assertFalse($utility->has('any_key'));
     }
 
@@ -70,7 +68,6 @@ class CacheUtilityTest extends TestCase
         $mockEm->method('getMetadataCache')->willReturn(null);
 
         $utility = new CacheUtility($mockEm);
-
         $this->assertFalse($utility->delete('any_key'));
     }
 
@@ -80,7 +77,6 @@ class CacheUtilityTest extends TestCase
         $mockEm->method('getMetadataCache')->willReturn(null);
 
         $utility = new CacheUtility($mockEm);
-
         $this->assertFalse($utility->clear());
     }
 
@@ -90,17 +86,15 @@ class CacheUtilityTest extends TestCase
         $mockEm->method('getMetadataCache')->willReturn(null);
 
         $utility = new CacheUtility($mockEm);
-
         $this->assertEmpty($utility->getKeys());
     }
 
-    public function testGetKeysReturnsEmptyArrayWithPattern(): void
+    public function testGetKeysReturnsEmptyArrayWithPatternWhenDisabled(): void
     {
         $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
         $mockEm->method('getMetadataCache')->willReturn(null);
 
         $utility = new CacheUtility($mockEm);
-
         $this->assertEmpty($utility->getKeys('App*'));
     }
 }

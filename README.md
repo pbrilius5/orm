@@ -57,6 +57,10 @@ bin/console oryx:fixtures:load
 
 # 7. Start the server
 composer serve
+
+# 8. (Optional) Start async event worker for background processing
+# For development: php bin/async-event-worker.php &
+# For production: use supervisor or systemd to manage the worker
 ```
 
 Open [http://localhost:8080](http://localhost:8080) — you should see the home page with users and API links.
@@ -91,6 +95,8 @@ No separate debug toggle — one variable, two behaviors.
 | [http://localhost:8080/api/users/1](http://localhost:8080/api/users/1) | Single user resource |
 | [http://localhost:8080/api/users?include=posts,group](http://localhost:8080/api/users?include=posts,group) | With embedded relations |
 | [http://localhost:8080/api/users?include=userRoles,wands,patronuses](http://localhost:8080/api/users?include=userRoles,wands,patronuses) | With role system |
+
+**Domain Events**: Entities automatically emit `EntityCreated`, `EntityUpdated`, and `EntityDeleted` events on create/update/delete. Use `$emitter->emit($event)` for synchronous handling or `$emitter->emitAsync($event)` for background processing via the async worker.
 
 ### Switch to MySQL
 

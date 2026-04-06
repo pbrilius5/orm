@@ -1,0 +1,303 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Unit;
+
+use PHPUnit\Framework\TestCase;
+use Oryx\Cache\CacheUtility;
+use Doctrine\Common\Cache\Cache;
+use Doctrine\Common\Cache\ArrayCache;
+use Doctrine\Common\Cache\MemcachedCache;
+use Doctrine\Common\Cache\RedisCache;
+
+class CacheUtilityTest extends TestCase
+{
+    public function testCacheUtilityDisabledWhenNoEntityManager(): void
+    {
+        $utility = new CacheUtility(null);
+
+        $this->assertFalse($utility->isEnabled());
+        $this->assertEquals('none', $utility->getDriver());
+    }
+
+    public function testCacheUtilityDetectsDriverFromNullCache(): void
+    {
+        // Test with mock EntityManager that returns null cache
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertFalse($utility->isEnabled());
+        $this->assertEquals('none', $utility->getDriver());
+    }
+
+    public function testGetStatsReturnsCorrectStructureWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $stats = $utility->getStats();
+
+        $this->assertArrayHasKey('driver', $stats);
+        $this->assertArrayHasKey('enabled', $stats);
+        $this->assertArrayHasKey('stats', $stats);
+        $this->assertFalse($stats['enabled']);
+        $this->assertEquals('none', $stats['driver']);
+    }
+
+    public function testGetReturnsNullWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $this->assertNull($utility->get('any_key'));
+    }
+
+    public function testHasReturnsFalseWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $this->assertFalse($utility->has('any_key'));
+    }
+
+    public function testDeleteReturnsFalseWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $this->assertFalse($utility->delete('any_key'));
+    }
+
+    public function testClearReturnsFalseWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $this->assertFalse($utility->clear());
+    }
+
+    public function testGetKeysReturnsEmptyWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $this->assertEmpty($utility->getKeys());
+    }
+
+    public function testGetKeysReturnsEmptyArrayWithPatternWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $this->assertEmpty($utility->getKeys('App*'));
+    }
+
+    public function testCacheUtilityDetectsArrayDriver(): void
+    {
+        $arrayCache = new ArrayCache();
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn($arrayCache);
+        $mockEm->method('getDoctrineEntityManager')
+            ->willReturn($this->createMock(\Doctrine\ORM\EntityManager::class));
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertTrue($utility->isEnabled());
+        $this->assertEquals('array', $utility->getDriver());
+    }
+
+    public function testCacheUtilityDetectsMemcachedDriver(): void
+    {
+        $memcachedCache = $this->createMock(MemcachedCache::class);
+        $memcachedCache->method('getStats')->willReturn([]);
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn($memcachedCache);
+        $mockEm->method('getDoctrineEntityManager')
+            ->willReturn($this->createMock(\Doctrine\ORM\EntityManager::class));
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertTrue($utility->isEnabled());
+        $this->assertEquals('memcached', $utility->getDriver());
+    }
+
+    public function testCacheUtilityDetectsRedisDriver(): void
+    {
+        $redisCache = $this->createMock(RedisCache::class);
+        $redisCache->method('getStats')->willReturn([]);
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn($redisCache);
+        $mockEm->method('getDoctrineEntityManager')
+            ->willReturn($this->createMock(\Doctrine\ORM\EntityManager::class));
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertTrue($utility->isEnabled());
+        $this->assertEquals('redis', $utility->getDriver());
+    }
+
+    public function testCacheOperationsWithArrayCache(): void
+    {
+        $arrayCache = new ArrayCache();
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn($arrayCache);
+        $mockEm->method('getDoctrineEntityManager')
+            ->willReturn($this->createMock(\Doctrine\ORM\EntityManager::class));
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertTrue($utility->isEnabled());
+        $this->assertEquals('array', $utility->getDriver());
+
+        // Test save and fetch
+        $this->assertTrue($utility->save('test_key', 'test_value'));
+        $this->assertEquals('test_value', $utility->fetch('test_key'));
+
+        // Test contains
+        $this->assertTrue($utility->contains('test_key'));
+        $this->assertFalse($utility->contains('non_existent_key'));
+
+        // Test delete
+        $this->assertTrue($utility->delete('test_key'));
+        $this->assertNull($utility->fetch('test_key'));
+
+        // Test flush
+        $this->assertTrue($utility->save('another_key', 'another_value'));
+        $this->assertTrue($utility->flush());
+        $this->assertNull($utility->fetch('another_key'));
+    }
+
+    public function testGetKeysWithArrayCache(): void
+    {
+        $arrayCache = new ArrayCache();
+        $arrayCache->save('app_user_1', 'data1');
+        $arrayCache->save('app_user_2', 'data2');
+        $arrayCache->save('temp_file', 'data3');
+
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn($arrayCache);
+        $mockEm->method('getDoctrineEntityManager')
+            ->willReturn($this->createMock(\Doctrine\ORM\EntityManager::class));
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertTrue($utility->isEnabled());
+        $this->assertEquals('array', $utility->getDriver());
+
+        // Test get all keys
+        $keys = $utility->getKeys();
+        $this->assertCount(3, $keys);
+        $this->assertContains('app_user_1', $keys);
+        $this->assertContains('app_user_2', $keys);
+        $this->assertContains('temp_file', $keys);
+
+        // Test get keys with pattern
+        $appKeys = $utility->getKeys('app_*');
+        $this->assertCount(2, $appKeys);
+        $this->assertContains('app_user_1', $appKeys);
+        $this->assertContains('app_user_2', $appKeys);
+
+        $userKeys = $utility->getKeys('*_user_*');
+        $this->assertCount(2, $userKeys);
+        $this->assertContains('app_user_1', $userKeys);
+        $this->assertContains('app_user_2', $userKeys);
+    }
+}
+
+    public function testCacheUtilityDetectsDriver(): void
+    {
+        // Test with mock EntityManager that returns null cache
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertFalse($utility->isEnabled());
+        $this->assertEquals('none', $utility->getDriver());
+    }
+
+    public function testGetStatsReturnsCorrectStructure(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+        $stats = $utility->getStats();
+
+        $this->assertArrayHasKey('driver', $stats);
+        $this->assertArrayHasKey('enabled', $stats);
+        $this->assertArrayHasKey('stats', $stats);
+        $this->assertFalse($stats['enabled']);
+        $this->assertEquals('none', $stats['driver']);
+    }
+
+    public function testGetReturnsNullWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertNull($utility->get('any_key'));
+    }
+
+    public function testHasReturnsFalseWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertFalse($utility->has('any_key'));
+    }
+
+    public function testDeleteReturnsFalseWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertFalse($utility->delete('any_key'));
+    }
+
+    public function testClearReturnsFalseWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertFalse($utility->clear());
+    }
+
+    public function testGetKeysReturnsEmptyWhenDisabled(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertEmpty($utility->getKeys());
+    }
+
+    public function testGetKeysReturnsEmptyArrayWithPattern(): void
+    {
+        $mockEm = $this->createMock(\Oryx\ORM\EntityManager::class);
+        $mockEm->method('getMetadataCache')->willReturn(null);
+
+        $utility = new CacheUtility($mockEm);
+
+        $this->assertEmpty($utility->getKeys('App*'));
+    }
+}
