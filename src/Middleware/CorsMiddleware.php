@@ -8,19 +8,23 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 use Laminas\Diactoros\Response\JsonResponse;
 
 class CorsMiddleware implements MiddlewareInterface
 {
+    private LoggerInterface $logger;
     private array $allowedOrigins;
     private array $allowedMethods;
     private array $allowedHeaders;
 
     public function __construct(
+        LoggerInterface $logger,
         array $allowedOrigins = ['*'],
         array $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         array $allowedHeaders = ['Content-Type', 'Authorization', 'Accept']
     ) {
+        $this->logger = $logger;
         $this->allowedOrigins = $allowedOrigins;
         $this->allowedMethods = $allowedMethods;
         $this->allowedHeaders = $allowedHeaders;
@@ -30,11 +34,30 @@ class CorsMiddleware implements MiddlewareInterface
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
-        if ($request->getMethod() === 'OPTIONS') {
+        $origin = $request->getHeaderLine('Origin');
+        $method = $request->getMethod();
+
+        $this->logger->debug('CorsMiddleware processing request', [
+            'method' => $method,
+            'origin' => $origin ?: '(none)',
+            'uri' => $request->getUri()->getPath(),
+        ]);
+
+        if ($method === 'OPTIONS') {
+            $this->logger->debug('CorsMiddleware handling preflight request', [
+                'origin' => $origin ?: '(none)',
+                'requested_method' => $request->getHeaderLine('Access-Control-Request-Method') ?: '(none)',
+            ]);
+
             return new JsonResponse(null, 204, $this->getCorsHeaders($request));
         }
 
         $response = $handler->handle($request);
+        $this->logger->debug('CorsMiddleware adding CORS headers', [
+            'method' => $method,
+            'origin' => $origin ?: '(none)',
+            'status_code' => $response->getStatusCode(),
+        ]);
 
         return $this->addCorsHeaders($response, $request);
     }

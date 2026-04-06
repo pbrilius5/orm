@@ -8,6 +8,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Rate limiting middleware with Memcached support.
@@ -15,13 +16,15 @@ use Psr\Http\Message\ResponseInterface;
  */
 class RateLimitMiddleware implements MiddlewareInterface
 {
+    private LoggerInterface $logger;
     private int $maxRequests;
     private int $windowSeconds;
     private ?\Memcached $memcached = null;
     private array $fallbackStorage = [];
 
-    public function __construct(int $maxRequests = 60, int $windowSeconds = 60)
+    public function __construct(LoggerInterface $logger, int $maxRequests = 60, int $windowSeconds = 60)
     {
+        $this->logger = $logger;
         $this->maxRequests = $maxRequests;
         $this->windowSeconds = $windowSeconds;
 
@@ -46,6 +49,21 @@ class RateLimitMiddleware implements MiddlewareInterface
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
+        $ip = $request->getHeaderLine('X-Forwarded-For')
+            ?: $request->getHeaderLine('X-Real-IP')
+            ?: $request->getServerParams()['REMOTE_ADDR'] ?? 'unknown';
+
+        $uri = $request->getUri()->getPath();
+        $method = $request->getMethod();
+
+        $this->logger->debug('RateLimitMiddleware checking rate limit', [
+            'ip' => $ip,
+            'uri' => $uri,
+            'method' => $method,
+            'limit' => $this->maxRequests,
+            'window' => $this->windowSeconds,
+        ]);
+
         $key = 'rate_limit:' . $this->getKey($request);
         $now = time();
         $windowKey = $key . ':window';
@@ -71,6 +89,14 @@ class RateLimitMiddleware implements MiddlewareInterface
             $this->memcached->set($countKey, $count, $this->windowSeconds);
 
             if ($count > $this->maxRequests) {
+                $this->logger->warning('Rate limit exceeded', [
+                    'ip' => $ip,
+                    'uri' => $uri,
+                    'method' => $method,
+                    'count' => $count,
+                    'limit' => $this->maxRequests,
+                ]);
+
                 return new \Laminas\Diactoros\Response\JsonResponse([
                     '_error' => [
                         'status' => 429,
@@ -100,6 +126,14 @@ class RateLimitMiddleware implements MiddlewareInterface
             $remaining = max(0, $this->maxRequests - $record['count']);
 
             if ($record['count'] > $this->maxRequests) {
+                $this->logger->warning('Rate limit exceeded', [
+                    'ip' => $ip,
+                    'uri' => $uri,
+                    'method' => $method,
+                    'count' => $record['count'],
+                    'limit' => $this->maxRequests,
+                ]);
+
                 return new \Laminas\Diactoros\Response\JsonResponse([
                     '_error' => [
                         'status' => 429,
@@ -114,6 +148,15 @@ class RateLimitMiddleware implements MiddlewareInterface
                 ]);
             }
         }
+
+        $this->logger->debug('RateLimitMiddleware allowing request', [
+            'ip' => $ip,
+            'uri' => $uri,
+            'method' => $method,
+            'count' => $this->memcached !== null ? (int) $this->memcached->get($countKey) : $this->fallbackStorage[$key]['count'] ?? 0,
+            'limit' => $this->maxRequests,
+            'remaining' => $remaining,
+        ]);
 
         $response = $handler->handle($request);
 

@@ -8,14 +8,34 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
 
 class SecurityMiddleware implements MiddlewareInterface
 {
+    private LoggerInterface $logger;
+
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
+
     public function process(
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
+        $this->logger->debug('SecurityMiddleware processing request', [
+            'method' => $request->getMethod(),
+            'uri' => $request->getUri()->getPath(),
+            'ip' => $request->getServerParams()['REMOTE_ADDR'] ?? 'unknown',
+        ]);
+
         $response = $handler->handle($request);
+
+        $this->logger->debug('SecurityMiddleware finished processing', [
+            'method' => $request->getMethod(),
+            'uri' => $request->getUri()->getPath(),
+            'status_code' => $response->getStatusCode(),
+        ]);
 
         return $response
             ->withHeader('X-Content-Type-Options', 'nosniff')

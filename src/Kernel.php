@@ -64,8 +64,8 @@ class Kernel
         $this->loadEnvironment();
         $this->createServices();
         $this->registerServices();
-        $this->registerRoutes();
         $this->initLogging();
+        $this->registerRoutes();
     }
 
     private function initLogging(): void
@@ -100,14 +100,23 @@ class Kernel
         $this->adrRoutes = new AdrRoutes($this->container);
         $router = $this->adrRoutes->getRouter();
 
-        $router->middleware(new SecurityMiddleware());
-        $router->middleware(new CorsMiddleware());
-        $router->middleware(new RateLimitMiddleware(100, 60));
-        $router->middleware(new CsrfMiddleware());
+        $logger = $this->logger ?? LoggerFactory::create($this->environment);
+
+        $router->middleware(new SecurityMiddleware($logger));
+        $router->middleware(new CorsMiddleware($logger));
+        $router->middleware(new RateLimitMiddleware($logger, 100, 60));
+        $router->middleware(new CsrfMiddleware($logger));
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
+        $this->logger?->debug('Incoming request', [
+            'method' => $request->getMethod(),
+            'uri' => (string) $request->getUri(),
+            'ip' => $request->getServerParams()['REMOTE_ADDR'] ?? 'unknown',
+            'user_agent' => $request->getHeaderLine('User-Agent') ?: 'unknown',
+        ]);
+
         try {
             return $this->adrRoutes->getRouter()->dispatch($request);
         } catch (\Throwable $e) {

@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
+
 /**
  * CSRF Protection Middleware.
  *
@@ -17,13 +23,9 @@ namespace App\Middleware;
  * - Native apps use Authorization headers
  * - Traditional forms require session-based tokens
  */
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
-
 class CsrfMiddleware implements MiddlewareInterface
 {
+    private LoggerInterface $logger;
     private const TOKEN_LENGTH = 32;
     private const TOKEN_NAME = '_csrf_token';
     private const HEADER_NAME = 'X-CSRF-Token';
@@ -34,12 +36,23 @@ class CsrfMiddleware implements MiddlewareInterface
         'OPTIONS' => ['*'],
     ];
 
+    public function __construct(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
+    }
+
     public function process(
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
         $method = $request->getMethod();
         $path = parse_url((string) $request->getUri(), PHP_URL_PATH) ?? '/';
+
+        $this->logger->debug('CsrfMiddleware processing request', [
+            'method' => $method,
+            'path' => $path,
+            'exempt' => $this->isExempt($method, $path),
+        ]);
 
         if ($this->isExempt($method, $path)) {
             return $handler->handle($request);
@@ -55,7 +68,19 @@ class CsrfMiddleware implements MiddlewareInterface
 
         $token = $this->getSubmittedToken($request);
 
+        $this->logger->debug('CsrfMiddleware validating token', [
+            'method' => $method,
+            'path' => $path,
+            'has_token' => (bool) $token,
+        ]);
+
         if (!$token || !$this->isValidToken($request, $token)) {
+            $this->logger->warning('CsrfMiddleware token validation failed', [
+                'method' => $method,
+                'path' => $path,
+                'ip' => $request->getServerParams()['REMOTE_ADDR'] ?? 'unknown',
+            ]);
+
             return new \Laminas\Diactoros\Response\JsonResponse([
                 '_error' => [
                     'status' => 403,
@@ -66,6 +91,11 @@ class CsrfMiddleware implements MiddlewareInterface
                 'Content-Type' => 'application/hal+json',
             ]);
         }
+
+        $this->logger->debug('CsrfMiddleware token validation passed', [
+            'method' => $method,
+            'path' => $path,
+        ]);
 
         return $handler->handle($request);
     }
