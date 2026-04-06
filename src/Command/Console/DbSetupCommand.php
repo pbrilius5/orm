@@ -7,6 +7,7 @@ namespace App\Command\Console;
 use App\Console\Command\DatabaseCreateCommand;
 use App\Command\Console\MigrationsMigrateCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -48,7 +49,12 @@ class DbSetupCommand extends Command
         // Step 1: Create database
         $io->section('Step 1: Creating database');
         $dbCreateCommand = new DatabaseCreateCommand();
-        $dbCreateResult = $dbCreateCommand->run($input, $output);
+
+        // Create input for database create command with --force option if provided
+        $dbCreateInput = new ArrayInput([
+            '--force' => $input->getOption('force'),
+        ]);
+        $dbCreateResult = $dbCreateCommand->run($dbCreateInput, $output);
 
         if ($dbCreateResult !== \Symfony\Component\Console\Command\Command::SUCCESS) {
             $io->error('Database creation failed');
@@ -58,7 +64,12 @@ class DbSetupCommand extends Command
         // Step 2: Apply migrations
         $io->section('Step 2: Applying migrations');
         $migrationsCommand = new MigrationsMigrateCommand();
-        $migrationsResult = $migrationsCommand->run($input, $output);
+
+        // Create input for migrations command with --dry-run option if provided
+        $migrationsInput = new ArrayInput([
+            '--dry-run' => $input->getOption('dry-run'),
+        ]);
+        $migrationsResult = $migrationsCommand->run($migrationsInput, $output);
 
         if ($migrationsResult !== \Symfony\Component\Console\Command\Command::SUCCESS) {
             $io->error('Migration application failed');

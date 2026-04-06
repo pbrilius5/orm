@@ -49,8 +49,8 @@ cp -rv ./vendor/oryx/mvc/public/icons/ ./public/icons/
 # 4. Create required directories
 mkdir -p var/log var/data
 
-# 5. Create database and schema from XML
-bin/console oryx:db:create
+# 5. Create database and run migrations
+bin/console oryx:db:setup
 
 # 6. Load demo fixtures (teams, roles, users, wands, patronuses)
 bin/console oryx:fixtures:load
@@ -125,6 +125,7 @@ See [REQUIREMENTS.md](./REQUIREMENTS.md) for complete system requirements and de
 |---------|-------------|
 | `bin/console list` | List all commands |
 | `bin/console oryx:db:create` | Create SQLite/MySQL database and schema |
+| `bin/console oryx:db:setup` | Create database + apply migrations (compound command) |
 | `bin/console oryx:fixtures:load` | Load demo fixtures using Faker |
 | `bin/console orm:generate:entities` | Generate entity classes from XML schema |
 
@@ -137,6 +138,26 @@ bin/console oryx:db:create
 # Force recreate (drops existing)
 bin/console oryx:db:create --force
 ```
+
+### Database Setup (Compound Command)
+
+The `oryx:db:setup` command combines database creation and migration application in one step:
+
+```bash
+# Create database and apply all migrations
+bin/console oryx:db:setup
+
+# Force recreate (drops existing database first)
+bin/console oryx:db:setup --force
+
+# Show SQL without executing (dry-run)
+bin/console oryx:db:setup --dry-run
+```
+
+| Option | Description |
+|--------|-------------|
+| `--force` | Drop existing database if it exists (SQLite only) |
+| `--dry-run` | Show SQL that would be executed without running it |
 
 ### Fixtures Loading
 
