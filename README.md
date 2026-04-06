@@ -483,7 +483,7 @@ class AdrRoutes
 
     private function register(): void
     {
-        $this->router->map('GET', '/health', fn() => new JsonResponse(['status' => 'ok']));
+        $this->router->map('GET', '/api/health', fn() => new JsonResponse(['status' => 'ok']));
         $this->router->map('GET', '/api/users', [ListAction::class, '__invoke']);
         // ... kiti maršrutai
     }

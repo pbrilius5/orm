@@ -31,8 +31,8 @@ class CsrfMiddleware implements MiddlewareInterface
     private const HEADER_NAME = 'X-CSRF-Token';
 
     private array $exemptRoutes = [
-        'GET' => ['/health', '/manifest.json', '/api/users'],
-        'HEAD' => ['/health', '/manifest.json'],
+        'GET' => ['/api/health', '/manifest.json', '/api/users'],
+        'HEAD' => ['/api/health', '/manifest.json'],
         'OPTIONS' => ['*'],
     ];
 

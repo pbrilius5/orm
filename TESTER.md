@@ -21,7 +21,7 @@ This guide provides comprehensive instructions for testing the ADR API endpoints
 
 | # | Method | Endpoint | Description |
 |---|--------|----------|-------------|
-| 1 | GET | `/health` | Health check |
+| 1 | GET | `/api/health` | Health check |
 | 2 | GET | `/api/users` | List all users |
 | 3 | POST | `/api/users` | Create new user |
 | 4 | GET | `/api/users/{id}` | Show single user |
@@ -49,7 +49,7 @@ This guide provides comprehensive instructions for testing the ADR API endpoints
 
 **Request:**
 ```bash
-curl -X GET http://localhost:8080/health
+curl -X GET http://localhost:8080/api/health
 ```
 
 **Response:**
@@ -57,7 +57,7 @@ curl -X GET http://localhost:8080/health
 {
   "_links": {
     "self": {
-      "href": "/health"
+      "href": "/api/health"
     }
   },
   "status": "ok",
@@ -569,7 +569,7 @@ Import the following JSON into Postman for quick testing:
           "name": "Health Check",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/health"
+            "url": "{{base_url}}/api/health"
           }
         }
       ]

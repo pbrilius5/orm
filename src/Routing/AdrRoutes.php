@@ -44,10 +44,10 @@ class AdrRoutes
 
     private function register(): void
     {
-        $this->router->map('GET', '/health', function (ServerRequestInterface $request): ResponseInterface {
+        $this->router->map('GET', '/api/health', function (ServerRequestInterface $request): ResponseInterface {
             return new JsonResponse([
                 '_links' => [
-                    'self' => ['href' => '/health'],
+                    'self' => ['href' => '/api/health'],
                 ],
                 'status' => 'ok',
                 'timestamp' => date('c'),
