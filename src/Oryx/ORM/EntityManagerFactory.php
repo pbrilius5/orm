@@ -36,13 +36,23 @@ class EntityManagerFactory
 
     /**
      * Create EntityManager from environment variables.
+     * Uses getOrmDatabaseParams() which defaults to MySQL (pdo_mysql) for production.
+     * SQLite can be used by setting database.driver to pdo_sqlite in .env.yaml
      */
     public static function createFromEnv(?ListenerInterface $listener = null): EntityManager
     {
         $envConfig = new EnvironmentConfig();
 
+        $appEnv = $envConfig->getAppEnv();
+
+        if ($appEnv === 'prod') {
+            $connectionParams = $envConfig->getOrmDatabaseParams();
+        } else {
+            $connectionParams = $envConfig->getDatabaseParams();
+        }
+
         return self::create(
-            $envConfig->getDatabaseParams(),
+            $connectionParams,
             dirname(__DIR__, 3) . '/schema',
             $envConfig->getOrmProxyAutoGenerate(),
             $envConfig->getOrmProxyDir(),

@@ -10,14 +10,14 @@
 |-----------|---------|
 | `mbstring` | Multibyte string handling |
 | `intl` | Internationalization |
-| `pdo_sqlite` | Default database driver (bundled) |
+| `pdo_sqlite` | SQLite driver (custom singletons) |
+| `pdo_mysql` | MySQL driver (ORM/DBAL only) |
 | `sodium` | Cryptographically secure UUID generation |
 | `json` | JSON encoding/decoding (enabled by default) |
 
 ### Optional Extensions
 | Extension | Purpose |
 |-----------|---------|
-| `pdo_mysql` | MySQL/MariaDB database support |
 | `memcached` | Development cache server (APP_ENV=dev) |
 | `redis` | Production cache server (APP_ENV=prod) |
 
@@ -52,6 +52,11 @@
 | `league/fractal ^0.21` | Resource transformation (HAL+JSON) |
 | `league/pipeline ^1.0` | Pipeline pattern |
 
+### Storage
+| Package | Purpose |
+|---------|---------|
+| `league/flysystem ^3.0` | File storage (cache layer) |
+
 ### Development
 | Package | Purpose |
 |---------|---------|
@@ -72,5 +77,63 @@ IDs use **libsodium** (`ext-sodium`) for cryptographically secure random byte ge
 
 ## Database
 
-- **Default:** SQLite (zero-config)
-- **Supported:** MySQL/MariaDB, PostgreSQL (via Doctrine DBAL drivers)
+### MySQL (pdo_mysql) - Pagrindinis
+- Naudojamas **tik per Doctrine ORM/DBAL**
+- Ateities resemplifikacija (LAMP stack)
+- Nenaudojamas tiesiogiai su PDO
+
+### SQLite (pdo_sqlite) - Custom Shared Singletons
+- Naudojamas **atskirai nuo ORM/DBAL**
+- Custom PDO singleton klasė
+
+#### Shared Singletons
+
+| Component | Class | Description |
+|-----------|-------|-------------|
+| PDO | `App\Db` | Tiesioginis PDO SQLite singleton |
+| EntityManager | `Oryx\ORM\EntityManagerFactory` | Doctrine ORM singleton |
+| CacheUnion | `App\Cache\CacheUnion` | Compound cache (L1+L2+L3) |
+| PersistentSingletonRegistry | `App\Service\PersistentSingletonRegistry` | DB + in-memory cache |
+| Flysystem | `League\Flysystem\Filesystem` | File storage singleton |
+
+## Caching (Compound/Hybrid)
+
+CacheUnion naudoja **3 lygmens** caching strategiją:
+
+| Layer | Implementation | Location | TTL |
+|-------|----------------|----------|-----|
+| L1 | ArrayCache (in-memory) | `$this->memory` | trumpalaikis |
+| L2 | Flysystem (file cache) | `var/cache/` | vidutinis |
+| L3 | PersistentSingleton (DB) | SQLite DB | ilgalaikis |
+
+### Reflection on-the-fly
+
+- `XmlThenAttributeDriver` naudoja `ReflectionClass` metadata nuskaitymui
+- `League\Container\ReflectionContainer` autowiring'ui
+- Doctrine metadata cache naudoja ReflectionClass
+
+## Storage
+
+- **League\Flysystem** - atskiras nuo ORM
+- **Adapter:** LocalFilesystemAdapter
+- **Path:** `var/storage/`
+- **Cache path:** `var/cache/`
+
+## Containerization
+
+Naudojamas **hybrid container** mix:
+
+```
+League\Container
+├── ReflectionContainer (autowiring)
+├── ServiceProviders (Mvc, Event, Flysystem, Tactician)
+└── Shared services (addShared())
+
+PHP-DI Container
+├── useAutowiring(true)
+├── useAttributes(true)
+└── ViewRenderer, Forms
+
+Laminas\ServiceManager
+└── Form validation
+```

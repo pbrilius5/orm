@@ -330,6 +330,23 @@ class EnvironmentConfig
     }
 
     /**
+     * Get database parameters for ORM/DBAL only (MySQL default).
+     * MySQL should ONLY be used via Doctrine ORM/DBAL, never directly via PDO.
+     */
+    public function getOrmDatabaseParams(): array
+    {
+        return [
+            'driver' => $this->get('database.driver', 'pdo_mysql'),
+            'host' => $this->get('database.host', 'localhost'),
+            'port' => (int) $this->get('database.port', '3306'),
+            'dbname' => $this->get('database.name', 'orm_db'),
+            'user' => $this->get('database.user', 'root'),
+            'password' => $this->get('database.password', ''),
+            'charset' => $this->get('database.charset', 'utf8mb4'),
+        ];
+    }
+
+    /**
      * Get database parameters for testing (SQLite in-memory).
      */
     public function getDatabaseParamsForTesting(): array

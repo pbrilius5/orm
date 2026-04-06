@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Container;
 
+use App\Cache\CacheUnion;
 use App\Controller\GroupController;
 use App\Controller\UserController;
+use App\Db;
 use App\Dto\DtoFactory;
 use App\Http\Router;
 use App\View\ViewRenderer;
@@ -28,6 +30,10 @@ use App\Handler\Console\LoadFixturesHandler;
 use App\Handler\Console\CreateDatabaseHandler;
 use App\Handler\Console\GenerateProxiesHandler;
 use App\Handler\Console\ManageUserHandler;
+use App\Service\PersistentSingletonRegistry;
+use League\Flysystem\Filesystem;
+use League\Flysystem\FilesystemOperator;
+use League\Flysystem\Local\LocalFilesystemAdapter;
 use Laminas\ServiceManager\ServiceManager;
 use League\Container\ServiceProvider\AbstractServiceProvider;
 use League\Tactician\CommandBus;
@@ -41,6 +47,9 @@ class MvcServiceProvider extends AbstractServiceProvider
 {
     protected array $provides = [
         EntityManager::class,
+        Db::class,
+        CacheUnion::class,
+        FilesystemOperator::class,
         Router::class,
         ViewRenderer::class,
         UserController::class,
@@ -58,6 +67,31 @@ class MvcServiceProvider extends AbstractServiceProvider
     public function register(): void
     {
         $container = $this->getContainer();
+
+        $container->addShared(FilesystemOperator::class, function () {
+            $storagePath = getenv('FLYSYSTEM_STORAGE_PATH') ?: dirname(__DIR__, 2) . '/var/storage';
+            if (!is_dir($storagePath)) {
+                mkdir($storagePath, 0o755, true);
+            }
+            $adapter = new LocalFilesystemAdapter($storagePath);
+            return new Filesystem($adapter);
+        });
+
+        $container->addShared(Db::class, function () use ($container) {
+            $fs = $container->get(FilesystemOperator::class);
+            Db::setFilesystem($fs);
+            return Db::getInstance();
+        });
+
+        $container->addShared(CacheUnion::class, function () use ($container): CacheUnion {
+            $fs = $container->get(FilesystemOperator::class);
+            $entityManager = $container->get(EntityManager::class);
+            $registry = new PersistentSingletonRegistry(
+                $entityManager->getDoctrineEntityManager(),
+                $container->get(LoggerInterface::class)
+            );
+            return CacheUnion::getInstance($fs, $registry);
+        });
 
         $container->addShared(EntityManager::class, function () use ($container): EntityManager {
             $logger = $container->get(LoggerInterface::class);

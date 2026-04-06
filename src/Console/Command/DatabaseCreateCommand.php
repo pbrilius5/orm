@@ -45,7 +45,8 @@ class DatabaseCreateCommand extends Command
         $driver = $params['driver'];
 
         if ($driver === 'pdo_mysql') {
-            return $this->createMySQL($io, $params);
+            $io->warning('MySQL must be created manually via ORM/DBAL. Use: bin/console oryx:migrations:migrate');
+            return Command::SUCCESS;
         }
 
         return $this->createSQLite($io, $projectRoot, $params, $input->getOption('force'));
@@ -96,34 +97,6 @@ class DatabaseCreateCommand extends Command
         $schemaTool->createSchema($metadatas);
 
         $io->success('Database schema created successfully');
-
-        return Command::SUCCESS;
-    }
-
-    private function createMySQL(SymfonyStyle $io, array $params): int
-    {
-        $adminParams = [
-            'driver' => $params['driver'],
-            'host' => $params['host'],
-            'port' => $params['port'],
-            'user' => $params['user'],
-            'password' => $params['password'],
-        ];
-
-        $adminConnection = DriverManager::getConnection($adminParams);
-
-        $dbName = $params['dbname'];
-        $charset = $params['charset'] ?? 'utf8mb4';
-
-        try {
-            $adminConnection->executeStatement(
-                sprintf('CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET %s COLLATE %s_unicode_ci', $dbName, $charset, $charset)
-            );
-            $io->success(sprintf('Database `%s` created', $dbName));
-        } catch (\Throwable $e) {
-            $io->error('Failed to create database: ' . $e->getMessage());
-            return Command::FAILURE;
-        }
 
         return Command::SUCCESS;
     }

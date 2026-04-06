@@ -211,6 +211,70 @@ $container = $builder->build();
 
 ---
 
+## Caching Benchmark Results (2026-04-06)
+
+### Test Environment
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PHP Version:          8.2+                                 │
+│  Database:             SQLite (pdo_sqlite)                  │
+│  Cache:                CacheUnion (3-tier)                  │
+│  Storage:              League\Flysystem                     │
+│  Iterations:           100 per test                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Performance Table
+
+| Test | Avg Time | Status |
+|------|----------|--------|
+| **L1 (Memory) hit** | **6.28 µs** | ✅ Optimal |
+| L2 (Flysystem) hit | 8.53 µs | ✅ Good |
+| Cache miss (all tiers) | 146.55 µs | ✅ Acceptable |
+| Db::writeCache 1KB | 532.79 µs | ✅ Good |
+| Db::readCache 1KB | 80.20 µs | ✅ Good |
+| Db::writeCache 100KB | 818.40 µs | ✅ Good |
+| Db::readCache 100KB | 102.64 µs | ✅ Good |
+
+### Speed Comparison
+
+```
+L1 (Memory)  ████████████ 6.28 µs   (fastest)
+L2 (Flysys)  ████████████ 8.53 µs  (+35.8%)
+L3 (DB)      ████████████████████████████ 146.55 µs  (+2233.6%)
+```
+
+### Stability Results
+
+| Test | Result |
+|------|--------|
+| Concurrent read/write (50 cycles) | 25.13 ms ✅ |
+| Memory delta (1000 ops) | 477 KB ✅ |
+| Clear 100 items | 87.23 ms ✅ |
+
+### JSON Export
+
+```json
+{
+    "timestamp": "2026-04-06T16:12:42+00:00",
+    "iterations": 100,
+    "db_flysystem": {
+        "write_1kb_avg_ms": 0.5328,
+        "read_1kb_avg_ms": 0.0802,
+        "write_100kb_avg_ms": 0.8184,
+        "read_100kb_avg_ms": 0.1026
+    },
+    "cache_union": {
+        "l1_hit_ms": 0.0063,
+        "l2_hit_ms": 0.0085,
+        "miss_ms": 0.1466
+    }
+}
+```
+
+---
+
 ## Recommendations
 
 ### 1. Use Mixed Driver for Production

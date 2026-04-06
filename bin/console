@@ -18,6 +18,7 @@ $application->add(new App\Console\Command\ProxyGenerateCommand());
 $application->add(new App\Command\Console\CacheStatusCommand());
 $application->add(new App\Command\Console\CacheQueryCommand());
 $application->add(new App\Command\Console\CacheClearCommand());
+$application->add(new App\Command\Console\DbCheckCommand());
 $application->add(new App\Command\Console\MigrationsGenerateCommand());
 $application->add(new App\Command\Console\MigrationsMigrateCommand());
 $application->add(new App\Command\Console\DbSetupCommand());
