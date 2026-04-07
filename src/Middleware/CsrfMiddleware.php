@@ -9,24 +9,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
+use App\Csrf\CsrfSession;
 
-/**
- * CSRF Protection Middleware.
- *
- * Implements the Synchronizer Token Pattern:
- * 1. Generate unique token per session
- * 2. Embed token in forms (hidden field or header)
- * 3. Validate token on state-changing requests
- *
- * PWA Principle:
- * - SPAs can store tokens in memory/localStorage
- * - Native apps use Authorization headers
- * - Traditional forms require session-based tokens
- */
 class CsrfMiddleware implements MiddlewareInterface
 {
     private LoggerInterface $logger;
-    private const TOKEN_LENGTH = 32;
     private const TOKEN_NAME = '_csrf_token';
     private const HEADER_NAME = 'X-CSRF-Token';
 
@@ -59,8 +46,7 @@ class CsrfMiddleware implements MiddlewareInterface
         }
 
         if (in_array($method, ['GET', 'HEAD', 'OPTIONS'])) {
-            $token = $this->generateToken();
-            $this->storeToken($request, $token);
+            $token = CsrfSession::generateToken();
 
             $response = $handler->handle($request);
             return $response->withHeader('X-CSRF-Token', $token);
@@ -74,7 +60,7 @@ class CsrfMiddleware implements MiddlewareInterface
             'has_token' => (bool) $token,
         ]);
 
-        if (!$token || !$this->isValidToken($request, $token)) {
+        if (!$token || !CsrfSession::validateToken($token)) {
             $this->logger->warning('CsrfMiddleware token validation failed', [
                 'method' => $method,
                 'path' => $path,
@@ -124,25 +110,6 @@ class CsrfMiddleware implements MiddlewareInterface
         return false;
     }
 
-    private function generateToken(): string
-    {
-        return bin2hex(random_bytes(self::TOKEN_LENGTH));
-    }
-
-    private function storeToken(ServerRequestInterface $request, string $token): void
-    {
-        $_SESSION['_csrf_tokens'][$token] = time();
-
-        if (count($_SESSION['_csrf_tokens'] ?? []) > 50) {
-            $_SESSION['_csrf_tokens'] = array_slice(
-                $_SESSION['_csrf_tokens'] ?? [],
-                -50,
-                50,
-                true
-            );
-        }
-    }
-
     private function getSubmittedToken(ServerRequestInterface $request): ?string
     {
         $header = $request->getHeaderLine(self::HEADER_NAME);
@@ -163,30 +130,8 @@ class CsrfMiddleware implements MiddlewareInterface
         return null;
     }
 
-    private function isValidToken(ServerRequestInterface $request, string $token): bool
-    {
-        $tokens = $_SESSION['_csrf_tokens'] ?? [];
-
-        if (!isset($tokens[$token])) {
-            return false;
-        }
-
-        $created = $tokens[$token];
-        $maxAge = 3600;
-
-        if ((time() - $created) > $maxAge) {
-            unset($_SESSION['_csrf_tokens'][$token]);
-            return false;
-        }
-
-        unset($_SESSION['_csrf_tokens'][$token]);
-        return true;
-    }
-
     public function generateFormToken(string $sessionId): string
     {
-        $token = $this->generateToken();
-        $_SESSION['_csrf_tokens'][$token] = time();
-        return $token;
+        return CsrfSession::generateToken();
     }
 }

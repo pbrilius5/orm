@@ -49,7 +49,7 @@ class GroupFormTest extends TestCase
         $form = new GroupForm(null, [], $this->laminasSm);
         $this->assertTrue($form->has('csrf'));
         $csrf = $form->get('csrf');
-        $this->assertInstanceOf(\Laminas\Form\Element\Csrf::class, $csrf);
+        $this->assertInstanceOf(\App\Form\CsrfElement::class, $csrf);
     }
 
     public function testGroupFormElementCount(): void

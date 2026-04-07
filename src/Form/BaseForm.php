@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace App\Form;
 
 use Laminas\Form\Form;
-use Laminas\Form\Element\Csrf;
 use Laminas\ServiceManager\ServiceManager;
 
 class BaseForm extends Form
 {
-    public function __construct(?string $name = null, array $options = [], ?ServiceManager $laminasSm = null)
-    {
+    public function __construct(
+        ?string $name = null,
+        array $options = [],
+        ?ServiceManager $laminasSm = null
+    ) {
         parent::__construct($name, $options);
 
         if ($laminasSm !== null) {
@@ -37,7 +39,7 @@ class BaseForm extends Form
 
     protected function addCsrfElement(): void
     {
-        $csrf = new Csrf('csrf', [
+        $csrf = new CsrfElement('csrf', [
             'csrf_options' => [
                 'timeout' => 600,
             ],
