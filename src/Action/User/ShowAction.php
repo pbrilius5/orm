@@ -38,7 +38,11 @@ class ShowAction
             return JsonHalResponder::notFound('User not found');
         }
 
-        $dto = $this->dtoFactory->create($user);
+        $dto = $this->dtoFactory->create($user, [
+            'userRoles' => $user->getUserRoles()->toArray(),
+            'workGroup' => $user->getWorkGroups()[0] ?? null,
+            'gamificationRoles' => [],
+        ]);
 
         return JsonHalResponder::resource(
             'user',

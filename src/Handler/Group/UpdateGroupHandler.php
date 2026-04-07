@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Handler\Group;
 
 use App\Command\Group\UpdateGroupCommand;
-use App\DTO\GroupApiDTO;
 use App\Entity\Group;
 use App\Repository\GroupRepository;
 use Oryx\ORM\EntityManager;
@@ -24,7 +23,7 @@ class UpdateGroupHandler
         $this->logger = $logger;
     }
 
-    public function handle(UpdateGroupCommand $command): ?GroupApiDTO
+    public function handle(UpdateGroupCommand $command): ?Group
     {
         $this->logger?->info('Updating group: ' . $command->id);
 
@@ -43,6 +42,6 @@ class UpdateGroupHandler
 
         $this->logger?->info('Group updated: ' . $command->id);
 
-        return $this->repository->findForApi($command->id);
+        return $group;
     }
 }

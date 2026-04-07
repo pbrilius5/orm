@@ -45,7 +45,11 @@ class CreateAction
         );
 
         $user = $this->commandBus->handle($command);
-        $dto = $this->dtoFactory->create($user);
+        $dto = $this->dtoFactory->create($user, [
+            'userRoles' => $user->getUserRoles()->toArray(),
+            'workGroup' => $user->getWorkGroups()[0] ?? null,
+            'gamificationRoles' => [],
+        ]);
 
         return JsonHalResponder::created(
             'user',

@@ -53,7 +53,10 @@ class PatchAction
             return JsonHalResponder::notFound('Group not found');
         }
 
-        $dto = $this->dtoFactory->create($group);
+        $dto = $this->dtoFactory->create($group, [
+            'users' => $group->getUsers()->toArray(),
+            'gamificationRoles' => $group->getGamificationRoles(),
+        ]);
 
         return JsonHalResponder::resource(
             'group',

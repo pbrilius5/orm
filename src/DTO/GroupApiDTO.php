@@ -16,7 +16,7 @@ class GroupApiDTO
         public readonly int $rank,
         public readonly bool $isWorkGroup,
         public readonly array $users,
-        public readonly array $gamificationRoles = [],
+        public readonly array $gamificationRoles,
         public readonly \DateTimeInterface $createdAt,
     ) {}
 

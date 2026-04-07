@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Handler\Group;
 
 use App\Command\Group\CreateGroupCommand;
-use App\DTO\GroupApiDTO;
 use App\Entity\Group;
 use App\Repository\GroupRepository;
 use Oryx\ORM\EntityManager;
@@ -24,7 +23,7 @@ class CreateGroupHandler
         $this->logger = $logger;
     }
 
-    public function handle(CreateGroupCommand $command): GroupApiDTO
+    public function handle(CreateGroupCommand $command): Group
     {
         $this->logger?->info('Creating group: ' . $command->name);
 
@@ -38,6 +37,6 @@ class CreateGroupHandler
 
         $this->logger?->info('Group created: ' . $group->getId());
 
-        return $this->repository->findForApi($group->getId());
+        return $group;
     }
 }

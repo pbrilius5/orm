@@ -22,6 +22,43 @@ use App\Logger\LoggerFactory;
 use App\Responder\JsonHalResponder;
 use League\Fractal\Manager as FractalManager;
 use League\Fractal\Serializer\JsonApiSerializer;
+use App\Command\User\CreateUserCommand;
+use App\Command\User\UpdateUserCommand;
+use App\Command\User\PatchUserCommand;
+use App\Command\User\DeleteUserCommand;
+use App\Command\User\GetUserCommand;
+use App\Command\User\ListUsersCommand;
+use App\Command\Group\CreateGroupCommand;
+use App\Command\Group\UpdateGroupCommand;
+use App\Command\Group\PatchGroupCommand;
+use App\Command\Group\DeleteGroupCommand;
+use App\Command\Group\GetGroupCommand;
+use App\Command\Group\ListGroupsCommand;
+use App\Command\Console\LoadFixturesCommand;
+use App\Command\Console\CreateDatabaseCommand;
+use App\Command\Console\GenerateProxiesCommand;
+use App\Command\Console\ManageUserCommand;
+use App\Handler\User\CreateUserHandler;
+use App\Handler\User\UpdateUserHandler;
+use App\Handler\User\PatchUserHandler;
+use App\Handler\User\DeleteUserHandler;
+use App\Handler\User\GetUserHandler;
+use App\Handler\User\ListUsersHandler;
+use App\Handler\Group\CreateGroupHandler;
+use App\Handler\Group\UpdateGroupHandler;
+use App\Handler\Group\PatchGroupHandler;
+use App\Handler\Group\DeleteGroupHandler;
+use App\Handler\Group\GetGroupHandler;
+use App\Handler\Group\ListGroupsHandler;
+use App\Handler\Console\LoadFixturesHandler;
+use App\Handler\Console\CreateDatabaseHandler;
+use App\Handler\Console\GenerateProxiesHandler;
+use App\Handler\Console\ManageUserHandler;
+use App\Command\CommandBusInterface;
+use App\Command\TacticianCommandBus;
+use League\Tactician\CommandBus;
+use League\Tactician\Handler\CommandHandlerMiddleware;
+use League\Tactician\Handler\Mapping\MapByStaticList;
 use Oryx\ORM\EntityManagerFactory;
 use App\Fixture\FixtureLoader;
 use App\Dto\DtoFactory;
@@ -93,6 +130,46 @@ class Kernel
         $this->container->set(FractalManager::class, $this->fractal);
         $this->container->set(FixtureLoader::class, autowire());
         $this->container->set(DtoFactory::class, autowire());
+
+        $this->registerCommandBus();
+    }
+
+    private function registerCommandBus(): void
+    {
+        $commandToHandlerMap = [
+            CreateUserCommand::class => [CreateUserHandler::class, 'handle'],
+            UpdateUserCommand::class => [UpdateUserHandler::class, 'handle'],
+            PatchUserCommand::class => [PatchUserHandler::class, 'handle'],
+            DeleteUserCommand::class => [DeleteUserHandler::class, 'handle'],
+            GetUserCommand::class => [GetUserHandler::class, 'handle'],
+            ListUsersCommand::class => [ListUsersHandler::class, 'handle'],
+            CreateGroupCommand::class => [CreateGroupHandler::class, 'handle'],
+            UpdateGroupCommand::class => [UpdateGroupHandler::class, 'handle'],
+            PatchGroupCommand::class => [PatchGroupHandler::class, 'handle'],
+            DeleteGroupCommand::class => [DeleteGroupHandler::class, 'handle'],
+            GetGroupCommand::class => [GetGroupHandler::class, 'handle'],
+            ListGroupsCommand::class => [ListGroupsHandler::class, 'handle'],
+            LoadFixturesCommand::class => [LoadFixturesHandler::class, 'handle'],
+            CreateDatabaseCommand::class => [CreateDatabaseHandler::class, 'handle'],
+            GenerateProxiesCommand::class => [GenerateProxiesHandler::class, 'handle'],
+            ManageUserCommand::class => [ManageUserHandler::class, 'handle'],
+        ];
+
+        foreach ($commandToHandlerMap as [$handlerClass]) {
+            $this->container->set($handlerClass, autowire());
+        }
+
+        $mapping = new MapByStaticList($commandToHandlerMap);
+
+        $commandHandlerMiddleware = new CommandHandlerMiddleware(
+            $this->container,
+            $mapping
+        );
+
+        $commandBus = new CommandBus($commandHandlerMiddleware);
+
+        $this->container->set(CommandBus::class, $commandBus);
+        $this->container->set(CommandBusInterface::class, autowire(TacticianCommandBus::class));
     }
 
     private function registerRoutes(): void

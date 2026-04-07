@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Handler\User;
 
 use App\Command\User\UpdateUserCommand;
-use App\DTO\UserApiDTO;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Oryx\ORM\EntityManager;
@@ -24,7 +23,7 @@ class UpdateUserHandler
         $this->logger = $logger;
     }
 
-    public function handle(UpdateUserCommand $command): ?UserApiDTO
+    public function handle(UpdateUserCommand $command): ?User
     {
         $this->logger?->info('Updating user: ' . $command->id);
 
@@ -55,6 +54,6 @@ class UpdateUserHandler
 
         $this->logger?->info('User updated: ' . $command->id);
 
-        return $this->repository->findForApi($command->id);
+        return $user;
     }
 }

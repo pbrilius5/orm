@@ -25,50 +25,16 @@ class GroupRepository
 
     /**
      * Find all groups with eager-loaded users for API (avoids N+1).
-     * Returns GroupApiDTO[] with pre-computed users data.
+     * Returns Group[] with pre-loaded users.
      */
     public function findAllForApi(): array
     {
-        $results = $this->em->createQueryBuilder()
+        return $this->em->createQueryBuilder()
             ->select('g, u')
             ->from(Group::class, 'g')
             ->leftJoin('g.users', 'u')
             ->getQuery()
             ->getResult();
-
-        $dtos = [];
-        $groupUsersMap = [];
-
-        // Group users by group
-        foreach ($results as $row) {
-            $group = $row[0];
-            $groupId = $group->getId()?->toString() ?? '';
-
-            if (!isset($groupUsersMap[$groupId])) {
-                $groupUsersMap[$groupId] = [];
-            }
-
-            // If there's a joined user (not the group itself)
-            if (isset($row[1]) && $row[1] !== null) {
-                $groupUsersMap[$groupId][] = $row[1];
-            }
-        }
-
-        // Create DTOs
-        foreach ($results as $row) {
-            $group = $row[0];
-            $groupId = $group->getId()?->toString() ?? '';
-
-            // Only create DTO once per group
-            if (!isset($dtos[$groupId])) {
-                $dtos[$groupId] = GroupApiDTO::fromEntity(
-                    $group,
-                    $groupUsersMap[$groupId] ?? []
-                );
-            }
-        }
-
-        return array_values($dtos);
     }
 
     public function findAllWithFilter(?string $search = null): array
@@ -90,47 +56,17 @@ class GroupRepository
      */
     public function findAllWithFilterForApi(?string $search = null): array
     {
-        $results = $this->em->createQueryBuilder()
+        $qb = $this->em->createQueryBuilder()
             ->select('g, u')
             ->from(Group::class, 'g')
             ->leftJoin('g.users', 'u');
 
         if ($search !== null && $search !== '') {
-            $results->andWhere($results->expr()->like('g.name', ':search'))
+            $qb->andWhere($qb->expr()->like('g.name', ':search'))
                ->setParameter('search', "%{$search}%");
         }
 
-        $results = $results->getQuery()->getResult();
-
-        $dtos = [];
-        $groupUsersMap = [];
-
-        foreach ($results as $row) {
-            $group = $row[0];
-            $groupId = $group->getId()?->toString() ?? '';
-
-            if (!isset($groupUsersMap[$groupId])) {
-                $groupUsersMap[$groupId] = [];
-            }
-
-            if (isset($row[1]) && $row[1] !== null) {
-                $groupUsersMap[$groupId][] = $row[1];
-            }
-        }
-
-        foreach ($results as $row) {
-            $group = $row[0];
-            $groupId = $group->getId()?->toString() ?? '';
-
-            if (!isset($dtos[$groupId])) {
-                $dtos[$groupId] = GroupApiDTO::fromEntity(
-                    $group,
-                    $groupUsersMap[$groupId] ?? []
-                );
-            }
-        }
-
-        return array_values($dtos);
+        return $qb->getQuery()->getResult();
     }
 
     public function find(UuidInterface|string|int $id): ?Group
@@ -141,7 +77,7 @@ class GroupRepository
     /**
      * Find group by ID with eager-loaded users for API.
      */
-    public function findForApi(int|string $id): ?GroupApiDTO
+    public function findForApi(int|string $id): ?Group
     {
         $results = $this->em->createQueryBuilder()
             ->select('g, u')
@@ -156,14 +92,7 @@ class GroupRepository
             return null;
         }
 
-        $users = [];
-        foreach ($results as $row) {
-            if (isset($row[1]) && $row[1] !== null) {
-                $users[] = $row[1];
-            }
-        }
-
-        return GroupApiDTO::fromEntity($results[0][0], $users);
+        return $results[0][0];
     }
 
     public function save(Group $group): void

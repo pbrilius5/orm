@@ -27,11 +27,15 @@ use Psr\Http\Message\ResponseInterface;
 class AdrRoutes
 {
     private Router $router;
+    private ContainerInterface $container;
+    private ResponseFactory $responseFactory;
 
     public function __construct(ContainerInterface $container)
     {
+        $this->container = $container;
+        $this->responseFactory = new ResponseFactory();
         $this->router = new Router();
-        $strategy = new JsonStrategy(new ResponseFactory());
+        $strategy = new JsonStrategy($this->responseFactory);
         $strategy->setContainer($container);
         $this->router->setStrategy($strategy);
         $this->register();
@@ -54,19 +58,43 @@ class AdrRoutes
             ]);
         });
 
-        $this->router->map('GET', '/api/users', [ListAction::class, '__invoke']);
-        $this->router->map('POST', '/api/users', [CreateAction::class, '__invoke']);
-        $this->router->map('GET', '/api/users/{id}', [ShowAction::class, '__invoke']);
-        $this->router->map('PUT', '/api/users/{id}', [UpdateAction::class, '__invoke']);
-        $this->router->map('PATCH', '/api/users/{id}', [PatchAction::class, '__invoke']);
-        $this->router->map('DELETE', '/api/users/{id}', [DeleteAction::class, '__invoke']);
+        $this->router->map('GET', '/api/users', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(ListAction::class, $request);
+        });
+        $this->router->map('POST', '/api/users', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(CreateAction::class, $request);
+        });
+        $this->router->map('GET', '/api/users/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(ShowAction::class, $request, $routeVars);
+        });
+        $this->router->map('PUT', '/api/users/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(UpdateAction::class, $request, $routeVars);
+        });
+        $this->router->map('PATCH', '/api/users/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(PatchAction::class, $request, $routeVars);
+        });
+        $this->router->map('DELETE', '/api/users/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(DeleteAction::class, $request, $routeVars);
+        });
 
-        $this->router->map('GET', '/api/groups', [GroupListAction::class, '__invoke']);
-        $this->router->map('POST', '/api/groups', [GroupCreateAction::class, '__invoke']);
-        $this->router->map('GET', '/api/groups/{id}', [GroupShowAction::class, '__invoke']);
-        $this->router->map('PUT', '/api/groups/{id}', [GroupUpdateAction::class, '__invoke']);
-        $this->router->map('PATCH', '/api/groups/{id}', [GroupPatchAction::class, '__invoke']);
-        $this->router->map('DELETE', '/api/groups/{id}', [GroupDeleteAction::class, '__invoke']);
+        $this->router->map('GET', '/api/groups', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(GroupListAction::class, $request);
+        });
+        $this->router->map('POST', '/api/groups', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(GroupCreateAction::class, $request);
+        });
+        $this->router->map('GET', '/api/groups/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(GroupShowAction::class, $request, $routeVars);
+        });
+        $this->router->map('PUT', '/api/groups/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(GroupUpdateAction::class, $request, $routeVars);
+        });
+        $this->router->map('PATCH', '/api/groups/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(GroupPatchAction::class, $request, $routeVars);
+        });
+        $this->router->map('DELETE', '/api/groups/{id}', function (ServerRequestInterface $request, array $routeVars): ResponseInterface {
+            return $this->resolveAction(GroupDeleteAction::class, $request, $routeVars);
+        });
 
         $this->router->map('GET', '/manifest.json', function (ServerRequestInterface $request): ResponseInterface {
             return new JsonResponse([
@@ -83,5 +111,17 @@ class AdrRoutes
                 ],
             ]);
         });
+    }
+
+    private function resolveAction(string $actionClass, ServerRequestInterface $request, array $routeVars = []): ResponseInterface
+    {
+        $action = $this->container->get($actionClass);
+        $response = $this->responseFactory->createResponse();
+
+        foreach ($routeVars as $key => $value) {
+            $request = $request->withAttribute($key, $value);
+        }
+
+        return $action($request, $response);
     }
 }

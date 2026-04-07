@@ -37,7 +37,10 @@ class ListAction
         $groups = $this->commandBus->handle($command);
 
         $dtos = array_map(
-            fn($group) => $this->dtoFactory->create($group),
+            fn($group) => $this->dtoFactory->create($group, [
+                'users' => $group->getUsers()->toArray(),
+                'gamificationRoles' => $group->getGamificationRoles(),
+            ]),
             $groups
         );
 

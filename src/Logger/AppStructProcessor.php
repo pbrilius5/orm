@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Logger;
 
+use Monolog\LogRecord;
 use Monolog\Processor\ProcessorInterface;
 
 /**
@@ -11,17 +12,14 @@ use Monolog\Processor\ProcessorInterface;
  */
 class AppStructProcessor implements ProcessorInterface
 {
-    public function __invoke(array $record): array
+    public function __invoke(LogRecord $record): LogRecord
     {
-        // Add application environment info
-        $record['extra']['app_env'] = $_SERVER['APP_ENV'] ?? 'unknown';
-        $record['extra']['app_debug'] = (bool) ($_SERVER['APP_DEBUG'] ?? false);
-
-        // Add PHP version
-        $record['extra']['php_version'] = phpversion();
-
-        // Add script name
-        $record['extra']['script_name'] = $_SERVER['SCRIPT_NAME'] ?? 'unknown';
+        $record = $record->with(extra: array_merge($record->extra, [
+            'app_env' => $_SERVER['APP_ENV'] ?? 'unknown',
+            'app_debug' => (bool) ($_SERVER['APP_DEBUG'] ?? false),
+            'php_version' => phpversion(),
+            'script_name' => $_SERVER['SCRIPT_NAME'] ?? 'unknown',
+        ]));
 
         return $record;
     }

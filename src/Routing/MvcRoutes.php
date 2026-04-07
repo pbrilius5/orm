@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Routing;
 
 use App\Controller\UserController;
+use App\Dto\DtoFactory;
 use App\Http\Router;
 use App\Http\Request;
 use App\Http\Response;
 use App\View\ViewRenderer;
-use Doctrine\ORM\EntityManager;
+use Oryx\ORM\EntityManager;
+use League\Tactician\CommandBus;
 
 class MvcRoutes
 {
@@ -17,12 +19,12 @@ class MvcRoutes
     private array $controllers;
     private ViewRenderer $view;
 
-    public function __construct(EntityManager $em)
+    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory)
     {
         $this->router = new Router();
         $this->view = new ViewRenderer();
         $this->controllers = [
-            'user' => new UserController($em),
+            'user' => new UserController($em, $commandBus, $dtoFactory),
         ];
         $this->register();
     }
