@@ -9,8 +9,6 @@ use League\Fractal\TransformerAbstract;
 
 class GroupTransformer extends TransformerAbstract
 {
-    protected array $availableIncludes = ['users'];
-
     public function transform(GroupApiDTO $group): array
     {
         return [
@@ -18,10 +16,5 @@ class GroupTransformer extends TransformerAbstract
             'name' => $group->name,
             'created_at' => $group->createdAt->format('c'),
         ];
-    }
-
-    public function includeUsers(GroupApiDTO $group)
-    {
-        return $this->collection($group->users, new UserTransformer());
     }
 }

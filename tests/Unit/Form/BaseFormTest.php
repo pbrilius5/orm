@@ -71,11 +71,11 @@ class BaseFormTest extends TestCase
         $this->assertTrue($password->getAttribute('required'));
     }
 
-    public function testUserFormGamificationRolesElementIsMultiCheckbox(): void
+    public function testUserFormGamificationRolesElementIsRadio(): void
     {
         $form = new UserForm(null, [], $this->laminasSm);
         $roles = $form->get('gamification_roles');
-        $this->assertSame('multi_checkbox', $roles->getAttribute('type'));
+        $this->assertSame('radio', $roles->getAttribute('type'));
     }
 
     public function testUserFormGamificationRolesValueOptions(): void
@@ -188,7 +188,7 @@ class BaseFormTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'secret123',
             'work_group_id' => $group->getId()->toString(),
-            'gamification_roles' => ['ROLE_WIZARD', 'ROLE_ARCHITECT'],
+            'gamification_roles' => 'ROLE_WIZARD',
         ]);
         $this->assertTrue($form->isValid());
     }

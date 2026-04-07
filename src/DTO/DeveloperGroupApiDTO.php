@@ -19,11 +19,6 @@ class DeveloperGroupApiDTO extends GroupApiDTO
             id: $group->getId()?->toString() ?? '',
             name: $group->getName(),
             description: $group->getDescription(),
-            discriminator: 'developer',
-            rank: $group->getRank(),
-            isWorkGroup: $group->isWorkGroup(),
-            users: $users,
-            gamificationRoles: $gamificationRoles,
             createdAt: $group->getCreatedAt(),
         );
     }

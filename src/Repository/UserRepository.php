@@ -6,6 +6,9 @@ namespace App\Repository;
 
 use App\Entity\User;
 use App\DTO\UserApiDTO;
+use App\Entity\ArchitectRole;
+use App\Entity\GameMasterRole;
+use App\Entity\WizardRole;
 use Oryx\ORM\EntityManager;
 
 class UserRepository
@@ -58,6 +61,58 @@ class UserRepository
     }
 
     /**
+     * Find all users with pagination and eager-loaded relations.
+     */
+    public function findAllForApiPaginated(?int $limit, ?int $offset): array
+    {
+        $qb = $this->em->createQueryBuilder()
+            ->select('u, ur, r, ug, g')
+            ->from(User::class, 'u')
+            ->leftJoin('u.userRoles', 'ur')
+            ->leftJoin('ur.role', 'r')
+            ->leftJoin('u.userGroups', 'ug')
+            ->leftJoin('ug.group', 'g');
+
+        if ($limit !== null) {
+            $qb->setMaxResults($limit);
+        }
+        if ($offset !== null) {
+            $qb->setFirstResult($offset);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Count all users in database.
+     */
+    public function countAll(): int
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COUNT(u)')
+            ->from(User::class, 'u')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Count all users matching search filter.
+     */
+    public function countAllWithFilter(?string $search): int
+    {
+        $qb = $this->em->createQueryBuilder()
+            ->select('COUNT(u)')
+            ->from(User::class, 'u');
+
+        if ($search !== null && $search !== '') {
+            $qb->andWhere('u.email LIKE :search')
+               ->setParameter('search', "%{$search}%");
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
      * Find all users with filter and eager-loaded relations for API.
      */
     public function findAllWithFilterForApi(?string $search = null): array
@@ -71,7 +126,7 @@ class UserRepository
             ->leftJoin('ug.group', 'g');
 
         if ($search !== null && $search !== '') {
-            $qb->andWhere($qb->expr()->like('u.email', ':search'))
+            $qb->andWhere('u.email LIKE :search')
                ->setParameter('search', "%{$search}%");
         }
 

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\DesignerGroup;
+use App\Entity\DeveloperGroup;
 use App\Entity\Group;
 use App\DTO\GroupApiDTO;
+use App\Entity\TesterGroup;
 use Oryx\ORM\EntityManager;
 use Ramsey\Uuid\UuidInterface;
 
@@ -30,11 +33,58 @@ class GroupRepository
     public function findAllForApi(): array
     {
         return $this->em->createQueryBuilder()
-            ->select('g, u')
+            ->select('g')
             ->from(Group::class, 'g')
-            ->leftJoin('g.users', 'u')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Find all groups with pagination and eager-loaded users.
+     */
+    public function findAllForApiPaginated(?int $limit, ?int $offset): array
+    {
+        $qb = $this->em->createQueryBuilder()
+            ->select('g')
+            ->from(Group::class, 'g');
+
+        if ($limit !== null) {
+            $qb->setMaxResults($limit);
+        }
+        if ($offset !== null) {
+            $qb->setFirstResult($offset);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Count all groups in database.
+     */
+    public function countAll(): int
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COUNT(g)')
+            ->from(Group::class, 'g')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Count all groups matching search filter.
+     */
+    public function countAllWithFilter(?string $search): int
+    {
+        $qb = $this->em->createQueryBuilder()
+            ->select('COUNT(g)')
+            ->from(Group::class, 'g');
+
+        if ($search !== null && $search !== '') {
+            $qb->andWhere('g.name LIKE :search')
+               ->setParameter('search', "%{$search}%");
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
     public function findAllWithFilter(?string $search = null): array
@@ -57,12 +107,11 @@ class GroupRepository
     public function findAllWithFilterForApi(?string $search = null): array
     {
         $qb = $this->em->createQueryBuilder()
-            ->select('g, u')
-            ->from(Group::class, 'g')
-            ->leftJoin('g.users', 'u');
+            ->select('g')
+            ->from(Group::class, 'g');
 
         if ($search !== null && $search !== '') {
-            $qb->andWhere($qb->expr()->like('g.name', ':search'))
+            $qb->andWhere('g.name LIKE :search')
                ->setParameter('search', "%{$search}%");
         }
 
@@ -82,7 +131,8 @@ class GroupRepository
         $results = $this->em->createQueryBuilder()
             ->select('g, u')
             ->from(Group::class, 'g')
-            ->leftJoin('g.users', 'u')
+            ->leftJoin('g.userGroups', 'ug')
+            ->leftJoin('ug.user', 'u')
             ->where('g.id = :id')
             ->setParameter('id', $id)
             ->getQuery()

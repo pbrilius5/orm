@@ -57,9 +57,9 @@ class UserForm extends BaseForm
 
         $this->add([
             'name' => 'gamification_roles',
-            'type' => 'multicheckbox',
+            'type' => 'radio',
             'options' => [
-                'label' => 'Roles (gamification)',
+                'label' => 'Role (gamification)',
                 'value_options' => [
                     WizardRole::NAME => 'Wizard (rank: 1)',
                     ArchitectRole::NAME => 'Architect (rank: 2)',
@@ -145,6 +145,6 @@ class UserForm extends BaseForm
     public function setGamificationRoles(array $roleNames): void
     {
         $rolesDisplay = $this->get('gamification_roles');
-        $rolesDisplay->setValue($roleNames);
+        $rolesDisplay->setValue($roleNames[0] ?? null);
     }
 }

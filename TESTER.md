@@ -83,7 +83,7 @@ curl -X GET http://localhost:8080/api/users
     {
       "id": 1,
       "email": "admin@example.com",
-      "gamification_roles": ["ROLE_WIZARD", "ROLE_ARCHITECT"],
+      "role": "ROLE_WIZARD",
       "created_at": "2026-01-01T00:00:00+00:00",
       "_links": {
         "self": { "href": "/api/users/1" },
@@ -115,7 +115,7 @@ curl -X POST http://localhost:8080/api/users \
     "email": "tester@example.com",
     "password": "securePass123",
     "group_id": "550e8400-e29b-41d4-a716-446655440000",
-    "gamification_roles": ["ROLE_WIZARD"]
+    "gamification_roles": "ROLE_WIZARD"
   }'
 ```
 
@@ -125,8 +125,7 @@ curl -X POST http://localhost:8080/api/users \
   "data": {
     "id": 2,
     "email": "tester@example.com",
-    "groups": ["Users"],
-    "gamification_roles": ["ROLE_WIZARD"],
+    "role": "ROLE_WIZARD",
     "created_at": "2026-04-03T12:00:00+00:00",
     "_links": {
       "self": { "href": "/api/users/2" },
@@ -200,8 +199,7 @@ curl -X GET http://localhost:8080/api/users/1
   "data": {
     "id": 1,
     "email": "admin@example.com",
-    "groups": ["Users", "Developers"],
-    "gamification_roles": ["ROLE_WIZARD", "ROLE_ARCHITECT"],
+    "role": "ROLE_WIZARD",
     "created_at": "2026-01-01T00:00:00+00:00",
     "_links": {
       "self": { "href": "/api/users/1" },
@@ -224,7 +222,7 @@ curl -X PUT http://localhost:8080/api/users/1 \
     "email": "updated@example.com",
     "password": "newpassword456",
     "group_id": "550e8400-e29b-41d4-a716-446655440000",
-    "gamification_roles": ["ROLE_GAME_MASTER"]
+    "gamification_roles": "ROLE_GAME_MASTER"
   }'
 ```
 
@@ -236,7 +234,7 @@ curl -X PUT http://localhost:8080/api/users/1 \
 ```bash
 curl -X PATCH http://localhost:8080/api/users/1 \
   -H "Content-Type: application/json" \
-  -d '{"gamification_roles": ["ROLE_WIZARD", "ROLE_GAME_MASTER"]}'
+  -d '{"gamification_roles": "ROLE_WIZARD"}'
 ```
 
 ---
@@ -267,9 +265,8 @@ curl -X GET http://localhost:8080/api/groups
   "data": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Users",
-      "description": "Default group for all users",
-      "type": "group",
+      "name": "Developers",
+      "description": "Development team",
       "created_at": "2026-01-01T00:00:00+00:00",
       "_links": {
         "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
@@ -279,9 +276,8 @@ curl -X GET http://localhost:8080/api/groups
     },
     {
       "id": "660e8400-e29b-41d4-a716-446655440000",
-      "name": "Developers",
-      "description": "Development team",
-      "type": "developer",
+      "name": "Designers",
+      "description": "Design team",
       "created_at": "2026-01-01T00:00:00+00:00",
       "_links": {
         "self": { "href": "/api/groups/660e8400-e29b-41d4-a716-446655440000" },
@@ -322,7 +318,6 @@ curl -X POST http://localhost:8080/api/groups \
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "Developers",
     "description": "Development team group",
-    "type": "group",
     "created_at": "2026-04-03T12:00:00+00:00",
     "_links": {
       "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
@@ -419,14 +414,15 @@ curl -X DELETE http://localhost:8080/api/groups/550e8400-e29b-41d4-a716-44665544
 
 ### Group STI (Single Table Inheritance)
 
-Groups use STI like Roles. The discriminator determines the group type:
+Groups use STI. The `type` parameter in POST requests determines the group class:
 
-| Type | Discriminator | Class |
-|------|---------------|-------|
-| Base | `group` | `Group` |
-| Developer | `developer` | `DeveloperGroup` |
-| Designer | `designer` | `DesignerGroup` |
-| Tester | `tester` | `TesterGroup` |
+| Type | Class |
+|------|-------|
+| `developer` | `DeveloperGroup` |
+| `designer` | `DesignerGroup` |
+| `tester` | `TesterGroup` |
+
+Note: The base `Group` class is hidden from API responses.
 
 #### 14. Create DeveloperGroup
 
@@ -448,7 +444,6 @@ curl -X POST http://localhost:8080/api/groups \
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "Developers",
     "description": "Development team",
-    "type": "developer",
     "created_at": "2026-04-03T12:00:00+00:00",
     "_links": {
       "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
@@ -592,7 +587,7 @@ Import the following JSON into Postman for quick testing:
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\": \"newuser@example.com\", \"password\": \"password123\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": [\"ROLE_WIZARD\"]}"
+              "raw": "{\"email\": \"newuser@example.com\", \"password\": \"password123\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": \"ROLE_WIZARD\"}"
             }
           }
         },
@@ -611,7 +606,7 @@ Import the following JSON into Postman for quick testing:
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\": \"updated@example.com\", \"password\": \"newpass\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": [\"ROLE_ARCHITECT\"]}"
+              "raw": "{\"email\": \"updated@example.com\", \"password\": \"newpass\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": \"ROLE_ARCHITECT\"}"
             }
           }
         },
@@ -623,7 +618,7 @@ Import the following JSON into Postman for quick testing:
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\"gamification_roles\": [\"ROLE_WIZARD\"]}"
+              "raw": "{\"gamification_roles\": \"ROLE_WIZARD\"}"
             }
           }
         },

@@ -8,8 +8,6 @@ use App\DTO\ArchitectRoleApiDTO;
 use App\DTO\DesignerGroupApiDTO;
 use App\DTO\DeveloperGroupApiDTO;
 use App\DTO\GameMasterRoleApiDTO;
-use App\DTO\GroupApiDTO;
-use App\DTO\RoleApiDTO;
 use App\DTO\TesterGroupApiDTO;
 use App\DTO\UserApiDTO;
 use App\DTO\WizardRoleApiDTO;
@@ -49,15 +47,8 @@ class DtoFactory
                 $context['users'] ?? [],
                 $context['gamificationRoles'] ?? []
             ),
-            $entity instanceof Group => $this->toGroupDto(
-                $entity,
-                $context['users'] ?? [],
-                $context['gamificationRoles'] ?? []
-            ),
-            $entity instanceof WizardRole => $this->toWizardRoleDto($entity),
-            $entity instanceof ArchitectRole => $this->toArchitectRoleDto($entity),
-            $entity instanceof GameMasterRole => $this->toGameMasterRoleDto($entity),
-            $entity instanceof Role => $this->toRoleDto($entity),
+            $entity instanceof Group => throw new \RuntimeException('Base Group entity is hidden from API'),
+            $entity instanceof Role => throw new \RuntimeException('Base Role entity is hidden from API'),
             default => throw new \RuntimeException('Unknown entity: ' . get_class($entity)),
         };
     }
@@ -65,11 +56,6 @@ class DtoFactory
     public function toUserDto(User $user, array $userRoles = [], ?Group $workGroup = null, array $gamificationRoles = []): UserApiDTO
     {
         return UserApiDTO::fromEntity($user, $userRoles, $workGroup, $gamificationRoles);
-    }
-
-    public function toGroupDto(Group $group, array $users = [], array $gamificationRoles = []): GroupApiDTO
-    {
-        return GroupApiDTO::fromEntity($group, $users, $gamificationRoles);
     }
 
     public function toDeveloperGroupDto(DeveloperGroup $group, array $users = [], array $gamificationRoles = []): DeveloperGroupApiDTO
@@ -85,11 +71,6 @@ class DtoFactory
     public function toTesterGroupDto(TesterGroup $group, array $users = [], array $gamificationRoles = []): TesterGroupApiDTO
     {
         return TesterGroupApiDTO::fromEntity($group, $users, $gamificationRoles);
-    }
-
-    public function toRoleDto(Role $role): RoleApiDTO
-    {
-        return RoleApiDTO::fromEntity($role);
     }
 
     public function toWizardRoleDto(WizardRole $role): WizardRoleApiDTO

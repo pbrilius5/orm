@@ -8,8 +8,6 @@ use App\Entity\ArchitectRole;
 use App\Entity\DeveloperGroup;
 use App\Entity\DesignerGroup;
 use App\Entity\GameMasterRole;
-use App\Entity\Group;
-use App\Entity\Role;
 use App\Entity\TesterGroup;
 use App\Entity\User;
 use App\Entity\UserGroup;
@@ -47,13 +45,6 @@ class FixturesLoadCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption(
-                'groups',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Number of groups to generate',
-                4
-            )
             ->addOption(
                 'users',
                 null,
@@ -129,7 +120,6 @@ class FixturesLoadCommand extends Command
             $schemaTool->createSchema($metadatas);
         }
 
-        $groupCount = (int) $input->getOption('groups');
         $userCount = (int) $input->getOption('users');
 
         if ($input->getOption('seed') !== null) {
@@ -140,7 +130,7 @@ class FixturesLoadCommand extends Command
 
         $io->title('Loading Fixtures');
 
-        $groups = $this->createGroups($io, $em, $groupCount);
+        $groups = $this->createGroups($io, $em);
         $roles = $this->createRoles($io, $em);
         $users = $this->createUsers($io, $em, $groups, $userCount);
         $this->createUserRoles($io, $em, $users, $roles, $groups);
@@ -149,7 +139,7 @@ class FixturesLoadCommand extends Command
 
         $io->success(sprintf(
             'Loaded %d groups, %d roles, %d users',
-            $groupCount,
+            count($groups),
             count($roles),
             $userCount
         ));
@@ -157,25 +147,23 @@ class FixturesLoadCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function createGroups(SymfonyStyle $io, $em, int $count): array
+    private function createGroups(SymfonyStyle $io, $em): array
     {
         $groups = [];
         $groupClasses = [
-            Group::class,
             DeveloperGroup::class,
             DesignerGroup::class,
             TesterGroup::class,
         ];
-        $groupNames = [Group::USERS, 'Developers', 'Designers', 'Testers'];
+        $groupNames = ['Developers', 'Designers', 'Testers'];
 
-        for ($i = 0; $i < $count; $i++) {
-            $groupClass = $groupClasses[$i] ?? Group::class;
+        foreach ($groupClasses as $i => $groupClass) {
             $group = new $groupClass();
-            $group->setName($groupNames[$i] ?? 'Group ' . ($i + 1));
+            $group->setName($groupNames[$i]);
             $group->setCreatedAt(new \DateTimeImmutable());
             $em->persist($group);
             $groups[] = $group;
-            $io->text(sprintf('  Group: <info>%s</info> (%s)', $group->getName(), (new \ReflectionClass($group))->getShortName()));
+            $io->text(sprintf('  Group: <info>%s</info>', $group->getName()));
         }
 
         return $groups;
@@ -184,13 +172,6 @@ class FixturesLoadCommand extends Command
     private function createRoles(SymfonyStyle $io, $em): array
     {
         $roles = [];
-
-        $baseRole = new Role();
-        $baseRole->setName(Role::USER);
-        $baseRole->setDescription('Base user role');
-        $em->persist($baseRole);
-        $roles[Role::USER] = $baseRole;
-        $io->text(sprintf('  Role: <info>%s</info>', Role::USER));
 
         $wizardRole = new WizardRole();
         $wizardRole->setName(WizardRole::NAME);
@@ -248,39 +229,14 @@ class FixturesLoadCommand extends Command
 
     private function createUserRoles(SymfonyStyle $io, $em, array $users, array $roles, array $groups): void
     {
-        $groupGamificationMap = [];
-        foreach ($groups as $group) {
-            $groupClass = get_class($group);
-            if (!isset($groupGamificationMap[$groupClass])) {
-                $groupGamificationMap[$groupClass] = [];
-            }
-            switch ($groupClass) {
-                case TesterGroup::class:
-                    $groupGamificationMap[$groupClass][] = $roles[WizardRole::NAME];
-                    break;
-                case DesignerGroup::class:
-                    $groupGamificationMap[$groupClass][] = $roles[ArchitectRole::NAME];
-                    break;
-                case DeveloperGroup::class:
-                    $groupGamificationMap[$groupClass][] = $roles[GameMasterRole::NAME];
-                    break;
-            }
-        }
+        $gamificationRoles = [
+            $roles[WizardRole::NAME],
+            $roles[ArchitectRole::NAME],
+            $roles[GameMasterRole::NAME],
+        ];
 
         foreach ($users as $user) {
-            $candidateRoles = [$roles[Role::USER]];
-
-            foreach ($user->getUserGroups() as $userGroup) {
-                $group = $userGroup->getGroup();
-                $groupClass = get_class($group);
-                if (isset($groupGamificationMap[$groupClass])) {
-                    foreach ($groupGamificationMap[$groupClass] as $groupRole) {
-                        $candidateRoles[] = $groupRole;
-                    }
-                }
-            }
-
-            $selectedRole = $this->faker->randomElement($candidateRoles);
+            $selectedRole = $this->faker->randomElement($gamificationRoles);
 
             $userRole = new UserRole();
             $userRole->setUser($user);

@@ -67,6 +67,8 @@ class FormHelper
             $html .= '<textarea class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" ' . $required . ' placeholder="' . htmlspecialchars($placeholder) . '">' . $value . '</textarea>';
         } elseif ($type === 'select' || $type === 'multicheckbox' || $type === 'multi_checkbox') {
             $html .= self::renderSelectOrCheckbox($element, $hasError);
+        } elseif ($type === 'radio') {
+            $html .= self::renderRadioButtons($element, $hasError);
         } else {
             $html .= '<input type="' . htmlspecialchars($type) . '" class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" value="' . $value . '" ' . $required . ' placeholder="' . htmlspecialchars($placeholder) . '">';
         }
@@ -79,6 +81,27 @@ class FormHelper
             $html .= '</div>';
         }
 
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    private static function renderRadioButtons(ElementInterface $element, bool $hasError): string
+    {
+        $name = $element->getName();
+        $valueOptions = $element->getOption('value_options') ?? [];
+        $class = 'form-control' . ($hasError ? ' is-invalid' : '');
+        $selectedValue = $element->getValue();
+
+        $html = '<div class="card border p-3 ' . ($hasError ? 'border-danger' : '') . '">';
+        foreach ($valueOptions as $value => $label) {
+            $checked = ((string) $value === (string) $selectedValue) ? 'checked' : '';
+            $id = $name . '_' . $value;
+            $html .= '<div class="form-check mb-2">';
+            $html .= '<input class="form-check-input" type="radio" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . '>';
+            $html .= '<label class="form-check-label" for="' . htmlspecialchars($id) . '">' . htmlspecialchars($label) . '</label>';
+            $html .= '</div>';
+        }
         $html .= '</div>';
 
         return $html;

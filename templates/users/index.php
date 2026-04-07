@@ -45,19 +45,18 @@
                                         </a>
                                     </td>
                                     <td class="d-none d-lg-table-cell">
-                                        <?php $groups = $user->getGroups();
-                                    if (!empty($groups)): ?>
-                                        <span class="badge bg-info"><?= htmlspecialchars($groups[0]) ?></span>
+                                        <?php if ($user->getWorkGroupName()): ?>
+                                        <span class="badge bg-info"><?= htmlspecialchars($user->getWorkGroupName()) ?></span>
                                         <?php else: ?>
                                         <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
                                     <td class="d-none d-lg-table-cell">
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <?php foreach ($user->getGamificationRoles() as $role): ?>
-                                            <span class="badge bg-secondary"><?= htmlspecialchars($role) ?></span>
-                                            <?php endforeach; ?>
-                                        </div>
+                                        <?php if ($user->getRole()): ?>
+                                        <span class="badge bg-secondary"><?= htmlspecialchars($user->getRole()) ?></span>
+                                        <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="d-none d-xl-table-cell text-muted small"><?= $user->getCreatedAt()->format('Y-m-d') ?></td>
                                     <td class="text-end">

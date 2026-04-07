@@ -128,6 +128,9 @@ class GroupActionTest extends TestCase
         $dtoFactory = $this->createMock(DtoFactory::class);
         $dtoFactory->method('create')->willReturn(new \stdClass());
 
+        $groupRepository = $this->createMock(\App\Repository\GroupRepository::class);
+        $groupRepository->method('countAll')->willReturn(0);
+
         return new $actionClass(
             new class implements \App\Command\CommandBusInterface {
                 public function handle($command)
@@ -139,7 +142,8 @@ class GroupActionTest extends TestCase
                     return null;
                 }
             },
-            $dtoFactory
+            $dtoFactory,
+            $groupRepository
         );
     }
 }

@@ -35,7 +35,10 @@ class UserActionTest extends TestCase
 
     public function testListActionReturnsHalJson(): void
     {
-        $action = new ListAction($this->commandBus, $this->dtoFactory);
+        $userRepository = $this->createMock(\App\Repository\UserRepository::class);
+        $userRepository->method('countAll')->willReturn(0);
+
+        $action = new ListAction($this->commandBus, $this->dtoFactory, $userRepository);
         $request = new ServerRequest();
         $response = new Response();
 

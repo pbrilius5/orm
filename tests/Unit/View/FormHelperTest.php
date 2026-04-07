@@ -96,8 +96,8 @@ class FormHelperTest extends TestCase
     {
         $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
-        $this->assertStringContainsString('name="gamification_roles[]"', $html);
-        $this->assertStringContainsString('type="checkbox"', $html);
+        $this->assertStringContainsString('name="gamification_roles"', $html);
+        $this->assertStringContainsString('type="radio"', $html);
     }
 
     public function testRenderUserFormContainsRoleOptions(): void
@@ -170,10 +170,10 @@ class FormHelperTest extends TestCase
         $this->assertStringContainsString('Test description', $html);
     }
 
-    public function testRenderFormWithCheckboxSelectedValues(): void
+    public function testRenderFormWithRadioSelectedValues(): void
     {
         $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
-        $form->setData(['email' => 'test@example.com', 'password' => 'secret', 'gamification_roles' => ['ROLE_WIZARD']]);
+        $form->setData(['email' => 'test@example.com', 'password' => 'secret', 'gamification_roles' => 'ROLE_WIZARD']);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('value="ROLE_WIZARD"', $html);
     }

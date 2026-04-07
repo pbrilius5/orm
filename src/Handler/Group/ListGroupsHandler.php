@@ -30,6 +30,10 @@ class ListGroupsHandler
             return $this->repository->findAllWithFilterForApi($command->search);
         }
 
+        if ($command->limit !== null || $command->offset !== null) {
+            return $this->repository->findAllForApiPaginated($command->limit, $command->offset);
+        }
+
         return $this->repository->findAllForApi();
     }
 }

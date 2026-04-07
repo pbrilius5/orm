@@ -52,13 +52,13 @@ mkdir -p var/log var/data
 # 5. Create database and run migrations
 bin/console oryx:db:setup
 
-# 6. Load demo fixtures (teams, roles, users, wands, patronuses)
+# 5. Load demo fixtures (groups, roles, users)
 bin/console oryx:fixtures:load
 
-# 7. Start the server
+# 6. Start the server
 composer serve
 
-# 8. (Optional) Start async event worker for background processing
+# 7. (Optional) Start async event worker for background processing
 # For development: php bin/async-event-worker.php &
 # For production: use supervisor or systemd to manage the worker
 ```
@@ -93,8 +93,7 @@ No separate debug toggle — one variable, two behaviors.
 | [http://localhost:8080/users](http://localhost:8080/users) | User list with CRUD |
 | [http://localhost:8080/api/users](http://localhost:8080/api/users) | HAL+JSON API collection |
 | [http://localhost:8080/api/users/1](http://localhost:8080/api/users/1) | Single user resource |
-| [http://localhost:8080/api/users?include=posts,group](http://localhost:8080/api/users?include=posts,group) | With embedded relations |
-| [http://localhost:8080/api/users?include=userRoles,wands,patronuses](http://localhost:8080/api/users?include=userRoles,wands,patronuses) | With role system |
+| [http://localhost:8080/api/users?include=userRoles](http://localhost:8080/api/users?include=userRoles) | With role system |
 
 **Domain Events**: Entities automatically emit `EntityCreated`, `EntityUpdated`, and `EntityDeleted` events on create/update/delete. Use `$emitter->emit($event)` for synchronous handling or `$emitter->emitAsync($event)` for background processing via the async worker.
 
@@ -168,11 +167,11 @@ bin/console oryx:db:setup --dry-run
 ### Fixtures Loading
 
 ```bash
-# Default: 3 groups, 10 users, 2 posts per user
+# Default: 3 groups, 10 users
 bin/console oryx:fixtures:load
 
-# Custom counts
-bin/console oryx:fixtures:load --groups=5 --users=50 --posts=3
+# Custom user count
+bin/console oryx:fixtures:load --users=50
 
 # Purge existing data first
 bin/console oryx:fixtures:load --purge
@@ -183,9 +182,7 @@ bin/console oryx:fixtures:load --seed=42
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--groups` | 3 | Number of groups |
 | `--users` | 10 | Number of users |
-| `--posts` | 2 | Posts per user |
 | `--purge` | — | Purge data before loading |
 | `--seed` | null | Random seed |
 
@@ -197,7 +194,7 @@ bin/console orm:generate:entities
 
 # Generate specific entity
 bin/console orm:generate:entities --filter=User
-bin/console orm:generate:entities --filter='App\Entity\Post'
+bin/console orm:generate:entities --filter='App\Entity\DeveloperGroup'
 ```
 
 ### Doctrine Migrations
@@ -842,58 +839,41 @@ src/
 // src/Transformer/Resource/UserTransformer.php
 namespace App\Transformer\Resource;
 
-use App\Entity\User;
+use App\DTO\UserApiDTO;
 use League\Fractal\TransformerAbstract;
 
 class UserTransformer extends TransformerAbstract
 {
-    protected $availableIncludes = ['posts', 'group', 'userRoles', 'wands', 'patronuses'];
-
-    public function transform(User $user): array
+    public function transform(UserApiDTO $user): array
     {
-        $roles = [];
-        foreach ($user->getUserRoles() as $userRole) {
-            if ($userRole->isActive()) {
-                $roles[] = $userRole->getRole()->getName();
-            }
-        }
-
         return [
-            'id' => $user->getId() ?? 0,
-            'email' => $user->getEmail(),
-            'roles' => $roles,
-            'created_at' => $user->getCreatedAt()->format('c'),
-            'updated_at' => $user->getUpdatedAt()?->format('c'),
+            'id' => $user->id,
+            'email' => $user->email,
+            'role' => $user->role,
+            'created_at' => $user->createdAt->format('c'),
         ];
     }
+}
+```
 
-    public function includePosts(User $user)
-    {
-        return $this->collection($user->getPosts(), new PostTransformer());
-    }
+### 8.2 Group Transformer
 
-    public function includeGroup(User $user)
-    {
-        $groups = $user->getAllGroups();
-        if (empty($groups)) {
-            return null;
-        }
-        return $this->collection($groups, new GroupTransformer());
-    }
+```php
+// src/Transformer/Resource/GroupTransformer.php
+namespace App\Transformer\Resource;
 
-    public function includeUserRoles(User $user)
-    {
-        return $this->collection($user->getUserRoles(), new UserRoleTransformer());
-    }
+use App\DTO\GroupApiDTO;
+use League\Fractal\TransformerAbstract;
 
-    public function includeWands(User $user)
+class GroupTransformer extends TransformerAbstract
+{
+    public function transform(GroupApiDTO $group): array
     {
-        return $this->collection($user->getWands(), new WandTransformer());
-    }
-
-    public function includePatronuses(User $user)
-    {
-        return $this->collection($user->getPatronuses(), new PatronusTransformer());
+        return [
+            'id' => $group->id,
+            'name' => $group->name,
+            'created_at' => $group->createdAt->format('c'),
+        ];
     }
 }
 ```
@@ -1058,82 +1038,24 @@ protected function setUp(): void
 
 **Fixtures provide test data generation.**
 
-### 9.1 Factory Definition (FactoryMuffin)
+### 10.1 FixturesLoadCommand
 
 ```php
-// tests/factories/user.factories.php
-use App\Entity\User;
-use App\Entity\Team;
-
-$fm->define(User::class)->setDefinitions([
-    'email' => 'user{++}@wizardplatform.com',
-    'password' => 'password123',
-    'createdAt' => fn() => new \DateTimeImmutable(),
-    'updatedAt' => null,
-    'team' => 'factory|' . Team::class,
-]);
-
-// tests/factories/role.factories.php
-use App\Entity\Role;
-
-$fm->define(Role::class)->setDefinitions([
-    'name' => fn() => $fm->random([Role::WIZARD, Role::ARCHITECT, Role::GAME_MASTER]),
-    'description' => fn() => 'Magic role for wizard platform',
-]);
-
-// tests/factories/team.factories.php
-use App\Entity\Team;
-
-$fm->define(Team::class)->setDefinitions([
-    'name' => 'Team {++}',
-    'description' => fn() => 'Demo team created by faker',
-    'createdAt' => fn() => new \DateTimeImmutable(),
-]);
-
-// tests/factories/user_role.factories.php
-use App\Entity\UserRole;
-use App\Entity\User;
-use App\Entity\Role;
-use App\Entity\Team;
-
-$fm->define(UserRole::class)->setDefinitions([
-    'user' => 'factory|' . User::class,
-    'role' => 'factory|' . Role::class,
-    'team' => 'factory|' . Team::class,
-    'grantedAt' => fn() => new \DateTimeImmutable(),
-    'expiresAt' => null,
-]);
+// src/Console/Command/FixturesLoadCommand.php
+// Creates: 3 groups (Developer, Designer, Tester)
+//          3 roles (Wizard, Architect, GameMaster)
+//          N users with random gamification roles
 ```
 
-### 9.2 FixtureLoader
+### 10.2 Gamification Scale
 
-```php
-// src/Fixture/FixtureLoader.php
-namespace App\Fixture;
+| Group | Role |
+|-------|------|
+| TesterGroup | WizardRole |
+| DesignerGroup | ArchitectRole |
+| DeveloperGroup | GameMasterRole |
 
-use League\FactoryMuffin\FactoryMuffin;
-
-class FixtureLoader
-{
-    private FactoryMuffin $fm;
-
-    public function __construct()
-    {
-        $this->fm = new FactoryMuffin(null, null);
-        $this->fm->loadFactories(__DIR__ . '/../../tests/factories');
-    }
-
-    public function make(string $class): object
-    {
-        return $this->fm->seed(1, $class, [], false)[0];
-    }
-
-    public function makeMany(string $class, int $count): array
-    {
-        return $this->fm->seed($count, $class, [], false);
-    }
-}
-```
+Each user gets **one random role** from the gamification scale.
 
 ### 9.3 Using Fixtures in Tests
 
@@ -1624,8 +1546,8 @@ All Doctrine XML mappings live in `/schema`:
 ```
 schema/
 ├── User.orm.xml
-├── Post.orm.xml
-└── Group.orm.xml
+├── Group.orm.xml
+└── Role.orm.xml
 ```
 
 ### 16.2 Pipeline
@@ -1648,15 +1570,11 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
         <field name="createdAt" type="datetime"/>
         <field name="updatedAt" type="datetime" nullable="true"/>
         
-        <many-to-one target-entity="App\Entity\Team" field="team" inversed-by="users">
-            <join-column name="team_id" nullable="true"/>
+        <many-to-one target-entity="App\Entity\Group" field="group" inversed-by="users">
+            <join-column name="group_id" nullable="true"/>
         </many-to-one>
         
-        <one-to-many target-entity="App\Entity\Post" field="posts" mapped-by="author" cascade="persist"/>
         <one-to-many target-entity="App\Entity\UserRole" field="userRoles" mapped-by="user" cascade="persist" orphan-removal="true"/>
-        <one-to-many target-entity="App\Entity\Wand" field="wands" mapped-by="user" cascade="persist"/>
-        <one-to-many target-entity="App\Entity\Patronus" field="patronuses" mapped-by="user" cascade="persist"/>
-        <one-to-many target-entity="App\Entity\InvisibilityCloak" field="invisibilityCloaks" mapped-by="user" cascade="persist"/>
     </entity>
 </doctrine-mapping>
 ```
@@ -1665,100 +1583,94 @@ schema/*.orm.xml → bin/console orm:generate:entities → src/Entity/*.php
 
 ## 17. Role-Based Access su Doctrine Collections
 
-**Wizard Platform role system su privalomu ROLE_WIZARD ir organizaciniu scope.**
+**Gamified role system su STI (Single Table Inheritance) ir grupių priskyrimu.**
 
 ### 17.1 Schema Overview
 
 | Entity | Table | Description |
 |--------|-------|-------------|
-| `Role` | `roles` | Wizard roles: WIZARD, ARCHITECT, GAME_MASTER |
-| `UserRole` | `user_roles` | VIA lentelė: user_id + role_id + team_id |
-| `Team` | `teams` | Game dev teams (Level Design, Character Art, Audio) |
-| `Wand` | `wands` | Permission token su JSON permissions |
-| `Patronus` | `patronuses` | JWT-like token su expiration |
-| `InvisibilityCloak` | `invisibility_cloaks` | Invisible privilege per team |
+| `Role` | `roles` | Base class (hidden from API) |
+| `WizardRole` | `roles` | STI (discriminator: `wizard`) |
+| `ArchitectRole` | `roles` | STI (discriminator: `architect`) |
+| `GameMasterRole` | `roles` | STI (discriminator: `game_master`) |
+| `UserRole` | `user_roles` | Join entity: user_id + role_id |
+| `Group` | `groups` | Base class (hidden from API) |
+| `DeveloperGroup` | `groups` | STI (discriminator: `developer`) |
+| `DesignerGroup` | `groups` | STI (discriminator: `designer`) |
+| `TesterGroup` | `groups` | STI (discriminator: `tester`) |
+| `UserGroup` | `user_groups` | Join entity: user_id + group_id |
 
-### 17.2 Doctrine Collection vs Array
+### 17.2 STI (Single Table Inheritance)
 
-**Senas būdas (array):**
+Roles ir Groups naudoja STI - viena lentelė su discriminator stulpeliu:
+
 ```php
-// User::$roles - JSON laukas
-$user->setRoles(['ROLE_USER', 'ROLE_ADMIN']);
+// Role STI hierarchija
+Role (bazinė - paslėpta nuo API)
+├── WizardRole
+├── ArchitectRole
+└── GameMasterRole
+
+// Group STI hierarchija
+Group (bazinė - paslėpta nuo API)
+├── DeveloperGroup
+├── DesignerGroup
+└── TesterGroup
 ```
 
-**Naujas būdas (Collection):**
-```php
-// User::$userRoles - Doctrine Collection<UserRole>
-$roles = $user->getUserRoles(); // Returns Collection
-$roles->filter(fn($ur) => $ur->isActive());
-$roles->map(fn($ur) => $ur->getRole()->getName());
-```
+**Bazinės klasės yra paslėptos nuo API** - DtoFactory meta `RuntimeException`, Repository filtruoja pagal `discr` stulpelį.
 
-**Collection privalumai:**
-- Type-safe (Collection<UserRole>)
-- Lazy loading (neuzkrauna visų iš karto)
-- Filtering/mapping be papildomų užklausų
-- Relations su kitais entity
+### 17.3 Role-Group Mapping (Gamification Scale)
 
-### 17.3 Privalomo ROLE_WIZARD Logika
+Kiekviena grupė turi susietą gamifikacinę rolę:
 
-Pridedant bet kokią kitą rolę, automatiškai pridedamas ROLE_WIZARD:
+| Group | Role |
+|-------|------|
+| TesterGroup | WizardRole |
+| DesignerGroup | ArchitectRole |
+| DeveloperGroup | GameMasterRole |
+
+### 17.4 DTO Factory
+
+`DtoFactory::create()` automatiškai atpažįsta STI tipą per `instanceof`:
 
 ```php
-// src/Entity/User.php
-public function addRole(Role $role, Team $team): self
-{
-    // Check if role already exists
-    foreach ($this->userRoles as $existingUserRole) {
-        if ($existingUserRole->getRole() === $role && $existingUserRole->getTeam() === $team) {
-            return $this;
-        }
-    }
-
-    $userRole = new UserRole();
-    $userRole->setUser($this);
-    $userRole->setRole($role);
-    $userRole->setTeam($team);
-    $this->userRoles->add($userRole);
-    $role->addUserRole($userRole);
-
-    // Auto-grant WIZARD if adding other role
-    if ($role->getName() !== Role::WIZARD && !$this->hasRole(Role::WIZARD, $team)) {
-        $wizardRole = new Role();
-        $wizardRole->setName(Role::WIZARD);
-        $wizardRole->setTeam($team);
-        $this->addRole($wizardRole, $team);
-    }
-
-    return $this;
+match (true) {
+    $entity instanceof WizardRole => WizardRoleApiDTO::fromEntity(...),
+    $entity instanceof ArchitectRole => ArchitectRoleApiDTO::fromEntity(...),
+    $entity instanceof GameMasterRole => GameMasterRoleApiDTO::fromEntity(...),
+    $entity instanceof Role => throw new RuntimeException('Base Role hidden'),
+    $entity instanceof DeveloperGroup => DeveloperGroupApiDTO::fromEntity(...),
+    $entity instanceof DesignerGroup => DesignerGroupApiDTO::fromEntity(...),
+    $entity instanceof TesterGroup => TesterGroupApiDTO::fromEntity(...),
+    $entity instanceof Group => throw new RuntimeException('Base Group hidden'),
 }
 ```
 
-### 17.4 Cross-Team Roles
+### 17.5 API Response (supaprastintas)
 
-Vartotojas gali turėti skirtingas roles skirtingose team:
-
-```php
-// User turi ARCHITECT role Level Design team
-$user->addRole($architectRole, $levelDesignTeam);
-
-// User turi GAME_MASTER role Character Art team
-$user->addRole($gameMasterRole, $characterArtTeam);
-
-// Tikrina role konkrečioje team
-$user->hasRole(Role::ARCHITECT, $levelDesignTeam); // true
-$user->hasRole(Role::ARCHITECT, $characterArtTeam); // false
-
-// Gauna visus roles
-$allRoles = $user->getAllRoles(); // [WIZARD, ARCHITECT, GAME_MASTER]
-
-// Gauna roles konkrečiai team
-$teamRoles = $user->getRolesForTeam($levelDesignTeam); // [WIZARD, ARCHITECT]
+**User:**
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "role": "ROLE_WIZARD",
+  "created_at": "2026-04-07T10:00:00+00:00"
+}
 ```
 
-### 17.5 API Pavyzdžiai su Role System
+**Group:**
+```json
+{
+  "id": "uuid",
+  "name": "Developers",
+  "created_at": "2026-04-07T10:00:00+00:00"
+}
+```
 
-**GET /api/users/1?include=userRoles,wands,patronuses**
+### 17.5 API Pavyzdžiai
+
+**GET /api/users/1**
 
 ```json
 {
@@ -1766,524 +1678,33 @@ $teamRoles = $user->getRolesForTeam($levelDesignTeam); // [WIZARD, ARCHITECT]
     "self": { "href": "/api/users/1" },
     "collection": { "href": "/api/users" }
   },
-  "_embedded": {
-    "user": {
-      "id": 1,
-      "email": "harry@wizardplatform.com",
-      "roles": ["ROLE_WIZARD", "ROLE_ARCHITECT"],
-      "created_at": "2026-04-02T10:00:00+02:00",
-      "updated_at": null
-    },
-    "userRoles": [
-      {
-        "id": 1,
-        "role": "ROLE_WIZARD",
-        "team": "Level Design",
-        "granted_at": "2026-04-02T10:00:00+02:00",
-        "expires_at": null,
-        "is_active": true
-      },
-      {
-        "id": 2,
-        "role": "ROLE_ARCHITECT",
-        "team": "Level Design",
-        "granted_at": "2026-04-02T10:05:00+02:00",
-        "expires_at": null,
-        "is_active": true
-      }
-    ],
-    "wands": [
-      {
-        "id": 1,
-        "name": "Wand of Power",
-        "role": "ROLE_WIZARD",
-        "permissions": ["read", "write"],
-        "created_at": "2026-04-02T10:00:00+02:00",
-        "expires_at": null,
-        "is_active": true
-      }
-    ],
-    "patronuses": [
-      {
-        "id": 1,
-        "token": "a1b2c3d4e5f6...",
-        "role": "ROLE_WIZARD",
-        "team": "Level Design",
-        "issued_at": "2026-04-02T10:00:00+02:00",
-        "expires_at": "2026-04-03T10:00:00+02:00",
-        "is_valid": true
-      }
-    ]
+  "data": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "role": "ROLE_WIZARD",
+    "created_at": "2026-04-07T10:00:00+00:00"
   }
 }
 ```
-
-**GET /api/users/1?include=userRoles**
-
-```json
-{
-  "_links": {
-    "self": { "href": "/api/users/1" },
-    "collection": { "href": "/api/users" }
-  },
-  "_embedded": {
-    "user": {
-      "id": 1,
-      "email": "harry@wizardplatform.com",
-      "roles": ["ROLE_WIZARD", "ROLE_ARCHITECT"],
-      "created_at": "2026-04-02T10:00:00+02:00"
-    },
-    "userRoles": [
-      {
-        "id": 1,
-        "role": "ROLE_WIZARD",
-        "team": "Level Design",
-        "granted_at": "2026-04-02T10:00:00+02:00",
-        "expires_at": null,
-        "is_active": true
-      },
-      {
-        "id": 2,
-        "role": "ROLE_ARCHITECT",
-        "team": "Level Design",
-        "granted_at": "2026-04-02T10:05:00+02:00",
-        "expires_at": null,
-        "is_active": true
-      }
-    ]
-  }
-}
-```
-
-### 17.6 Collection Operations
-
-```php
-// Gauti visus aktyvius roles (Collection filter + map)
-$activeRoles = $user->getAllRoles();
-
-// Gauti role names kaip array
-$roleNames = $user->getRoleNames();
-
-// Gauti roles konkrečiai team
-$teamRoles = $user->getRolesForTeam($team);
-
-// Gauti expired wands
-$expiredWands = $user->getExpiredWands();
-
-// Gauti active wands
-$activeWands = $user->getActiveWands();
-
-// Gauti valid patronuses
-$validPatronuses = $user->getValidPatronuses();
-
-// Gauti active invisibility cloaks
-$activeCloaks = $user->getActiveInvisibilityCloaks();
-
-// Tikrina ar turi specifinę rolę
-$hasArchitect = $user->hasRole(Role::ARCHITECT, $team);
-
-// Tikrina ar turi validų patronus
-$hasValidPatronus = $user->hasValidPatronusInTeam($team);
-
-// Tikrina ar yra nematomas team
-$isInvisible = $user->isInvisibleInTeam($team);
-
-// Team user count
-$userCount = $team->countUsers();
-```
-
-### 17.7 Schema Files
-
-```
-schema/
-├── User.orm.xml
-├── Role.orm.xml
-├── UserRole.orm.xml
-├── Team.orm.xml
-├── Wand.orm.xml
-├── Patronus.orm.xml
-├── InvisibilityCloak.orm.xml
-├── Post.orm.xml
-└── Group.orm.xml
-```
-
-### 17.8 TDD su Doctrine Collections
-
-**Test-Driven Development rodo evoliucinį dizainą** - testai rašomi pirmiausia, tada implementacija, tada refaktoringas.
-
-#### 17.8.1 RED - Pirmas testas (failina)
-
-```php
-// tests/Unit/UserRolesCollectionTest.php
-public function testGetAllRolesReturnsOnlyActive(): void
-{
-    $user = new User();
-    $user->setEmail('test@example.com');
-    $user->setPassword('password123');
-
-    $team = new Team();
-    $team->setName('Level Design');
-    $team->setCreatedAt(new \DateTimeImmutable());
-
-    $wizardRole = new Role();
-    $wizardRole->setName(Role::WIZARD);
-
-    $architectRole = new Role();
-    $architectRole->setName(Role::ARCHITECT);
-
-    // Expired role
-    $expiredUserRole = new UserRole();
-    $expiredUserRole->setRole($wizardRole);
-    $expiredUserRole->setTeam($team);
-    $expiredUserRole->setGrantedAt(new \DateTimeImmutable('-2 days'));
-    $expiredUserRole->setExpiresAt(new \DateTimeImmutable('-1 day'));
-
-    // Active role
-    $activeUserRole = new UserRole();
-    $activeUserRole->setRole($architectRole);
-    $activeUserRole->setTeam($team);
-    $activeUserRole->setGrantedAt(new \DateTimeImmutable());
-
-    $user->getUserRoles()->add($expiredUserRole);
-    $user->getUserRoles()->add($activeUserRole);
-
-    $activeRoles = $user->getAllRoles();
-
-    $this->assertCount(1, $activeRoles);
-    $this->assertSame(Role::ARCHITECT, $activeRoles[0]->getName());
-}
-```
-
-**Testas failina** nes `getAllRoles()` metodas dar neegzistuoja.
-
-#### 17.8.2 GREEN - Pirmas implementacija (foreach)
-
-```php
-// src/Entity/User.php
-public function getAllRoles(): array
-{
-    $roles = [];
-    foreach ($this->userRoles as $userRole) {
-        if ($userRole->isActive()) {
-            $roles[] = $userRole->getRole();
-        }
-    }
-    return $roles;
-}
-```
-
-**Testas praeina** ✅
-
-#### 17.8.3 REFACTOR - Collection API (filter + map)
-
-```php
-// src/Entity/User.php
-public function getAllRoles(): array
-{
-    return array_values($this->userRoles
-        ->filter(fn($ur) => $ur->isActive())
-        ->map(fn($ur) => $ur->getRole())
-        ->toArray());
-}
-```
-
-**Testas vis dar praeina** ✅ - bet kodas elegantiškesnis.
-
-#### 17.8.4 Antras testas - getRoleNames()
-
-```php
-public function testGetRoleNamesUsesCollectionMap(): void
-{
-    $user = new User();
-    $user->setEmail('mapper@example.com');
-    $user->setPassword('password123');
-
-    $team = new Team();
-    $team->setName('Character Art');
-    $team->setCreatedAt(new \DateTimeImmutable());
-
-    $wizardRole = new Role();
-    $wizardRole->setName(Role::WIZARD);
-
-    $gameMasterRole = new Role();
-    $gameMasterRole->setName(Role::GAME_MASTER);
-
-    $wizardUserRole = new UserRole();
-    $wizardUserRole->setRole($wizardRole);
-    $wizardUserRole->setTeam($team);
-    $wizardUserRole->setGrantedAt(new \DateTimeImmutable());
-
-    $gmUserRole = new UserRole();
-    $gmUserRole->setRole($gameMasterRole);
-    $gmUserRole->setTeam($team);
-    $gmUserRole->setGrantedAt(new \DateTimeImmutable());
-
-    $user->getUserRoles()->add($wizardUserRole);
-    $user->getUserRoles()->add($gmUserRole);
-
-    $roleNames = $user->getRoleNames();
-
-    $this->assertCount(2, $roleNames);
-    $this->assertContains(Role::WIZARD, $roleNames);
-    $this->assertContains(Role::GAME_MASTER, $roleNames);
-}
-```
-
-**Implementacija:**
-```php
-public function getRoleNames(): array
-{
-    return array_values($this->userRoles
-        ->filter(fn($ur) => $ur->isActive())
-        ->map(fn($ur) => $ur->getRole()->getName())
-        ->toArray());
-}
-```
-
-#### 17.8.5 Trečias testas - Cross-team roles
-
-```php
-public function testGetRolesForTeamReturnsOnlyMatchingRoles(): void
-{
-    $user = new User();
-    $user->setEmail('cross@example.com');
-    $user->setPassword('password123');
-
-    $teamA = new Team();
-    $teamA->setName('Level Design');
-    $teamA->setCreatedAt(new \DateTimeImmutable());
-
-    $teamB = new Team();
-    $teamB->setName('Audio Engineering');
-    $teamB->setCreatedAt(new \DateTimeImmutable());
-
-    $wizardRole = new Role();
-    $wizardRole->setName(Role::WIZARD);
-
-    $architectRole = new Role();
-    $architectRole->setName(Role::ARCHITECT);
-
-    $userRoleA = new UserRole();
-    $userRoleA->setRole($wizardRole);
-    $userRoleA->setTeam($teamA);
-    $userRoleA->setGrantedAt(new \DateTimeImmutable());
-
-    $userRoleB = new UserRole();
-    $userRoleB->setRole($architectRole);
-    $userRoleB->setTeam($teamB);
-    $userRoleB->setGrantedAt(new \DateTimeImmutable());
-
-    $user->getUserRoles()->add($userRoleA);
-    $user->getUserRoles()->add($userRoleB);
-
-    $teamARoles = $user->getRolesForTeam($teamA);
-
-    $this->assertCount(1, $teamARoles);
-    $this->assertSame(Role::WIZARD, $teamARoles[0]->getName());
-}
-```
-
-**Implementacija:**
-```php
-public function getRolesForTeam(Team $team): array
-{
-    return array_values($this->userRoles
-        ->filter(fn($ur) => $ur->getTeam() === $team && $ur->isActive())
-        ->map(fn($ur) => $ur->getRole())
-        ->toArray());
-}
-```
-
-#### 17.8.6 Ketvirtas testas - Collection count
-
-```php
-public function testCollectionCountReturnsCorrectNumber(): void
-{
-    $user = new User();
-    $user->setEmail('count@example.com');
-    $user->setPassword('password123');
-
-    $this->assertInstanceOf(Collection::class, $user->getUserRoles());
-    $this->assertCount(0, $user->getUserRoles());
-
-    $team = new Team();
-    $team->setName('Test Team');
-    $team->setCreatedAt(new \DateTimeImmutable());
-
-    $role = new Role();
-    $role->setName(Role::WIZARD);
-
-    $userRole = new UserRole();
-    $userRole->setRole($role);
-    $userRole->setTeam($team);
-    $userRole->setGrantedAt(new \DateTimeImmutable());
-
-    $user->getUserRoles()->add($userRole);
-
-    $this->assertCount(1, $user->getUserRoles());
-}
-```
-
-#### 17.8.7 Pilnas TDD ciklas - Wand operations
-
-```php
-public function testGetExpiredWandsReturnsOnlyExpired(): void
-{
-    $user = new User();
-    $user->setEmail('wand@example.com');
-    $user->setPassword('password123');
-
-    $role = new Role();
-    $role->setName(Role::WIZARD);
-
-    $expiredWand = new Wand();
-    $expiredWand->setUser($user);
-    $expiredWand->setRole($role);
-    $expiredWand->setName('Expired Wand');
-    $expiredWand->setPermissions(json_encode(['read']));
-    $expiredWand->setCreatedAt(new \DateTimeImmutable('-2 days'));
-    $expiredWand->setExpiresAt(new \DateTimeImmutable('-1 day'));
-
-    $activeWand = new Wand();
-    $activeWand->setUser($user);
-    $activeWand->setRole($role);
-    $activeWand->setName('Active Wand');
-    $activeWand->setPermissions(json_encode(['read', 'write']));
-    $activeWand->setCreatedAt(new \DateTimeImmutable());
-
-    $user->getWands()->add($expiredWand);
-    $user->getWands()->add($activeWand);
-
-    $expiredWands = $user->getExpiredWands();
-    $activeWands = $user->getActiveWands();
-
-    $this->assertCount(1, $expiredWands);
-    $this->assertCount(1, $activeWands);
-    $this->assertSame('Expired Wand', $expiredWands[0]->getName());
-    $this->assertSame('Active Wand', $activeWands[0]->getName());
-}
-```
-
-**Implementacija:**
-```php
-public function getExpiredWands(): array
-{
-    return array_values($this->wands
-        ->filter(fn($wand) => $wand->isExpired())
-        ->toArray());
-}
-
-public function getActiveWands(): array
-{
-    return array_values($this->wands
-        ->filter(fn($wand) => !$wand->isExpired())
-        ->toArray());
-}
-```
-
-#### 17.8.8 TDD Summary
-
-| Žingsnis | Testas | Implementacija | Rezultatas |
-|----------|--------|----------------|------------|
-| 1. RED | `testGetAllRolesReturnsOnlyActive` | Method doesn't exist | ❌ Fail |
-| 2. GREEN | Same test | `foreach` loop | ✅ Pass |
-| 3. REFACTOR | Same test | `filter()` + `map()` | ✅ Pass |
-| 4. RED | `testGetRoleNamesUsesCollectionMap` | Method doesn't exist | ❌ Fail |
-| 5. GREEN | Same test | `filter()` + `map()` + `getName()` | ✅ Pass |
-| 6. RED | `testGetRolesForTeamReturnsOnlyMatchingRoles` | Method doesn't exist | ❌ Fail |
-| 7. GREEN | Same test | `filter()` + `map()` + team check | ✅ Pass |
-| 8. RED | `testGetExpiredWandsReturnsOnlyExpired` | Method doesn't exist | ❌ Fail |
-| 9. GREEN | Same test | `filter()` + `isExpired()` | ✅ Pass |
-
-**Kodėl TDD su Collections?**
-- **Type safety** - `Collection<UserRole>` vietoj `array`
-- **Lazy loading** - neuzkrauna visų iš karto
-- **Chainable** - `filter()` → `map()` → `toArray()`
-- **Testable** - kiekvienas metodas turi atskirą testą
-- **Maintainable** - refaktoringas be breakage
-
-### 17.9 Intensive Collection Tests
-
-**161 tests, 262 assertions** across 6 dedicated test files:
-
-| Test File | Tests | Assertions | Coverage |
-|-----------|-------|------------|----------|
-| `UserRolesCollectionTest.php` | 12 | 30 | User roles, wands, patronuses, cloaks |
-| `DoctrineCollectionAdvancedTest.php` | 24 | 41 | slice, partition, forAll, matching, isEmpty |
-| `TeamCollectionTest.php` | 23 | 36 | users, roles, cloaks, countUsers |
-| `RoleCollectionTest.php` | 16 | 26 | userRoles, wands, patronuses, permissions |
-| `WandCollectionTest.php` | 20 | 34 | permissions, expiration, CRUD |
-| `PatronusCollectionTest.php` | 18 | 28 | tokens, expiration, uniqueness |
-| `InvisibilityCloakCollectionTest.php` | 20 | 25 | active/inactive, expiration, CRUD |
-
-#### 17.9.1 Doctrine Collection API Coverage
-
-| API Method | Test File | Tests |
-|------------|-----------|-------|
-| `filter()` | DoctrineCollectionAdvanced, RoleCollection | 4 |
-| `map()` | DoctrineCollectionAdvanced, RoleCollection | 3 |
-| `slice()` | DoctrineCollectionAdvanced, TeamCollection | 3 |
-| `partition()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 3 |
-| `first()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
-| `forAll()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 3 |
-| `matching()` | DoctrineCollectionAdvanced | 2 |
-| `count()` | UserRolesCollection, TeamCollection | 3 |
-| `isEmpty()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
-| `contains()` | DoctrineCollectionAdvanced, TeamCollection | 3 |
-| `add()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
-| `remove()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 4 |
-| `clear()` | DoctrineCollectionAdvanced, TeamCollection, RoleCollection | 3 |
-| `get()` | DoctrineCollectionAdvanced | 1 |
-| `set()` | DoctrineCollectionAdvanced | 1 |
-| `getKeys()` | DoctrineCollectionAdvanced, TeamCollection | 2 |
-| `getValues()` | DoctrineCollectionAdvanced, TeamCollection | 2 |
-| `exists()` | UserRolesCollection | 1 |
-| `getIterator()` | DoctrineCollectionAdvanced, TeamCollection | 2 |
-
-#### 17.9.2 Entity Property Tests
-
-| Entity | Property Tests | Coverage |
-|--------|---------------|----------|
-| **Wand** | name, permissions, createdAt, expiresAt, isExpired, hasPermission | 20 tests |
-| **Patronus** | token, issuedAt, expiresAt, isValid, isExpired, uniqueness | 18 tests |
-| **InvisibilityCloak** | grantedAt, expiresAt, isActive, activate, deactivate | 20 tests |
-| **Role** | name, description, team, userRoles, wands, patronuses | 16 tests |
-| **Team** | name, description, users, roles, invisibilityCloaks | 23 tests |
 | **User** | email, password, createdAt, userRoles, wands, patronuses, cloaks | 12 tests |
 
 ---
 
-## 16. Group STI ir UserGroup
+## 18. Group STI ir UserGroup
 
 **Group entity naudoja Single Table Inheritance (STI) kaip ir Role.**
 
-### 16.1 Group STI Hierarchija
+### 18.1 Group STI Hierarchija
 
 | Entity | Table | Discriminator | Description |
 |--------|-------|---------------|-------------|
-| `Group` | `groups` | `group` | Bazinė grupė (Users) |
 | `DeveloperGroup` | `groups` | `developer` | Developerių grupė |
 | `DesignerGroup` | `groups` | `designer` | Designerių grupė |
 | `TesterGroup` | `groups` | `tester` | Testerių grupė |
 
-```php
-#[ORM\Entity]
-#[ORM\Table(name: 'groups')]
-#[ORM\InheritanceType('SINGLE_TABLE')]
-#[ORM\DiscriminatorColumn(name: 'discr', type: 'string')]
-#[ORM\DiscriminatorMap([
-    'group' => Group::class,
-    'developer' => DeveloperGroup::class,
-    'designer' => DesignerGroup::class,
-    'tester' => TesterGroup::class,
-])]
-class Group
-{
-    public const USERS = 'Users';
-}
-```
+Bazinė `Group` klasė yra **paslėpta nuo API** - DtoFactory meta `RuntimeException`, Repository filtruoja pagal `discr <> 'group'`.
 
-### 16.2 UserGroup (Many-to-Many)
+### 18.2 UserGroup (Many-to-Many)
 
 Vartotojai gali priklausyti kelioms grupėms per `UserGroup` join entity:
 
@@ -2292,25 +1713,10 @@ Vartotojai gali priklausyti kelioms grupėms per `UserGroup` join entity:
 $user->addGroup($group);
 $user->removeGroup($group);
 $user->hasGroup('Developers');
-$user->getGroups();       // ['Users', 'Developers']
-$user->getAllGroups();    // [Group, DeveloperGroup]
+$user->getGroups();       // [DeveloperGroup, DesignerGroup]
 ```
 
-### 16.3 DTO Factory su Group STI
-
-```php
-// src/Dto/DtoFactory.php
-match (true) {
-    $entity instanceof DeveloperGroup => $this->toDeveloperGroupDto($entity),
-    $entity instanceof DesignerGroup => $this->toDesignerGroupDto($entity),
-    $entity instanceof TesterGroup => $this->toTesterGroupDto($entity),
-    $entity instanceof Group => $this->toGroupDto($entity),
-}
-```
-
-Specifiniai tipai tikrinami **prieš** bazinį `Group` (STI order matters).
-
-### 16.4 Privaloma Grupė
+### 18.3 Privaloma Grupė
 
 `UserForm` reikalauja `group_id` lauko:
 
@@ -2322,9 +1728,7 @@ $groupSpec = [
 ];
 ```
 
-Fixtures sukuria "Users" grupę kaip pirmąją (`Group::USERS`).
-
-### 16.5 Schema Files
+### 18.4 Schema Files
 
 ```
 schema/
@@ -3004,13 +2408,13 @@ composer install --no-interaction --prefer-dist
 │   ├── Action/        # ADR Actions
 │   ├── Responder/     # JSON:HAL Responders
 │   ├── Transformer/   # League Fractal Transformers
-│   ├── Entity/        # Doctrine Entities (11)
+│   ├── Entity/        # Doctrine Entities (12)
 │   │   ├── User.php
-│   │   ├── Group.php          # STI base
+│   │   ├── Group.php          # STI base (hidden from API)
 │   │   ├── DeveloperGroup.php # STI
 │   │   ├── DesignerGroup.php  # STI
 │   │   ├── TesterGroup.php    # STI
-│   │   ├── Role.php           # STI base
+│   │   ├── Role.php           # STI base (hidden from API)
 │   │   ├── WizardRole.php     # STI
 │   │   ├── ArchitectRole.php  # STI
 │   │   ├── GameMasterRole.php # STI
@@ -3023,11 +2427,6 @@ composer install --no-interaction --prefer-dist
 │   ├── UserGroup.orm.xml    # Many-to-many
 │   ├── Role.orm.xml
 │   ├── UserRole.orm.xml
-│   ├── Team.orm.xml
-│   ├── Wand.orm.xml
-│   ├── Patronus.orm.xml
-│   ├── InvisibilityCloak.orm.xml
-│   ├── Post.orm.xml
 │   ├── DeveloperGroup.orm.xml
 │   ├── DesignerGroup.orm.xml
 │   └── TesterGroup.orm.xml
@@ -3041,11 +2440,7 @@ composer install --no-interaction --prefer-dist
     │   ├── GroupInheritanceTest.php  # STI drill tests
     │   ├── UserRolesCollectionTest.php
     │   ├── DoctrineCollectionAdvancedTest.php
-    │   ├── TeamCollectionTest.php
-    │   ├── RoleCollectionTest.php
-    │   ├── WandCollectionTest.php
-    │   ├── PatronusCollectionTest.php
-    │   └── InvisibilityCloakCollectionTest.php
+    │   └── RoleCollectionTest.php
     └── factories/     # Factory Definitions
 ```
 

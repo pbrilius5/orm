@@ -7,6 +7,7 @@ namespace App\Action\User;
 use App\Command\CommandBusInterface;
 use App\Command\User\ListUsersCommand;
 use App\Dto\DtoFactory;
+use App\Repository\UserRepository;
 use App\Responder\JsonHalResponder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -15,11 +16,16 @@ class ListAction
 {
     private CommandBusInterface $commandBus;
     private DtoFactory $dtoFactory;
+    private UserRepository $userRepository;
 
-    public function __construct(CommandBusInterface $commandBus, DtoFactory $dtoFactory)
-    {
+    public function __construct(
+        CommandBusInterface $commandBus,
+        DtoFactory $dtoFactory,
+        UserRepository $userRepository
+    ) {
         $this->commandBus = $commandBus;
         $this->dtoFactory = $dtoFactory;
+        $this->userRepository = $userRepository;
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -28,9 +34,16 @@ class ListAction
         $offset = $request->getQueryParams()['offset'] ?? null;
         $search = $request->getQueryParams()['search'] ?? null;
 
+        $limit = $limit !== null ? (int) $limit : null;
+        $offset = $offset !== null ? (int) $offset : null;
+
+        $total = $search !== null && $search !== ''
+            ? $this->userRepository->countAllWithFilter($search)
+            : $this->userRepository->countAll();
+
         $command = new ListUsersCommand(
-            limit: $limit !== null ? (int) $limit : null,
-            offset: $offset !== null ? (int) $offset : null,
+            limit: $limit,
+            offset: $offset,
             search: $search
         );
 
@@ -46,7 +59,7 @@ class ListAction
         );
 
         return JsonHalResponder::collection('users', $dtos, [
-            'total' => count($dtos),
+            'total' => $total,
             'count' => count($dtos),
         ]);
     }

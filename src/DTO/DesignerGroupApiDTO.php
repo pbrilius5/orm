@@ -19,11 +19,6 @@ class DesignerGroupApiDTO extends GroupApiDTO
             id: $group->getId()?->toString() ?? '',
             name: $group->getName(),
             description: $group->getDescription(),
-            discriminator: 'designer',
-            rank: $group->getRank(),
-            isWorkGroup: $group->isWorkGroup(),
-            users: $users,
-            gamificationRoles: $gamificationRoles,
             createdAt: $group->getCreatedAt(),
         );
     }

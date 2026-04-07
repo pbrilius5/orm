@@ -124,7 +124,7 @@ class UserFormTest extends TestCase
         $form = new UserForm(null, [], $this->laminasSm);
         $this->assertTrue($form->has('gamification_roles'));
         $roles = $form->get('gamification_roles');
-        $this->assertSame('multi_checkbox', $roles->getAttribute('type'));
+        $this->assertSame('radio', $roles->getAttribute('type'));
     }
 
     public function testUserFormSetWorkGroups(): void
