@@ -20,11 +20,11 @@ class UserRole
     private ?UuidInterface $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userRoles')]
-    #[ORM\JoinColumn(name: 'user_id', nullable: false)]
+    #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
     private User $user;
 
     #[ORM\ManyToOne(targetEntity: Role::class, inversedBy: 'userRoles')]
-    #[ORM\JoinColumn(name: 'role_id', nullable: false)]
+    #[ORM\JoinColumn(name: 'role_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
     private Role $role;
 
     #[ORM\Column(type: 'datetime_immutable')]
