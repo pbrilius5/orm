@@ -79,7 +79,7 @@ class EntityManagerFactory
             'metadata.proxy_dir' => $proxyDir,
             'metadata.proxy_namespace' => $proxyNamespace,
             'cache.config' => $cacheConfig,
-        ], $listener);
+        ], null, $listener);
 
         if ($eventSubscriber !== null) {
             $em->getEventManager()->addEventSubscriber($eventSubscriber);
