@@ -233,10 +233,14 @@ class FixturesLoadCommand extends Command
         $em->flush();
 
         foreach ($users as $user) {
+            $group = $this->faker->randomElement($groups);
             $userGroup = new UserGroup();
             $userGroup->setUser($user);
-            $userGroup->setGroup($this->faker->randomElement($groups));
+            $userGroup->setGroup($group);
+            $userGroup->setGrantedAt(new \DateTimeImmutable());
             $em->persist($userGroup);
+            $user->getUserGroups()->add($userGroup);
+            $group->getUserGroups()->add($userGroup);
         }
 
         return $users;
@@ -264,61 +268,25 @@ class FixturesLoadCommand extends Command
         }
 
         foreach ($users as $user) {
-            $baseRole = $roles[Role::USER];
-            $userRole = new UserRole();
-            $userRole->setUser($user);
-            $userRole->setRole($baseRole);
-            $userRole->setGrantedAt(new \DateTimeImmutable());
-            $em->persist($userRole);
-
-            $assignedRoles = [$baseRole];
+            $candidateRoles = [$roles[Role::USER]];
 
             foreach ($user->getUserGroups() as $userGroup) {
                 $group = $userGroup->getGroup();
                 $groupClass = get_class($group);
                 if (isset($groupGamificationMap[$groupClass])) {
                     foreach ($groupGamificationMap[$groupClass] as $groupRole) {
-                        if (!in_array($groupRole, $assignedRoles, true)) {
-                            $userRole = new UserRole();
-                            $userRole->setUser($user);
-                            $userRole->setRole($groupRole);
-                            $userRole->setGrantedAt(new \DateTimeImmutable());
-                            $em->persist($userRole);
-                            $assignedRoles[] = $groupRole;
-                        }
+                        $candidateRoles[] = $groupRole;
                     }
                 }
             }
 
-            if (!in_array($roles[WizardRole::NAME], $assignedRoles, true)) {
-                $wizardRole = $roles[WizardRole::NAME];
-                $userRole = new UserRole();
-                $userRole->setUser($user);
-                $userRole->setRole($wizardRole);
-                $userRole->setGrantedAt(new \DateTimeImmutable());
-                $em->persist($userRole);
-                $assignedRoles[] = $wizardRole;
-            }
+            $selectedRole = $this->faker->randomElement($candidateRoles);
 
-            if (!in_array($roles[ArchitectRole::NAME], $assignedRoles, true) && $this->faker->boolean(30)) {
-                $architectRole = $roles[ArchitectRole::NAME];
-                $userRole = new UserRole();
-                $userRole->setUser($user);
-                $userRole->setRole($architectRole);
-                $userRole->setGrantedAt(new \DateTimeImmutable());
-                $em->persist($userRole);
-                $assignedRoles[] = $architectRole;
-            }
-
-            if (!in_array($roles[GameMasterRole::NAME], $assignedRoles, true) && $this->faker->boolean(10)) {
-                $gameMasterRole = $roles[GameMasterRole::NAME];
-                $userRole = new UserRole();
-                $userRole->setUser($user);
-                $userRole->setRole($gameMasterRole);
-                $userRole->setGrantedAt(new \DateTimeImmutable());
-                $em->persist($userRole);
-                $assignedRoles[] = $gameMasterRole;
-            }
+            $userRole = new UserRole();
+            $userRole->setUser($user);
+            $userRole->setRole($selectedRole);
+            $userRole->setGrantedAt(new \DateTimeImmutable());
+            $em->persist($userRole);
         }
     }
 }

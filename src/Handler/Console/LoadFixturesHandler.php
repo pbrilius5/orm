@@ -9,7 +9,6 @@ use App\Entity\Group;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Entity\UserGroup;
-use App\Entity\UserRole;
 use App\Entity\WizardRole;
 use App\Entity\ArchitectRole;
 use App\Entity\GameMasterRole;
@@ -110,31 +109,11 @@ class LoadFixturesHandler
             $user->setPassword(password_hash($faker->password, PASSWORD_BCRYPT));
             $user->setCreatedAt(new \DateTimeImmutable());
             $user->addGroup($faker->randomElement($groups));
+
+            $roles = [$baseRole, $wizardRole, $architectRole, $gameMasterRole];
+            $user->addRole($faker->randomElement($roles));
+
             $em->persist($user);
-
-            $userRole = new UserRole();
-            $userRole->setUser($user);
-            $userRole->setRole($baseRole);
-            $em->persist($userRole);
-
-            $userRoleWiz = new UserRole();
-            $userRoleWiz->setUser($user);
-            $userRoleWiz->setRole($wizardRole);
-            $em->persist($userRoleWiz);
-
-            if ($faker->boolean(30)) {
-                $userRoleArch = new UserRole();
-                $userRoleArch->setUser($user);
-                $userRoleArch->setRole($architectRole);
-                $em->persist($userRoleArch);
-            }
-
-            if ($faker->boolean(10)) {
-                $userRoleGm = new UserRole();
-                $userRoleGm->setUser($user);
-                $userRoleGm->setRole($gameMasterRole);
-                $em->persist($userRoleGm);
-            }
         }
 
         $em->flush();

@@ -220,9 +220,10 @@ class User
     public function addRole(Role $role): self
     {
         foreach ($this->userRoles as $existingUserRole) {
-            if ($existingUserRole->getRole() === $role) {
-                return $this;
-            }
+            $existingRole = $existingUserRole->getRole();
+            $existingRole->removeUserRole($existingUserRole);
+            $this->userRoles->removeElement($existingUserRole);
+            break;
         }
 
         $userRole = new UserRole();

@@ -212,8 +212,8 @@ class UserRolesCollectionTest extends TestCase
 
         $roles = $user->getRoles();
 
-        $this->assertCount(2, $roles);
-        $this->assertContains(Role::WIZARD, $roles);
+        $this->assertCount(1, $roles);
         $this->assertContains(Role::ARCHITECT, $roles);
+        $this->assertNotContains(Role::WIZARD, $roles);
     }
 }

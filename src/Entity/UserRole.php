@@ -10,7 +10,7 @@ use Ramsey\Uuid\UuidInterface;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'user_roles')]
-#[ORM\UniqueConstraint(name: 'user_role_unique', columns: ['user_id', 'role_id'])]
+#[ORM\UniqueConstraint(name: 'user_role_unique', columns: ['user_id'])]
 class UserRole
 {
     #[ORM\Id]
