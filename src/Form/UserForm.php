@@ -39,6 +39,7 @@ class UserForm extends BaseForm
             'attributes' => [
                 'required' => true,
                 'placeholder' => 'Password',
+                'minlength' => 6,
             ],
         ]);
 
@@ -67,7 +68,7 @@ class UserForm extends BaseForm
                 ],
             ],
             'attributes' => [
-                'required' => false,
+                'required' => true,
             ],
         ]);
 
@@ -135,7 +136,7 @@ class UserForm extends BaseForm
     {
         $options = [];
         $sortedGroups = $this->workGroups;
-        usort($sortedGroups, fn($a, $b) => $b->getRank() <=> $a->getRank());
+        usort($sortedGroups, fn($a, $b) => $a->getRank() <=> $b->getRank());
         foreach ($sortedGroups as $group) {
             $options[$group->getId()->toString()] = $group->getName() . ' (rank: ' . $group->getRank() . ')';
         }
@@ -146,5 +147,13 @@ class UserForm extends BaseForm
     {
         $rolesDisplay = $this->get('gamification_roles');
         $rolesDisplay->setValue($roleNames[0] ?? null);
+    }
+
+    public function setDefaultGamificationRole(string $roleName): void
+    {
+        $rolesDisplay = $this->get('gamification_roles');
+        if (empty($rolesDisplay->getValue())) {
+            $rolesDisplay->setValue($roleName);
+        }
     }
 }

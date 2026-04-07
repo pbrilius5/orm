@@ -92,6 +92,7 @@ class MvcApplication
             $controller = $this->resolve(\App\Controller\UserController::class);
             $form = new UserForm(null, [], $this->laminasSm);
             $form->setWorkGroups($controller->getWorkGroups());
+            $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
             $form->setAttribute('action', '/users/create');
             return new Response($this->view->renderWithLayout('users/create', [
                 'form' => $form,
@@ -108,13 +109,18 @@ class MvcApplication
             $controller = $this->resolve(\App\Controller\UserController::class);
             $form = new UserForm(null, [], $this->laminasSm);
             $form->setWorkGroups($controller->getWorkGroups());
+            $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
             $form->setData($req->all());
 
             if ($form->isValid()) {
-                $controller = $this->resolve(\App\Controller\UserController::class);
-                $controller->create($req->all());
-                header('Location: /users');
-                exit;
+                try {
+                    $controller = $this->resolve(\App\Controller\UserController::class);
+                    $controller->create($req->all());
+                    header('Location: /users');
+                    exit;
+                } catch (\InvalidArgumentException $e) {
+                    $form->setMessages(['email' => [$e->getMessage()]]);
+                }
             }
 
             $form->setData($req->all());

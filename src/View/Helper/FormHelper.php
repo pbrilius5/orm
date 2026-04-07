@@ -6,6 +6,7 @@ namespace App\View\Helper;
 
 use Laminas\Form\FormInterface;
 use Laminas\Form\ElementInterface;
+use Laminas\Form\Element\Radio;
 
 class FormHelper
 {
@@ -57,6 +58,7 @@ class FormHelper
         $value = is_array($rawValue) ? '' : htmlspecialchars($rawValue ?? '');
         $required = $element->getAttribute('required') ? 'required' : '';
         $placeholder = $element->getAttribute('placeholder') ?? '';
+        $minlength = $element->getAttribute('minlength') ? 'minlength="' . $element->getAttribute('minlength') . '"' : '';
         $id = $element->getAttribute('id') ?? $name;
         $hasError = !empty($errors);
 
@@ -64,13 +66,13 @@ class FormHelper
         $html .= '<label for="' . htmlspecialchars($id) . '" class="form-label fw-semibold">' . htmlspecialchars($label) . '</label>';
 
         if ($type === 'textarea') {
-            $html .= '<textarea class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" ' . $required . ' placeholder="' . htmlspecialchars($placeholder) . '">' . $value . '</textarea>';
+            $html .= '<textarea class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" ' . $required . ' ' . $minlength . ' placeholder="' . htmlspecialchars($placeholder) . '">' . $value . '</textarea>';
         } elseif ($type === 'select' || $type === 'multicheckbox' || $type === 'multi_checkbox') {
             $html .= self::renderSelectOrCheckbox($element, $hasError);
         } elseif ($type === 'radio') {
             $html .= self::renderRadioButtons($element, $hasError);
         } else {
-            $html .= '<input type="' . htmlspecialchars($type) . '" class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" value="' . $value . '" ' . $required . ' placeholder="' . htmlspecialchars($placeholder) . '">';
+            $html .= '<input type="' . htmlspecialchars($type) . '" class="form-control' . ($hasError ? ' is-invalid' : '') . '" id="' . htmlspecialchars($id) . '" name="' . htmlspecialchars($name) . '" value="' . $value . '" ' . $required . ' ' . $minlength . ' placeholder="' . htmlspecialchars($placeholder) . '">';
         }
 
         if ($hasError) {
@@ -89,16 +91,18 @@ class FormHelper
     private static function renderRadioButtons(ElementInterface $element, bool $hasError): string
     {
         $name = $element->getName();
-        $valueOptions = $element->getOption('value_options') ?? [];
+        $valueOptions = self::getValueOptions($element);
+        $required = $element->getAttribute('required') ? 'required' : '';
         $class = 'form-control' . ($hasError ? ' is-invalid' : '');
         $selectedValue = $element->getValue();
 
         $html = '<div class="card border p-3 ' . ($hasError ? 'border-danger' : '') . '">';
         foreach ($valueOptions as $value => $label) {
-            $checked = ((string) $value === (string) $selectedValue) ? 'checked' : '';
+            $isChecked = ((string) $value === (string) $selectedValue);
+            $checked = $isChecked ? 'checked' : '';
             $id = $name . '_' . $value;
             $html .= '<div class="form-check mb-2">';
-            $html .= '<input class="form-check-input" type="radio" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . '>';
+            $html .= '<input class="form-check-input" type="radio" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . ' ' . $required . '>';
             $html .= '<label class="form-check-label" for="' . htmlspecialchars($id) . '">' . htmlspecialchars($label) . '</label>';
             $html .= '</div>';
         }
@@ -110,7 +114,7 @@ class FormHelper
     private static function renderSelectOrCheckbox(ElementInterface $element, bool $hasError): string
     {
         $name = $element->getName();
-        $valueOptions = $element->getOption('value_options') ?? [];
+        $valueOptions = self::getValueOptions($element);
         $type = $element->getAttribute('type') ?? 'select';
         $class = 'form-control' . ($hasError ? ' is-invalid' : '');
 
@@ -152,5 +156,13 @@ class FormHelper
         $value = $element->getValue() ?? $element->getAttribute('value') ?? 'Submit';
         $class = $element->getAttribute('class') ?? 'btn btn-primary';
         return '<div class="d-flex flex-column flex-sm-row gap-2 mt-4"><button type="submit" class="' . htmlspecialchars($class) . '">' . htmlspecialchars($value) . '</button></div>';
+    }
+
+    private static function getValueOptions(ElementInterface $element): array
+    {
+        if (method_exists($element, 'getValueOptions')) {
+            return $element->getValueOptions();
+        }
+        return $element->getOption('value_options') ?? [];
     }
 }

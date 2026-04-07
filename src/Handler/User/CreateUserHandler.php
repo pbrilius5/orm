@@ -27,6 +27,12 @@ class CreateUserHandler
     {
         $this->logger?->info('Creating user: ' . $command->email);
 
+        $existingUser = $this->em->getRepository(\App\Entity\User::class)
+            ->findOneBy(['email' => $command->email]);
+        if ($existingUser) {
+            throw new \InvalidArgumentException('User with this email already exists');
+        }
+
         $user = new User();
         $user->setEmail($command->email);
         $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
@@ -36,7 +42,11 @@ class CreateUserHandler
             $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
             $group = $groupRepo->find($command->groupId);
             if ($group && $group->isWorkGroup()) {
-                $user->addGroup($group);
+                $userGroup = new \App\Entity\UserGroup();
+                $userGroup->setUser($user);
+                $userGroup->setGroup($group);
+                $userGroup->setGrantedAt(new \DateTimeImmutable());
+                $this->em->persist($userGroup);
             }
         }
 

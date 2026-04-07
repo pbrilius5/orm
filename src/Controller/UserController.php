@@ -87,11 +87,16 @@ class UserController
 
     public function create(array $data): User
     {
+        $roles = $data['gamification_roles'] ?? [];
+        if (is_string($roles)) {
+            $roles = [$roles];
+        }
+
         $command = new CreateUserCommand(
             email: $data['email'],
             password: $data['password'] ?? '',
             groupId: $data['work_group_id'] ?? null,
-            roles: $data['gamification_roles'] ?? []
+            roles: $roles
         );
 
         return $this->commandBus->handle($command);
