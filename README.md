@@ -1486,8 +1486,8 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 
 | Environment | Cache Driver | Extension | Purpose |
 |-------------|-------------|-----------|---------|
-| `dev` | Memcached | `memcached` | Local development |
-| `prod` | Redis | `redis` | Production deployment |
+| `dev` | Array (in-memory) | `array` | Local development |
+| `prod` | Array / PSR-based cache | `array` | Production deployment (use PSR-6/PSR-16 adapters)
 
 ### 15.2 Configuration
 
@@ -1500,9 +1500,8 @@ app:
 cache:
   enabled: true
   host: localhost      # Memcached host (dev)
-  port: 11211           # Memcached port (dev)
-  redis_host: localhost  # Redis host (prod)
-  redis_port: 6379      # Redis port (prod)
+  port: 11211           # (deprecated) Memcached port (dev)
+  # Redis host/port removed; persistent cache should be provided via PSR adapters if needed
 ```
 
 ### 15.3 Implementation

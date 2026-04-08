@@ -421,10 +421,11 @@ class EnvironmentConfig
      */
     public function getMemcachedConfig(): array
     {
+        // Memcached is no longer a required runtime component for cache. Return disabled by default.
         return [
             'host' => $this->get('MEMCACHED_HOST', 'localhost'),
             'port' => (int) $this->get('MEMCACHED_PORT', '11211'),
-            'enabled' => $this->isMemcachedEnabled(),
+            'enabled' => false,
         ];
     }
 
@@ -433,8 +434,8 @@ class EnvironmentConfig
      */
     public function isMemcachedEnabled(): bool
     {
-        return extension_loaded('memcached')
-            && $this->get('CACHE_DRIVER', 'array') === 'memcached';
+        // Always report false: memcached-based caching removed. Keep method for BC.
+        return false;
     }
 
     /**
@@ -463,7 +464,8 @@ class EnvironmentConfig
      */
     public function getCacheConfig(): array
     {
-        $appEnv = $this->get('app.env', 'dev');
+        // Support both YAML-style 'app.env' and environment variable 'APP_ENV'
+        $appEnv = $this->get('APP_ENV') ?? $this->get('app.env', 'dev');
         $cacheEnabled = $this->get('cache.enabled', 'false');
 
         // Auto-enable cache in prod mode unless explicitly disabled
@@ -477,8 +479,6 @@ class EnvironmentConfig
             'port' => (int) $this->get('cache.port', 11211),
             'ttl' => (int) $this->get('cache.ttl', 3600),
             'enabled' => $cacheEnabled === 'true',
-            'redis_host' => $this->get('cache.redis_host', 'localhost'),
-            'redis_port' => (int) $this->get('cache.redis_port', 6379),
             'app_env' => $appEnv,
         ];
     }

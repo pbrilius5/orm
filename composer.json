@@ -43,7 +43,6 @@
     "prototype-in/city-hash-mixer": "dev-develop",
     "ramsey/uuid-doctrine": "^2.1",
     "monolog/monolog": "^3.10",
-    "doctrine/cache": "^2.2",
     "mezzio/mezzio-session": "^1.17",
     "laminas/laminas-math": "^3.8",
     "mezzio/mezzio-csrf": "^1.11",

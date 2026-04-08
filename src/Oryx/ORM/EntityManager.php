@@ -44,113 +44,9 @@ class EntityManager implements EntityManagerInterface
         $doctrineConfig->setProxyDir($config['metadata.proxy_dir'] ?? sys_get_temp_dir());
         $doctrineConfig->setProxyNamespace($config['metadata.proxy_namespace'] ?? 'Oryx\ORM\Proxy');
 
-        $cacheConfig = $config['cache.config'] ?? [];
-        $appEnv = $cacheConfig['app_env'] ?? 'dev';
-
-        if ($cacheConfig['enabled'] ?? false) {
-            if ($appEnv === 'dev' && extension_loaded('memcached')) {
-                $host = $cacheConfig['host'] ?? 'localhost';
-                $port = $cacheConfig['port'] ?? 11211;
-
-                $memcached = new \Memcached();
-                $memcached->addServer($host, $port);
-
-                $this->metadataCache = new class ($memcached) implements \Doctrine\Common\Cache\Cache {
-                    private \Memcached $memcached;
-
-                    public function __construct(\Memcached $memcached)
-                    {
-                        $this->memcached = $memcached;
-                    }
-
-                    public function fetch($id)
-                    {
-                        $value = $this->memcached->get($id);
-                        return $this->memcached->getResultCode() === \Memcached::RES_SUCCESS ? $value : false;
-                    }
-
-                    public function contains($id)
-                    {
-                        $this->memcached->get($id);
-                        return $this->memcached->getResultCode() === \Memcached::RES_SUCCESS;
-                    }
-
-                    public function save($id, $data, $lifetime = 0)
-                    {
-                        return $this->memcached->set($id, $data, $lifetime);
-                    }
-
-                    public function delete($id)
-                    {
-                        return $this->memcached->delete($id);
-                    }
-
-                    public function getStats()
-                    {
-                        return $this->memcached->getStats();
-                    }
-
-                    public function flush()
-                    {
-                        return $this->memcached->flush();
-                    }
-                };
-            } elseif ($appEnv === 'prod' && extension_loaded('redis')) {
-                $host = $cacheConfig['redis_host'] ?? 'localhost';
-                $port = $cacheConfig['redis_port'] ?? 6379;
-
-                $redis = new \Redis();
-                $redis->connect($host, $port);
-
-                $this->metadataCache = new class ($redis) implements \Doctrine\Common\Cache\Cache {
-                    private \Redis $redis;
-
-                    public function __construct(\Redis $redis)
-                    {
-                        $this->redis = $redis;
-                    }
-
-                    public function fetch($id)
-                    {
-                        $value = $this->redis->get($id);
-                        return $value !== false ? $value : false;
-                    }
-
-                    public function contains($id)
-                    {
-                        return $this->redis->exists($id);
-                    }
-
-                    public function save($id, $data, $lifetime = 0)
-                    {
-                        if ($lifetime > 0) {
-                            return $this->redis->setex($id, $lifetime, $data);
-                        }
-                        return $this->redis->set($id, $data);
-                    }
-
-                    public function delete($id)
-                    {
-                        return $this->redis->del($id);
-                    }
-
-                    public function getStats()
-                    {
-                        return $this->redis->info();
-                    }
-
-                    public function flush()
-                    {
-                        return $this->redis->flushDB();
-                    }
-                };
-            }
-
-            if ($this->metadataCache !== null) {
-                $doctrineConfig->setMetadataCache($this->metadataCache);
-                $doctrineConfig->setQueryCache($this->metadataCache);
-            }
-        }
+        // Cache drivers (memcached/redis) have been removed in favor of array/no-op cache.
+        // Metadata/query cache is not configured here to avoid relying on doctrine/cache or external
+        // backends. If a persistent cache is required, migrate to PSR-6/PSR-16 compatible adapters.
 
         $this->em = DoctrineEntityManager::create($connection, $doctrineConfig);
 
@@ -170,7 +66,8 @@ class EntityManager implements EntityManagerInterface
         return $this->em;
     }
 
-    public function getMetadataCache(): ?\Doctrine\Common\Cache\Cache
+    // Metadata cache removed; keep method for BC and return any object if present
+    public function getMetadataCache(): ?object
     {
         return $this->metadataCache;
     }
