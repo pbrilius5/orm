@@ -12,6 +12,11 @@
                             <div class="col-sm-4 text-muted fw-semibold">Email</div>
                             <div class="col-sm-8"><?= htmlspecialchars($user->getEmail()) ?></div>
                         </div>
+                        <?php $workGroup = $user->getWorkGroup(); ?>
+                        <div class="row">
+                            <div class="col-sm-4 text-muted fw-semibold">Work Group</div>
+                            <div class="col-sm-8"><?= $workGroup ? htmlspecialchars($workGroup->getName()) : 'None' ?></div>
+                        </div>
                         <div class="row">
                             <div class="col-sm-4 text-muted fw-semibold">Roles</div>
                             <div class="col-sm-8 d-flex flex-wrap gap-1">

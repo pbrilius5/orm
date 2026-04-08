@@ -135,12 +135,17 @@ class UserController
             'roles' => $data['gamification_roles'] ?? [],
         ]);
 
+        $roles = $data['gamification_roles'] ?? [];
+        if (is_string($roles)) {
+            $roles = [$roles];
+        }
+
         $command = new UpdateUserCommand(
             id: $id,
             email: $data['email'] ?? '',
             password: $data['password'] ?? '',
             groupId: $data['work_group_id'] ?? null,
-            roles: is_array($data['gamification_roles'] ?? null) ? $data['gamification_roles'] : []
+            roles: $roles
         );
 
         $this->logger->debug('Created UpdateUserCommand', [

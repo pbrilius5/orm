@@ -65,52 +65,52 @@ class UpdateUserHandler
                 'newGroupId' => $command->groupId,
             ]);
 
-            $currentGroups = $user->getAllGroups();
-            $this->logger?->debug('Removing existing groups', [
-                'groupsCount' => count($currentGroups),
-            ]);
-
-            foreach ($currentGroups as $existingGroup) {
-                $this->logger?->debug('Removing group', [
-                    'groupName' => $existingGroup->getName(),
-                    'groupId' => $existingGroup->getId(),
+            $currentWorkGroup = $user->getWorkGroup();
+            if ($currentWorkGroup && (string) $currentWorkGroup->getId() === $command->groupId) {
+                $this->logger?->debug('Group unchanged, skipping', [
+                    'currentGroupId' => (string) $currentWorkGroup->getId(),
                 ]);
-                foreach ($user->getUserGroups() as $userGroup) {
-                    if ($userGroup->getGroup() === $existingGroup) {
-                        $this->logger?->debug('Removing UserGroup from DB', [
-                            'userGroupId' => $userGroup->getId(),
-                        ]);
-                        $this->em->remove($userGroup);
-                        break;
-                    }
-                }
-                $user->removeGroup($existingGroup);
-            }
+            } else {
+                $currentGroups = $user->getAllGroups();
+                $this->logger?->debug('Removing existing groups', [
+                    'groupsCount' => count($currentGroups),
+                ]);
 
-            if ($command->groupId) {
-                $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
-                $group = $groupRepo->find($command->groupId);
-                if ($group && $group->isWorkGroup()) {
-                    if ($user->hasGroup($group->getName())) {
-                        $this->logger?->debug('User already in this group, skipping', [
-                            'groupId' => $group->getId(),
-                            'groupName' => $group->getName(),
-                        ]);
-                    } else {
+                foreach ($currentGroups as $existingGroup) {
+                    $this->logger?->debug('Removing group', [
+                        'groupName' => $existingGroup->getName(),
+                        'groupId' => $existingGroup->getId(),
+                    ]);
+                    foreach ($user->getUserGroups() as $userGroup) {
+                        if ($userGroup->getGroup() === $existingGroup) {
+                            $this->logger?->debug('Removing UserGroup from DB', [
+                                'userGroupId' => $userGroup->getId(),
+                            ]);
+                            $this->em->remove($userGroup);
+                            break;
+                        }
+                    }
+                    $user->removeGroup($existingGroup);
+                }
+
+                if ($command->groupId) {
+                    $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
+                    $group = $groupRepo->find($command->groupId);
+                    if ($group && $group->isWorkGroup()) {
                         $userGroup = $user->addGroup($group);
                         $this->em->persist($userGroup);
                         $this->logger?->debug('Added user to group', [
                             'groupId' => $group->getId(),
                             'groupName' => $group->getName(),
                         ]);
+                    } else {
+                        $this->logger?->warning('Group not found or not a work group', [
+                            'groupId' => $command->groupId,
+                        ]);
                     }
                 } else {
-                    $this->logger?->warning('Group not found or not a work group', [
-                        'groupId' => $command->groupId,
-                    ]);
+                    $this->logger?->debug('Setting user to no group');
                 }
-            } else {
-                $this->logger?->debug('Setting user to no group');
             }
         } else {
             $this->logger?->debug('No group change requested');
