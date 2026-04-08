@@ -115,11 +115,11 @@ class User
         return false;
     }
 
-    public function addGroup(Group $group): self
+    public function addGroup(Group $group): UserGroup
     {
         foreach ($this->userGroups as $existingUserGroup) {
             if ($existingUserGroup->getGroup() === $group) {
-                return $this;
+                return $existingUserGroup;
             }
         }
 
@@ -128,7 +128,7 @@ class User
         $userGroup->setGroup($group);
         $this->userGroups->add($userGroup);
 
-        return $this;
+        return $userGroup;
     }
 
     public function removeGroup(Group $group): self

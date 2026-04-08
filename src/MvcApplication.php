@@ -171,7 +171,8 @@ class MvcApplication
             $form = new UserForm(null, [], $this->laminasSm);
             $form->setWorkGroups($controller->getWorkGroups());
             $form->setAttribute('action', '/users/' . $user->getId() . '/edit');
-            $form->setGamificationRoles($user->getGamificationRoles());
+            $form->get('email')->setValue($user->getEmail());
+            $form->setGamificationRoles($user->getGamificationRoleNames());
             $workGroup = $user->getWorkGroup();
             if ($workGroup) {
                 $form->get('work_group_id')->setValue($workGroup->getId()->toString());

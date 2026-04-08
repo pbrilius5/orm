@@ -19,11 +19,11 @@ class UserGroup
     #[ORM\CustomIdGenerator(class: SodiumUuidGenerator::class)]
     private ?UuidInterface $id = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userGroups')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userGroups', cascade: ['persist'])]
     #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
     private User $user;
 
-    #[ORM\ManyToOne(targetEntity: Group::class, inversedBy: 'userGroups')]
+    #[ORM\ManyToOne(targetEntity: Group::class, inversedBy: 'userGroups', cascade: ['persist'])]
     #[ORM\JoinColumn(name: 'group_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
     private Group $group;
 

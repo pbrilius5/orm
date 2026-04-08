@@ -47,6 +47,16 @@ class UpdateUserHandler
             'currentEmail' => $user->getEmail(),
         ]);
 
+        $existingUser = $this->em->getRepository(\App\Entity\User::class)
+            ->findOneBy(['email' => $command->email]);
+        if ($existingUser && (string) $existingUser->getId() !== (string) $command->id) {
+            $this->logger?->warning('Update failed - email already in use', [
+                'email' => $command->email,
+                'existingUserId' => (string) $existingUser->getId(),
+            ]);
+            throw new \InvalidArgumentException('Email already in use by another user');
+        }
+
         $user->setEmail($command->email);
         $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
 
@@ -61,6 +71,19 @@ class UpdateUserHandler
             ]);
 
             foreach ($currentGroups as $existingGroup) {
+                $this->logger?->debug('Removing group', [
+                    'groupName' => $existingGroup->getName(),
+                    'groupId' => $existingGroup->getId(),
+                ]);
+                foreach ($user->getUserGroups() as $userGroup) {
+                    if ($userGroup->getGroup() === $existingGroup) {
+                        $this->logger?->debug('Removing UserGroup from DB', [
+                            'userGroupId' => $userGroup->getId(),
+                        ]);
+                        $this->em->remove($userGroup);
+                        break;
+                    }
+                }
                 $user->removeGroup($existingGroup);
             }
 
@@ -68,11 +91,19 @@ class UpdateUserHandler
                 $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
                 $group = $groupRepo->find($command->groupId);
                 if ($group && $group->isWorkGroup()) {
-                    $user->addGroup($group);
-                    $this->logger?->debug('Added user to group', [
-                        'groupId' => $group->getId(),
-                        'groupName' => $group->getName(),
-                    ]);
+                    if ($user->hasGroup($group->getName())) {
+                        $this->logger?->debug('User already in this group, skipping', [
+                            'groupId' => $group->getId(),
+                            'groupName' => $group->getName(),
+                        ]);
+                    } else {
+                        $userGroup = $user->addGroup($group);
+                        $this->em->persist($userGroup);
+                        $this->logger?->debug('Added user to group', [
+                            'groupId' => $group->getId(),
+                            'groupName' => $group->getName(),
+                        ]);
+                    }
                 } else {
                     $this->logger?->warning('Group not found or not a work group', [
                         'groupId' => $command->groupId,
@@ -83,6 +114,46 @@ class UpdateUserHandler
             }
         } else {
             $this->logger?->debug('No group change requested');
+        }
+
+        if (!empty($command->roles)) {
+            $this->logger?->debug('Processing gamification role update', [
+                'newRoles' => $command->roles,
+            ]);
+            foreach ($user->getUserRoles() as $userRole) {
+                $role = $userRole->getRole();
+                if ($role->isGamificationRole()) {
+                    $this->logger?->debug('Removing existing gamification role', [
+                        'roleName' => $role->getName(),
+                    ]);
+                    $this->em->remove($userRole);
+                }
+            }
+            foreach ($command->roles as $roleName) {
+                $role = $this->em->getRepository(\App\Entity\Role::class)->findOneBy(['name' => $roleName]);
+                if (!$role) {
+                    $roleClass = match ($roleName) {
+                        'ROLE_WIZARD' => \App\Entity\WizardRole::class,
+                        'ROLE_ARCHITECT' => \App\Entity\ArchitectRole::class,
+                        'ROLE_GAME_MASTER' => \App\Entity\GameMasterRole::class,
+                        default => null,
+                    };
+                    if ($roleClass) {
+                        $role = new $roleClass();
+                        $role->setName($roleName);
+                        $this->em->persist($role);
+                    }
+                }
+                if ($role) {
+                    $userRole = new \App\Entity\UserRole();
+                    $userRole->setUser($user);
+                    $userRole->setRole($role);
+                    $this->em->persist($userRole);
+                    $this->logger?->debug('Added gamification role to user', [
+                        'roleName' => $roleName,
+                    ]);
+                }
+            }
         }
 
         $user->setUpdatedAt(new \DateTimeImmutable());

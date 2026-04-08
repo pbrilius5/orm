@@ -140,7 +140,7 @@ class UserController
             email: $data['email'] ?? '',
             password: $data['password'] ?? '',
             groupId: $data['work_group_id'] ?? null,
-            roles: $data['gamification_roles'] ?? []
+            roles: is_array($data['gamification_roles'] ?? null) ? $data['gamification_roles'] : []
         );
 
         $this->logger->debug('Created UpdateUserCommand', [

@@ -16,7 +16,7 @@
                             <div class="col-sm-4 text-muted fw-semibold">Roles</div>
                             <div class="col-sm-8 d-flex flex-wrap gap-1">
                                 <?php foreach ($user->getGamificationRoles() as $role): ?>
-                                <span class="badge bg-secondary"><?= htmlspecialchars($role) ?></span>
+                                <span class="badge bg-secondary"><?= htmlspecialchars($role->getName()) ?></span>
                                 <?php endforeach; ?>
                             </div>
                         </div>

@@ -13,14 +13,13 @@
             <unique-constraint name="user_group_unique" columns="user_id,group_id"/>
         </unique-constraints>
         
-        <many-to-one target-entity="App\Entity\User" field="user" inversed-by="userGroups">
+        <many-to-one target-entity="App\Entity\User" field="user" inversed-by="userGroups" cascade="persist">
             <join-column name="user_id" nullable="false"/>
         </many-to-one>
         
-        <many-to-one target-entity="App\Entity\Group" field="group" inversed-by="userGroups">
+        <many-to-one target-entity="App\Entity\Group" field="group" inversed-by="userGroups" cascade="persist">
             <join-column name="group_id" nullable="false"/>
         </many-to-one>
-        
         <field name="grantedAt" type="datetime_immutable"/>
         <field name="expiresAt" type="datetime_immutable" nullable="true"/>
     </entity>

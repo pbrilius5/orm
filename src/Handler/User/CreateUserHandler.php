@@ -77,6 +77,40 @@ class CreateUserHandler
             $this->logger?->debug('Base user role found');
         }
 
+        if (!empty($command->roles)) {
+            $this->logger?->debug('Processing gamification roles', [
+                'roles' => $command->roles,
+            ]);
+            foreach ($command->roles as $roleName) {
+                $role = $this->em->getRepository(\App\Entity\Role::class)->findOneBy(['name' => $roleName]);
+                if (!$role) {
+                    $roleClass = match ($roleName) {
+                        'ROLE_WIZARD' => \App\Entity\WizardRole::class,
+                        'ROLE_ARCHITECT' => \App\Entity\ArchitectRole::class,
+                        'ROLE_GAME_MASTER' => \App\Entity\GameMasterRole::class,
+                        default => null,
+                    };
+                    if ($roleClass) {
+                        $role = new $roleClass();
+                        $role->setName($roleName);
+                        $this->em->persist($role);
+                        $this->logger?->debug('Created new gamification role', [
+                            'roleName' => $roleName,
+                        ]);
+                    }
+                }
+                if ($role) {
+                    $userRole = new \App\Entity\UserRole();
+                    $userRole->setUser($user);
+                    $userRole->setRole($role);
+                    $this->em->persist($userRole);
+                    $this->logger?->debug('Added gamification role to user', [
+                        'roleName' => $roleName,
+                    ]);
+                }
+            }
+        }
+
         $userRole = new \App\Entity\UserRole();
         $userRole->setUser($user);
         $userRole->setRole($baseRole);
