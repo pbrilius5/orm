@@ -20,11 +20,11 @@ class UserGroup
     private ?UuidInterface $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userGroups', cascade: ['persist'])]
-    #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
+    #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
     #[ORM\ManyToOne(targetEntity: Group::class, inversedBy: 'userGroups', cascade: ['persist'])]
-    #[ORM\JoinColumn(name: 'group_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
+    #[ORM\JoinColumn(name: 'group_id', nullable: false, onDelete: 'CASCADE')]
     private Group $group;
 
     #[ORM\Column(type: 'datetime_immutable')]

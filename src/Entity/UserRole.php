@@ -10,7 +10,7 @@ use Ramsey\Uuid\UuidInterface;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'user_roles')]
-#[ORM\UniqueConstraint(name: 'user_role_unique', columns: ['user_id'])]
+#[ORM\UniqueConstraint(name: 'user_role_unique', columns: ['user_id','role_id'])]
 class UserRole
 {
     #[ORM\Id]
@@ -20,11 +20,11 @@ class UserRole
     private ?UuidInterface $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userRoles')]
-    #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
+    #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
     #[ORM\ManyToOne(targetEntity: Role::class, inversedBy: 'userRoles')]
-    #[ORM\JoinColumn(name: 'role_id', nullable: false, onDelete: 'CASCADE', onUpdate: 'RESTRICT')]
+    #[ORM\JoinColumn(name: 'role_id', nullable: false, onDelete: 'CASCADE')]
     private Role $role;
 
     #[ORM\Column(type: 'datetime_immutable')]

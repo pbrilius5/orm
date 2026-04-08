@@ -120,16 +120,30 @@ class UpdateUserHandler
             $this->logger?->debug('Processing gamification role update', [
                 'newRoles' => $command->roles,
             ]);
+
+            // current active gamification role names
+            $currentGamification = $user->getGamificationRoleNames();
+
+            // determine which to remove (present now but not requested)
+            $toRemove = array_diff($currentGamification, $command->roles);
+
             foreach ($user->getUserRoles() as $userRole) {
                 $role = $userRole->getRole();
-                if ($role->isGamificationRole()) {
+                if ($role->isGamificationRole() && in_array($role->getName(), $toRemove, true)) {
                     $this->logger?->debug('Removing existing gamification role', [
                         'roleName' => $role->getName(),
                     ]);
                     $this->em->remove($userRole);
                 }
             }
+
+            // Add requested roles that the user does not already have
             foreach ($command->roles as $roleName) {
+                if ($user->hasGamificationRole($roleName)) {
+                    // already has this active role; skip
+                    continue;
+                }
+
                 $role = $this->em->getRepository(\App\Entity\Role::class)->findOneBy(['name' => $roleName]);
                 if (!$role) {
                     $roleClass = match ($roleName) {
@@ -144,7 +158,15 @@ class UpdateUserHandler
                         $this->em->persist($role);
                     }
                 }
+
                 if ($role) {
+                    // Extra safety: check DB for existing mapping to avoid duplicates
+                    $existing = $this->em->getRepository(\App\Entity\UserRole::class)
+                        ->findOneBy(['user' => $user, 'role' => $role]);
+                    if ($existing) {
+                        continue;
+                    }
+
                     $userRole = new \App\Entity\UserRole();
                     $userRole->setUser($user);
                     $userRole->setRole($role);
