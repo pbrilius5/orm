@@ -130,4 +130,33 @@ class JsonHalResponder
     {
         return self::error('Forbidden', 403, $detail);
     }
+
+    public static function problem(
+        string $type,
+        string $title,
+        int $status,
+        string $detail = '',
+        ?string $instance = null,
+        array $extensions = []
+    ): JsonResponse {
+        $problem = [
+            'type' => $type,
+            'title' => $title,
+            'status' => $status,
+        ];
+
+        if ($detail) {
+            $problem['detail'] = $detail;
+        }
+
+        if ($instance) {
+            $problem['instance'] = $instance;
+        }
+
+        $problem = array_merge($problem, $extensions);
+
+        return new JsonResponse($problem, $status, [
+            'Content-Type' => 'application/problem+json; charset=utf-8',
+        ]);
+    }
 }

@@ -17,6 +17,7 @@ use App\Middleware\SecurityMiddleware;
 use App\Middleware\CorsMiddleware;
 use App\Middleware\RateLimitMiddleware;
 use App\Middleware\CsrfMiddleware;
+use App\Middleware\JsonErrorHandler;
 use App\Logger\CrashLogger;
 use App\Logger\LoggerFactory;
 use App\Responder\JsonHalResponder;
@@ -178,7 +179,9 @@ class Kernel
         $router = $this->adrRoutes->getRouter();
 
         $logger = $this->logger ?? LoggerFactory::create($this->environment);
+        $isDebug = $this->isDebug();
 
+        $router->middleware(new JsonErrorHandler($logger, $isDebug));
         $router->middleware(new SecurityMiddleware($logger));
         $router->middleware(new CorsMiddleware($logger));
         $router->middleware(new RateLimitMiddleware($logger, 100, 60));
@@ -194,41 +197,38 @@ class Kernel
             'user_agent' => $request->getHeaderLine('User-Agent') ?: 'unknown',
         ]);
 
-        try {
-            return $this->adrRoutes->getRouter()->dispatch($request);
-        } catch (\Throwable $e) {
-            return $this->handleError($e);
-        }
+        return $this->adrRoutes->getRouter()->dispatch($request);
     }
 
     private function handleError(\Throwable $e): ResponseInterface
     {
         $isCrash = CrashLogger::isCrash($e);
+        $debug = $this->isDebug();
 
         if ($isCrash) {
-            $this->crashLogger?->critical('CRASH: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
-            return JsonHalResponder::error('Service Unavailable', 503, 'A critical error occurred');
+            $this->crashLogger?->critical('CRASH: ' . $e->getMessage());
+            $status = 503;
+            $title = 'Service Unavailable';
+            $detail = 'A critical error occurred';
+        } else {
+            $this->logger?->error('Error: ' . $e->getMessage());
+            $status = 500;
+            $title = 'Internal Server Error';
+            $detail = $debug ? $e->getMessage() : 'An error occurred';
         }
 
-        $this->logger?->error('Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+        $extensions = $debug ? ['trace' => $e->getTraceAsString()] : [];
 
-        $debug = !in_array($this->environment, ['prod', 'production'], true);
+        $responder = new \Oryx\Adr\Responder\ProblemDetailsResponder(
+            '/errors/internal-error',
+            $title,
+            $status,
+            $detail,
+            '/api',
+            $extensions
+        );
 
-        $error = [
-            '_error' => [
-                'status' => 500,
-                'title' => 'Internal Server Error',
-                'detail' => $debug ? $e->getMessage() : 'An error occurred',
-            ],
-        ];
-
-        if ($debug) {
-            $error['_error']['trace'] = $e->getTraceAsString();
-        }
-
-        return new JsonResponse($error, 500, [
-            'Content-Type' => 'application/hal+json',
-        ]);
+        return $responder->respond();
     }
 
     public function terminate(): void
