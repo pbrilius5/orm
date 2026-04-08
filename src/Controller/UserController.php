@@ -22,6 +22,7 @@ use App\Command\User\GetUserCommand;
 use App\Command\User\ListUsersCommand;
 use Oryx\ORM\EntityManager;
 use League\Tactician\CommandBus;
+use Psr\Log\LoggerInterface;
 
 class UserController
 {
@@ -30,6 +31,7 @@ class UserController
     private GroupRepository $groupRepository;
     private CommandBus $commandBus;
     private DtoFactory $dtoFactory;
+    private LoggerInterface $logger;
 
     private const GAMIFICATION_ROLE_CLASSES = [
         WizardRole::NAME => WizardRole::class,
@@ -37,11 +39,12 @@ class UserController
         GameMasterRole::NAME => GameMasterRole::class,
     ];
 
-    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory)
+    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory, LoggerInterface $logger)
     {
         $this->em = $em;
         $this->commandBus = $commandBus;
         $this->dtoFactory = $dtoFactory;
+        $this->logger = $logger;
         $this->repository = new UserRepository($em);
         $this->groupRepository = new GroupRepository($em);
     }
@@ -87,6 +90,13 @@ class UserController
 
     public function create(array $data): User
     {
+        $this->logger->debug('Creating user', [
+            'email' => $data['email'] ?? '',
+            'hasPassword' => !empty($data['password']),
+            'groupId' => $data['work_group_id'] ?? null,
+            'roles' => $data['gamification_roles'] ?? [],
+        ]);
+
         $roles = $data['gamification_roles'] ?? [];
         if (is_string($roles)) {
             $roles = [$roles];
@@ -99,11 +109,32 @@ class UserController
             roles: $roles
         );
 
-        return $this->commandBus->handle($command);
+        $this->logger->debug('Created CreateUserCommand', [
+            'email' => $command->email,
+            'groupId' => $command->groupId,
+            'roles' => $command->roles,
+        ]);
+
+        $result = $this->commandBus->handle($command);
+
+        $this->logger->debug('User created successfully', [
+            'userId' => $result->getId(),
+            'email' => $result->getEmail(),
+        ]);
+
+        return $result;
     }
 
     public function update(string $id, array $data): ?User
     {
+        $this->logger->debug('Updating user', [
+            'userId' => $id,
+            'email' => $data['email'] ?? '',
+            'hasPassword' => !empty($data['password']),
+            'groupId' => $data['work_group_id'] ?? null,
+            'roles' => $data['gamification_roles'] ?? [],
+        ]);
+
         $command = new UpdateUserCommand(
             id: $id,
             email: $data['email'] ?? '',
@@ -112,12 +143,48 @@ class UserController
             roles: $data['gamification_roles'] ?? []
         );
 
-        return $this->commandBus->handle($command);
+        $this->logger->debug('Created UpdateUserCommand', [
+            'id' => $command->id,
+            'email' => $command->email,
+            'groupId' => $command->groupId,
+            'roles' => $command->roles,
+        ]);
+
+        $result = $this->commandBus->handle($command);
+
+        if ($result === null) {
+            $this->logger->warning('User not found for update', [
+                'userId' => $id,
+            ]);
+        } else {
+            $this->logger->debug('User updated successfully', [
+                'userId' => $result->getId(),
+                'email' => $result->getEmail(),
+            ]);
+        }
+
+        return $result;
     }
 
     public function delete(string $id): bool
     {
+        $this->logger->debug('Deleting user', [
+            'userId' => $id,
+        ]);
+
         $command = new DeleteUserCommand(id: $id);
-        return $this->commandBus->handle($command);
+
+        $this->logger->debug('Created DeleteUserCommand', [
+            'id' => $command->id,
+        ]);
+
+        $result = $this->commandBus->handle($command);
+
+        $this->logger->debug('User deletion processed', [
+            'userId' => $id,
+            'success' => $result,
+        ]);
+
+        return $result;
     }
 }

@@ -20,6 +20,7 @@ use Laminas\ServiceManager\ServiceManager;
 use League\Container\Container;
 use League\Container\ReflectionContainer;
 use Oryx\ORM\EntityManager;
+use Psr\Log\LoggerInterface;
 
 class MvcApplication
 {
@@ -28,6 +29,7 @@ class MvcApplication
     private Container $leagueContainer;
     private PhpDiContainer $phpDiContainer;
     private ServiceManager $laminasSm;
+    private ?LoggerInterface $logger = null;
 
     public function __construct(EntityManager $em)
     {
@@ -47,6 +49,8 @@ class MvcApplication
         $this->router = $this->leagueContainer->get(Router::class);
         $this->view = $this->phpDiContainer->get(ViewRenderer::class);
         $this->laminasSm = $this->leagueContainer->get(ServiceManager::class);
+
+        $this->logger = $this->leagueContainer->get(LoggerInterface::class);
         $this->registerRoutes();
     }
 
@@ -342,6 +346,11 @@ class MvcApplication
 
     public function run(): void
     {
+        $this->logger?->debug('MvcApplication processing request', [
+            'uri' => $_SERVER['REQUEST_URI'] ?? '/',
+            'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+        ]);
+
         $request = new Request();
         $response = $this->router->dispatch($request);
 

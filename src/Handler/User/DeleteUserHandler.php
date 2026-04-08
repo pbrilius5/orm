@@ -26,17 +26,29 @@ class DeleteUserHandler
     public function handle(DeleteUserCommand $command): bool
     {
         $this->logger?->info('Deleting user: ' . $command->id);
+        $this->logger?->debug('Deleting user details', [
+            'userId' => $command->id,
+        ]);
 
         $user = $this->repository->find($command->id);
         if (!$user) {
-            $this->logger?->warning('User not found: ' . $command->id);
+            $this->logger?->warning('User not found for deletion', [
+                'userId' => $command->id,
+            ]);
             return false;
         }
 
-        $this->em->remove($user);
-        $this->em->flush();
+        $this->logger?->debug('Found user for deletion', [
+            'userId' => $user->getId(),
+            'email' => $user->getEmail(),
+        ]);
 
+        $this->em->remove($user);
+        $this->logger?->debug('User marked for removal');
+
+        $this->em->flush();
         $this->logger?->info('User deleted: ' . $command->id);
+        $this->logger?->debug('User deletion completed');
 
         return true;
     }

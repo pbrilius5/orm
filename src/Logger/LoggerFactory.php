@@ -16,13 +16,13 @@ use Psr\Log\LoggerInterface;
 
 class LoggerFactory
 {
-    private const LOG_DIR = 'var/log';
+    private const LOG_DIR = __DIR__ . '/../../var/log';
 
     public static function create(string $appEnv = 'dev'): LoggerInterface
     {
         $level = match ($appEnv) {
-            'dev' => Level::Debug,
-            'prod' => Level::Error,
+            'prod', 'production' => Level::Error,
+            'test' => Level::Info,
             default => Level::Debug,
         };
 

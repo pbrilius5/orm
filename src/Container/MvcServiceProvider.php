@@ -134,8 +134,8 @@ class MvcServiceProvider extends AbstractServiceProvider
         $container->add(Router::class);
         $container->add(ViewRenderer::class);
 
-        $container->add(UserController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class)->addArgument(DtoFactory::class);
-        $container->add(GroupController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class)->addArgument(DtoFactory::class);
+        $container->add(UserController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class)->addArgument(DtoFactory::class)->addArgument(LoggerInterface::class);
+        $container->add(GroupController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class)->addArgument(DtoFactory::class)->addArgument(LoggerInterface::class);
 
         $container->addShared(ServiceManager::class, function (): ServiceManager {
             return LaminasServiceManagerFactory::create();

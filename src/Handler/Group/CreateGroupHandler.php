@@ -26,16 +26,28 @@ class CreateGroupHandler
     public function handle(CreateGroupCommand $command): Group
     {
         $this->logger?->info('Creating group: ' . $command->name);
+        $this->logger?->debug('Creating group details', [
+            'name' => $command->name,
+            'description' => $command->description,
+        ]);
 
         $group = new Group();
         $group->setName($command->name);
         $group->setDescription($command->description);
         $group->setCreatedAt(new \DateTimeImmutable());
 
-        $this->em->persist($group);
-        $this->em->flush();
+        $this->logger?->debug('Group entity created, preparing for persistence');
 
+        $this->em->persist($group);
+        $this->logger?->debug('Group persisted to entity manager');
+
+        $this->em->flush();
         $this->logger?->info('Group created: ' . $group->getId());
+        $this->logger?->debug('Group creation completed', [
+            'groupId' => $group->getId(),
+            'name' => $group->getName(),
+            'createdAt' => $group->getCreatedAt()->format('Y-m-d H:i:s'),
+        ]);
 
         return $group;
     }

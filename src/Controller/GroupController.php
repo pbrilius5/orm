@@ -15,6 +15,7 @@ use App\Command\Group\GetGroupCommand;
 use App\Command\Group\ListGroupsCommand;
 use Oryx\ORM\EntityManager;
 use League\Tactician\CommandBus;
+use Psr\Log\LoggerInterface;
 
 class GroupController
 {
@@ -22,12 +23,14 @@ class GroupController
     private GroupRepository $repository;
     private CommandBus $commandBus;
     private DtoFactory $dtoFactory;
+    private LoggerInterface $logger;
 
-    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory)
+    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory, LoggerInterface $logger)
     {
         $this->em = $em;
         $this->commandBus = $commandBus;
         $this->dtoFactory = $dtoFactory;
+        $this->logger = $logger;
         $this->repository = new GroupRepository($em);
     }
 
@@ -58,26 +61,86 @@ class GroupController
 
     public function create(array $data): Group
     {
+        $this->logger->debug('Creating group', [
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+        ]);
+
         $command = new CreateGroupCommand(
             name: $data['name'],
             description: $data['description'] ?? null
         );
-        return $this->commandBus->handle($command);
+
+        $this->logger->debug('Created CreateGroupCommand', [
+            'name' => $command->name,
+            'description' => $command->description,
+        ]);
+
+        $result = $this->commandBus->handle($command);
+
+        $this->logger->debug('Group created successfully', [
+            'groupId' => $result->getId(),
+            'name' => $result->getName(),
+        ]);
+
+        return $result;
     }
 
     public function update(int $id, array $data): ?Group
     {
+        $this->logger->debug('Updating group', [
+            'groupId' => $id,
+            'name' => $data['name'] ?? '',
+            'description' => $data['description'] ?? null,
+        ]);
+
         $command = new UpdateGroupCommand(
             id: (string) $id,
             name: $data['name'] ?? '',
             description: $data['description'] ?? null
         );
-        return $this->commandBus->handle($command);
+
+        $this->logger->debug('Created UpdateGroupCommand', [
+            'id' => $command->id,
+            'name' => $command->name,
+            'description' => $command->description,
+        ]);
+
+        $result = $this->commandBus->handle($command);
+
+        if ($result === null) {
+            $this->logger->warning('Group not found for update', [
+                'groupId' => $id,
+            ]);
+        } else {
+            $this->logger->debug('Group updated successfully', [
+                'groupId' => $result->getId(),
+                'name' => $result->getName(),
+            ]);
+        }
+
+        return $result;
     }
 
     public function delete(int $id): bool
     {
+        $this->logger->debug('Deleting group', [
+            'groupId' => $id,
+        ]);
+
         $command = new DeleteGroupCommand(id: (string) $id);
-        return $this->commandBus->handle($command);
+
+        $this->logger->debug('Created DeleteGroupCommand', [
+            'id' => $command->id,
+        ]);
+
+        $result = $this->commandBus->handle($command);
+
+        $this->logger->debug('Group deletion processed', [
+            'groupId' => $id,
+            'success' => $result,
+        ]);
+
+        return $result;
     }
 }

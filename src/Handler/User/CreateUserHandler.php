@@ -26,10 +26,19 @@ class CreateUserHandler
     public function handle(CreateUserCommand $command): User
     {
         $this->logger?->info('Creating user: ' . $command->email);
+        $this->logger?->debug('Creating user details', [
+            'email' => $command->email,
+            'hasPassword' => !empty($command->password),
+            'groupId' => $command->groupId,
+            'rolesCount' => is_array($command->roles) ? count($command->roles) : 0,
+        ]);
 
         $existingUser = $this->em->getRepository(\App\Entity\User::class)
             ->findOneBy(['email' => $command->email]);
         if ($existingUser) {
+            $this->logger?->warning('User creation failed - email already exists', [
+                'email' => $command->email,
+            ]);
             throw new \InvalidArgumentException('User with this email already exists');
         }
 
@@ -39,6 +48,9 @@ class CreateUserHandler
         $user->setCreatedAt(new \DateTimeImmutable());
 
         if ($command->groupId) {
+            $this->logger?->debug('Processing group association', [
+                'groupId' => $command->groupId,
+            ]);
             $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
             $group = $groupRepo->find($command->groupId);
             if ($group && $group->isWorkGroup()) {
@@ -47,25 +59,40 @@ class CreateUserHandler
                 $userGroup->setGroup($group);
                 $userGroup->setGrantedAt(new \DateTimeImmutable());
                 $this->em->persist($userGroup);
+                $this->logger?->debug('Group association successful');
+            } else {
+                $this->logger?->warning('Group not found or not a work group', [
+                    'groupId' => $command->groupId,
+                ]);
             }
         }
 
         $baseRole = $this->em->getRepository(\App\Entity\Role::class)->findOneBy(['name' => \App\Entity\Role::USER]);
         if (!$baseRole) {
+            $this->logger?->debug('Base user role not found, creating new');
             $baseRole = new \App\Entity\Role();
             $baseRole->setName(\App\Entity\Role::USER);
             $this->em->persist($baseRole);
+        } else {
+            $this->logger?->debug('Base user role found');
         }
 
         $userRole = new \App\Entity\UserRole();
         $userRole->setUser($user);
         $userRole->setRole($baseRole);
         $this->em->persist($userRole);
+        $this->logger?->debug('User role association created');
 
         $this->em->persist($user);
-        $this->em->flush();
+        $this->logger?->debug('User entity prepared for persistence');
 
+        $this->em->flush();
         $this->logger?->info('User created: ' . $user->getId());
+        $this->logger?->debug('User creation completed', [
+            'userId' => $user->getId(),
+            'email' => $user->getEmail(),
+            'createdAt' => $user->getCreatedAt()->format('Y-m-d H:i:s'),
+        ]);
 
         return $user;
     }

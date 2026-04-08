@@ -26,21 +26,40 @@ class UpdateGroupHandler
     public function handle(UpdateGroupCommand $command): ?Group
     {
         $this->logger?->info('Updating group: ' . $command->id);
+        $this->logger?->debug('Updating group details', [
+            'groupId' => $command->id,
+            'name' => $command->name,
+            'description' => $command->description,
+        ]);
 
         $group = $this->repository->find($command->id);
         if (!$group) {
-            $this->logger?->warning('Group not found: ' . $command->id);
+            $this->logger?->warning('Group not found for update', [
+                'groupId' => $command->id,
+            ]);
             return null;
         }
+
+        $this->logger?->debug('Found group for update', [
+            'groupId' => $group->getId(),
+            'currentName' => $group->getName(),
+            'currentDescription' => $group->getDescription(),
+        ]);
 
         $group->setName($command->name);
         if ($command->description !== null) {
             $group->setDescription($command->description);
         }
 
-        $this->em->flush();
+        $this->logger?->debug('Group properties updated');
 
+        $this->em->flush();
         $this->logger?->info('Group updated: ' . $command->id);
+        $this->logger?->debug('Group update completed', [
+            'groupId' => $group->getId(),
+            'name' => $group->getName(),
+            'description' => $group->getDescription(),
+        ]);
 
         return $group;
     }
