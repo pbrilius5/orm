@@ -92,7 +92,7 @@ class UserFormTest extends TestCase
         $form->setData([
             'email' => 'invalid-email',
             'password' => 'secret123',
-            'work_group_id' => 'test-uuid',
+            'work_group' => 'test-uuid',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -105,7 +105,7 @@ class UserFormTest extends TestCase
         $form->setData([
             'email' => 'test@test.com',
             'password' => 'short',
-            'work_group_id' => 'test-uuid',
+            'work_group' => 'test-uuid',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();

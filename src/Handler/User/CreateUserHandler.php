@@ -15,12 +15,14 @@ class CreateUserHandler
     private EntityManager $em;
     private UserRepository $repository;
     private ?LoggerInterface $logger;
+    private \App\Service\WorkGroupMapInterface $workGroupMap;
 
-    public function __construct(EntityManager $em, ?LoggerInterface $logger = null)
+    public function __construct(EntityManager $em, \App\Service\WorkGroupMapInterface $workGroupMap, ?LoggerInterface $logger = null)
     {
         $this->em = $em;
         $this->repository = new UserRepository($em);
         $this->logger = $logger;
+        $this->workGroupMap = $workGroupMap;
     }
 
     public function handle(CreateUserCommand $command): User
@@ -51,12 +53,7 @@ class CreateUserHandler
             $this->logger?->debug('Processing work group association', [
                 'workGroup' => $command->workGroup,
             ]);
-            $groupClass = match ($command->workGroup) {
-                'developer' => \App\Entity\DeveloperGroup::class,
-                'designer' => \App\Entity\DesignerGroup::class,
-                'tester' => \App\Entity\TesterGroup::class,
-                default => null,
-            };
+            $groupClass = $this->workGroupMap->getFqcnForDiscriminator($command->workGroup);
             if ($groupClass) {
                 $group = $this->em->getRepository($groupClass)->findOneBy([]);
                 if ($group) {

@@ -131,6 +131,8 @@ class Kernel
         $this->container->set(FractalManager::class, $this->fractal);
         $this->container->set(FixtureLoader::class, autowire());
         $this->container->set(DtoFactory::class, autowire());
+        // WorkGroupMap service (injectable implementation)
+        $this->container->set(\App\Service\WorkGroupMapInterface::class, autowire(\App\Service\WorkGroupMap::class));
 
         $this->registerCommandBus();
     }

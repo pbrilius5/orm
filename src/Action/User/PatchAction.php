@@ -51,7 +51,8 @@ class PatchAction
             return JsonHalResponder::error('Service Unavailable', 503);
         }
 
-        $form = new \App\Form\UserForm(null, ['skip_csrf' => true], $this->laminasSm);
+        $workGroupMap = $this->laminasSm->get(\App\Service\WorkGroupMapInterface::class);
+        $form = new \App\Form\UserForm(null, ['skip_csrf' => true], $this->laminasSm, $workGroupMap);
 
         $formData = [
             'email' => $body['email'] ?? '',
@@ -64,7 +65,7 @@ class PatchAction
         if (!$form->isValid()) {
             $errors = [];
             foreach ($form->getMessages() as $field => $messages) {
-                if ($field === 'work_group_id' || $field === 'gamification_roles') {
+                if ($field === 'work_group' || $field === 'gamification_roles') {
                     continue;
                 }
                 foreach ($messages as $message) {

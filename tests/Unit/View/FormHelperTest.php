@@ -10,6 +10,10 @@ use PHPUnit\Framework\TestCase;
 use App\Form\UserForm;
 use App\Form\GroupForm;
 use App\View\Helper\FormHelper;
+use Laminas\Form\Form as LaminasForm;
+use Laminas\Form\Element\Select as LaminasSelect;
+use Laminas\Form\Element\Radio as LaminasRadio;
+use Laminas\Form\Element\MultiCheckbox as LaminasMultiCheckbox;
 
 class FormHelperTest extends TestCase
 {
@@ -223,5 +227,73 @@ class FormHelperTest extends TestCase
         $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
         $html = FormHelper::renderForm($form);
         $this->assertStringContainsString('Save', $html);
+    }
+
+    public function testRenderUserFormSelectIncludesDataFqcn(): void
+    {
+        $form = new UserForm(null, ['skip_csrf' => true], $this->laminasSm);
+        $html = FormHelper::renderForm($form);
+
+        $this->assertStringContainsString('data-fqcn="' . \App\Entity\TesterGroup::class . '"', $html);
+        $this->assertStringContainsString('data-fqcn="' . \App\Entity\DeveloperGroup::class . '"', $html);
+    }
+
+    public function testRenderSelectPreservesOptionAttributes(): void
+    {
+        $form = new LaminasForm('test');
+        $select = new LaminasSelect('my_select');
+        $select->setOptions([
+            'label' => 'Test Select',
+            'value_options' => [
+                'a' => ['label' => 'Option A', 'attributes' => ['data-foo' => 'bar']],
+                'b' => 'Option B',
+            ],
+        ]);
+        $form->add($select);
+
+        $html = FormHelper::renderForm($form);
+
+        $this->assertStringContainsString('data-foo="bar"', $html);
+        $this->assertStringContainsString('<option value="a"', $html);
+    }
+
+    public function testRenderRadioPreservesOptionAttributes(): void
+    {
+        $form = new LaminasForm('test_radio');
+        $radio = new LaminasRadio('my_radio');
+        $radio->setOptions([
+            'label' => 'Test Radio',
+            'value_options' => [
+                'a' => ['label' => 'Option A', 'attributes' => ['data-foo' => 'bar']],
+                'b' => 'Option B',
+            ],
+        ]);
+        $form->add($radio);
+
+        $html = FormHelper::renderForm($form);
+
+        $this->assertStringContainsString('data-foo="bar"', $html);
+        $this->assertStringContainsString('type="radio"', $html);
+        $this->assertStringContainsString('value="a"', $html);
+    }
+
+    public function testRenderMultiCheckboxPreservesOptionAttributes(): void
+    {
+        $form = new LaminasForm('test_multi');
+        $multi = new LaminasMultiCheckbox('my_multi');
+        $multi->setOptions([
+            'label' => 'Test Multi',
+            'value_options' => [
+                'x' => ['label' => 'Option X', 'attributes' => ['data-bar' => 'baz']],
+                'y' => 'Option Y',
+            ],
+        ]);
+        $form->add($multi);
+
+        $html = FormHelper::renderForm($form);
+
+        $this->assertStringContainsString('data-bar="baz"', $html);
+        $this->assertStringContainsString('type="checkbox"', $html);
+        $this->assertStringContainsString('value="x"', $html);
     }
 }

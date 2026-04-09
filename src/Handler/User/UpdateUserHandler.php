@@ -15,12 +15,14 @@ class UpdateUserHandler
     private EntityManager $em;
     private UserRepository $repository;
     private ?LoggerInterface $logger;
+    private \App\Service\WorkGroupMapInterface $workGroupMap;
 
-    public function __construct(EntityManager $em, ?LoggerInterface $logger = null)
+    public function __construct(EntityManager $em, \App\Service\WorkGroupMapInterface $workGroupMap, ?LoggerInterface $logger = null)
     {
         $this->em = $em;
         $this->repository = new UserRepository($em);
         $this->logger = $logger;
+        $this->workGroupMap = $workGroupMap;
     }
 
     public function handle(UpdateUserCommand $command): ?User
@@ -87,12 +89,7 @@ class UpdateUserHandler
                 }
 
                 if ($command->workGroup) {
-                    $groupClass = match ($command->workGroup) {
-                        'developer' => \App\Entity\DeveloperGroup::class,
-                        'designer' => \App\Entity\DesignerGroup::class,
-                        'tester' => \App\Entity\TesterGroup::class,
-                        default => null,
-                    };
+                    $groupClass = $this->workGroupMap->getFqcnForDiscriminator($command->workGroup);
                     if ($groupClass) {
                         $group = $this->em->getRepository($groupClass)->findOneBy([]);
                         if ($group) {
@@ -189,11 +186,6 @@ class UpdateUserHandler
 
     private function getGroupDiscriminator(\App\Entity\Group $group): string
     {
-        return match (true) {
-            $group instanceof \App\Entity\DeveloperGroup => 'developer',
-            $group instanceof \App\Entity\DesignerGroup => 'designer',
-            $group instanceof \App\Entity\TesterGroup => 'tester',
-            default => 'group',
-        };
+        return $this->workGroupMap->getDiscriminatorForGroup($group);
     }
 }

@@ -22,6 +22,8 @@ use League\Container\ReflectionContainer;
 use Oryx\ORM\EntityManager;
 use Psr\Log\LoggerInterface;
 
+use function DI\autowire;
+
 class MvcApplication
 {
     private Router $router;
@@ -43,6 +45,11 @@ class MvcApplication
         $builder->useAutowiring(true);
         $builder->useAttributes(true);
         $this->phpDiContainer = $builder->build();
+
+        // Register interface -> implementation mapping used by the app.
+        // Kernel registers this mapping in a different container; MvcApplication
+        // needs it in its own PHP-DI container as it resolves services itself.
+        $this->phpDiContainer->set(\App\Service\WorkGroupMapInterface::class, autowire(\App\Service\WorkGroupMap::class));
 
         $this->phpDiContainer->set(EntityManager::class, $em);
 
@@ -94,7 +101,8 @@ class MvcApplication
 
         $this->router->get('/users/create', function (Request $req) {
             $controller = $this->resolve(\App\Controller\UserController::class);
-            $form = new UserForm(null, [], $this->laminasSm);
+            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
+            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
             $form->setWorkGroups($controller->getWorkGroups());
             $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
             $form->setAttribute('action', '/users/create');
@@ -111,7 +119,8 @@ class MvcApplication
 
         $this->router->post('/users/create', function (Request $req) {
             $controller = $this->resolve(\App\Controller\UserController::class);
-            $form = new UserForm(null, [], $this->laminasSm);
+            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
+            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
             $form->setWorkGroups($controller->getWorkGroups());
             $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
             $form->setData($req->all());
@@ -168,20 +177,17 @@ class MvcApplication
             if (!$user) {
                 return new Response('User not found', 404);
             }
-            $form = new UserForm(null, [], $this->laminasSm);
+            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
+            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
             $form->setWorkGroups($controller->getWorkGroups());
             $form->setAttribute('action', '/users/' . $user->getId() . '/edit');
             $form->get('email')->setValue($user->getEmail());
             $form->setGamificationRoles($user->getGamificationRoleNames());
             $workGroup = $user->getWorkGroup();
             if ($workGroup) {
-                $discriminator = match (true) {
-                    $workGroup instanceof \App\Entity\DeveloperGroup => 'developer',
-                    $workGroup instanceof \App\Entity\DesignerGroup => 'designer',
-                    $workGroup instanceof \App\Entity\TesterGroup => 'tester',
-                    default => null,
-                };
-                if ($discriminator) {
+                $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
+                $discriminator = $workGroupMap->getDiscriminatorForGroup($workGroup);
+                if ($discriminator !== 'group') {
                     $form->get('work_group')->setValue($discriminator);
                 }
             }
@@ -200,7 +206,8 @@ class MvcApplication
 
         $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
             $controller = $this->resolve(\App\Controller\UserController::class);
-            $form = new UserForm(null, [], $this->laminasSm);
+            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
+            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
             $form->setWorkGroups($controller->getWorkGroups());
             $form->setData($req->all());
 

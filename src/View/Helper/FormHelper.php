@@ -97,12 +97,18 @@ class FormHelper
         $selectedValue = $element->getValue();
 
         $html = '<div class="card border p-3 ' . ($hasError ? 'border-danger' : '') . '">';
-        foreach ($valueOptions as $value => $label) {
+        foreach ($valueOptions as $value => $opt) {
+            $label = is_array($opt) ? $opt['label'] : $opt;
+            $attributes = is_array($opt) && array_key_exists('attributes', $opt) ? $opt['attributes'] : [];
             $isChecked = ((string) $value === (string) $selectedValue);
             $checked = $isChecked ? 'checked' : '';
             $id = $name . '_' . $value;
             $html .= '<div class="form-check mb-2">';
-            $html .= '<input class="form-check-input" type="radio" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . ' ' . $required . '>';
+            $html .= '<input class="form-check-input" type="radio" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . ' ' . $required;
+            foreach ($attributes as $k => $v) {
+                $html .= ' ' . htmlspecialchars($k) . '="' . htmlspecialchars((string) $v) . '"';
+            }
+            $html .= '>';
             $html .= '<label class="form-check-label" for="' . htmlspecialchars($id) . '">' . htmlspecialchars($label) . '</label>';
             $html .= '</div>';
         }
@@ -121,11 +127,17 @@ class FormHelper
         if ($type === 'multicheckbox' || $type === 'multi_checkbox') {
             $html = '<div class="card border p-3 ' . ($hasError ? 'border-danger' : '') . '">';
             $selectedValues = (array) $element->getValue();
-            foreach ($valueOptions as $value => $label) {
+            foreach ($valueOptions as $value => $opt) {
+                $label = is_array($opt) ? $opt['label'] : $opt;
+                $attributes = is_array($opt) && array_key_exists('attributes', $opt) ? $opt['attributes'] : [];
                 $checked = in_array($value, $selectedValues) ? 'checked' : '';
                 $id = $name . '_' . $value;
                 $html .= '<div class="form-check mb-2">';
-                $html .= '<input class="form-check-input" type="checkbox" name="' . htmlspecialchars($name) . '[]" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked . '>';
+                $html .= '<input class="form-check-input" type="checkbox" name="' . htmlspecialchars($name) . '[]" value="' . htmlspecialchars($value) . '" id="' . htmlspecialchars($id) . '" ' . $checked;
+                foreach ($attributes as $k => $v) {
+                    $html .= ' ' . htmlspecialchars($k) . '="' . htmlspecialchars((string) $v) . '"';
+                }
+                $html .= '>';
                 $html .= '<label class="form-check-label" for="' . htmlspecialchars($id) . '">' . htmlspecialchars($label) . '</label>';
                 $html .= '</div>';
             }
@@ -135,9 +147,15 @@ class FormHelper
 
         $html = '<select class="' . $class . '" id="' . htmlspecialchars($name) . '" name="' . htmlspecialchars($name) . '">';
         $selectedValue = $element->getValue();
-        foreach ($valueOptions as $value => $label) {
+        foreach ($valueOptions as $value => $opt) {
+            $label = is_array($opt) ? $opt['label'] : $opt;
+            $attributes = is_array($opt) && array_key_exists('attributes', $opt) ? $opt['attributes'] : [];
             $selected = ((string) $value === (string) $selectedValue) ? 'selected' : '';
-            $html .= '<option value="' . htmlspecialchars($value) . '" ' . $selected . '>' . htmlspecialchars($label) . '</option>';
+            $html .= '<option value="' . htmlspecialchars($value) . '" ' . $selected;
+            foreach ($attributes as $k => $v) {
+                $html .= ' ' . htmlspecialchars($k) . '="' . htmlspecialchars((string) $v) . '"';
+            }
+            $html .= '>' . htmlspecialchars($label) . '</option>';
         }
         $html .= '</select>';
 
@@ -160,9 +178,62 @@ class FormHelper
 
     private static function getValueOptions(ElementInterface $element): array
     {
+        // Normalize various Laminas option specs to a simple map of value => label (both strings).
+        // Value options can be provided as:
+        // - ['key' => 'Label']
+        // - [ ['value' => 'k', 'label' => 'Label', 'attributes' => [...]], ... ]
+        // - ['k' => ['label' => 'Label', 'attributes' => [...]], ...]
+        $raw = [];
         if (method_exists($element, 'getValueOptions')) {
-            return $element->getValueOptions();
+            $raw = $element->getValueOptions();
+        } else {
+            $raw = $element->getOption('value_options') ?? [];
         }
-        return $element->getOption('value_options') ?? [];
+
+        $normalized = [];
+        foreach ($raw as $key => $opt) {
+            if (is_array($opt)) {
+                // Option spec as array
+                if (array_key_exists('value', $opt) && array_key_exists('label', $opt)) {
+                    $value = (string) $opt['value'];
+                    $label = (string) $opt['label'];
+                    $attributes = $opt['attributes'] ?? [];
+                } elseif (array_key_exists('label', $opt)) {
+                    // keyed by value: 'k' => ['label' => 'Label']
+                    $value = (string) $key;
+                    $label = (string) $opt['label'];
+                    $attributes = $opt['attributes'] ?? [];
+                } elseif (array_key_exists('value', $opt)) {
+                    $value = (string) $opt['value'];
+                    $label = (string) $key;
+                    $attributes = $opt['attributes'] ?? [];
+                } else {
+                    // Fallback: try to stringify the array (implode) or use key
+                    $value = (string) $key;
+                    $label = is_scalar($opt) ? (string) $opt : (string) $key;
+                    $attributes = $opt['attributes'] ?? [];
+                }
+            } else {
+                // scalar option
+                if (is_int($key)) {
+                    $value = (string) $opt;
+                    $label = (string) $opt;
+                    $attributes = [];
+                } else {
+                    $value = (string) $key;
+                    $label = (string) $opt;
+                    $attributes = [];
+                }
+            }
+
+            // Preserve attributes when provided so renderers can output data-attributes.
+            if (!empty($attributes)) {
+                $normalized[$value] = ['label' => $label, 'attributes' => $attributes];
+            } else {
+                $normalized[$value] = $label;
+            }
+        }
+
+        return $normalized;
     }
 }

@@ -106,6 +106,11 @@ class MvcServiceProvider extends AbstractServiceProvider
 
         $container->addShared(CrashLogger::class);
 
+        // Provide WorkGroupMapInterface to League container consumers (handlers/controllers)
+        $container->addShared(\App\Service\WorkGroupMapInterface::class, function () {
+            return new \App\Service\WorkGroupMap();
+        });
+
         $container->add(CommandBus::class, function () use ($container) {
             $mapping = new MapByStaticList([
                 \App\Command\User\CreateUserCommand::class => [CreateUserHandler::class, 'handle'],
