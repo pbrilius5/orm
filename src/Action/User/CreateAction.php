@@ -8,6 +8,7 @@ use App\Command\CommandBusInterface;
 use App\Command\User\CreateUserCommand;
 use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
+use Laminas\Validator\EmailAddress;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -34,6 +35,13 @@ class CreateAction
             return JsonHalResponder::unprocessableEntity([
                 ['field' => 'email', 'message' => 'Email is required'],
                 ['field' => 'password', 'message' => 'Password is required'],
+            ]);
+        }
+
+        $emailValidator = new EmailAddress();
+        if (!$emailValidator->isValid($body['email'])) {
+            return JsonHalResponder::unprocessableEntity([
+                ['field' => 'email', 'message' => 'Email must be a valid email address'],
             ]);
         }
 

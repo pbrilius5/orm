@@ -8,6 +8,7 @@ use App\Command\CommandBusInterface;
 use App\Command\User\UpdateUserCommand;
 use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
+use Laminas\Validator\EmailAddress;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Uuid;
@@ -35,6 +36,15 @@ class UpdateAction
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             return JsonHalResponder::badRequest('Invalid JSON in request body');
+        }
+
+        if (isset($body['email']) && $body['email'] !== '') {
+            $emailValidator = new EmailAddress();
+            if (!$emailValidator->isValid($body['email'])) {
+                return JsonHalResponder::unprocessableEntity([
+                    ['field' => 'email', 'message' => 'Email must be a valid email address'],
+                ]);
+            }
         }
 
         $command = new UpdateUserCommand(

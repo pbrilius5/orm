@@ -140,39 +140,19 @@ curl -X POST http://localhost:8080/api/users \
   -d '{"email": "not-an-email", "password": "secret123", "work_group": "developer"}'
 ```
 
-**Response:**
 ```json
 {
-  "_links": {
-    "self": { "href": "/api/users/d005be55-76c1-4bc9-9670-27eb63d1d9c1" },
-    "collection": { "href": "/api/users" }
-  },
-  "user": {
-    "id": "d005be55-76c1-4bc9-9670-27eb63d1d9c1",
-    "email": "tester@example.com",
-    "workGroupName": "Developers",
-    "role": null,
-    "createdAt": { "date": "2026-04-09 07:21:50.331554", "timezone_type": 3, "timezone": "UTC" }
+  "_error": {
+    "status": 422,
+    "title": "Unprocessable Entity",
+    "detail": "Validation failed",
+    "errors": [
+      {
+        "field": "email",
+        "message": "Email must be a valid email address"
+      }
+    ]
   }
-}
-```
-
-**Validation Error Specimen (Invalid Email):**
-```bash
-curl -X POST http://localhost:8080/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"email": "not-an-email", "password": "secret123", "work_group": "developer"}'
-```
-
-```json
-{
-  "_errors": [
-    {
-      "status": 422,
-      "title": "Validation Error",
-      "detail": "Email must be a valid email address"
-    }
-  ]
 }
 ```
 
