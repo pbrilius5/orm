@@ -18,14 +18,17 @@ class PatchAction
     private CommandBusInterface $commandBus;
     private DtoFactory $dtoFactory;
     private ?ServiceManager $laminasSm;
+    private \App\Service\FormProcessor $formProcessor;
 
     public function __construct(
         CommandBusInterface $commandBus,
         DtoFactory $dtoFactory,
+        \App\Service\FormProcessor $formProcessor,
         ?ServiceManager $laminasSm = null
     ) {
         $this->commandBus = $commandBus;
         $this->dtoFactory = $dtoFactory;
+        $this->formProcessor = $formProcessor;
         $this->laminasSm = $laminasSm;
     }
 
@@ -48,42 +51,45 @@ class PatchAction
         }
 
         if ($this->laminasSm === null) {
-            return JsonHalResponder::error('Service Unavailable', 503);
+            // Use FormProcessor for validation so ValidationException is handled globally
+            $workGroupMap = new \App\Service\WorkGroupMap();
+            $form = new \App\Form\UserForm(null, ['skip_csrf' => true], null, $workGroupMap);
+
+            $data = $this->formProcessor->validateOrThrow($form, [
+                'email' => $body['email'] ?? '',
+                'password' => $body['password'] ?? '',
+                'work_group' => $body['work_group'] ?? '',
+                'gamification_roles' => $body['gamification_roles'] ?? '',
+            ]);
+
+            $command = new PatchUserCommand(
+                id: $id,
+                email: $data['email'] ?? null,
+                password: $data['password'] ?? null,
+                workGroup: $data['work_group'] ?? null,
+                roles: is_array($data['gamification_roles']) ? $data['gamification_roles'] : ($data['gamification_roles'] ? [$data['gamification_roles']] : null)
+            );
+        } else {
+            // Use FormProcessor for validation so ValidationException is handled globally
+            $workGroupMap = $this->laminasSm->get(\App\Service\WorkGroupMapInterface::class);
+            $data = $this->formProcessor->validateOrThrow(
+                new \App\Form\UserForm(null, ['skip_csrf' => true], $this->laminasSm, $workGroupMap),
+                [
+                    'email' => $body['email'] ?? '',
+                    'password' => $body['password'] ?? '',
+                    'work_group' => $body['work_group'] ?? '',
+                    'gamification_roles' => $body['gamification_roles'] ?? '',
+                ]
+            );
+
+            $command = new PatchUserCommand(
+                id: $id,
+                email: $data['email'] ?? null,
+                password: $data['password'] ?? null,
+                workGroup: $data['work_group'] ?? null,
+                roles: is_array($data['gamification_roles']) ? $data['gamification_roles'] : ($data['gamification_roles'] ? [$data['gamification_roles']] : null)
+            );
         }
-
-        $workGroupMap = $this->laminasSm->get(\App\Service\WorkGroupMapInterface::class);
-        $form = new \App\Form\UserForm(null, ['skip_csrf' => true], $this->laminasSm, $workGroupMap);
-
-        $formData = [
-            'email' => $body['email'] ?? '',
-            'password' => $body['password'] ?? '',
-            'work_group' => $body['work_group'] ?? '',
-            'gamification_roles' => $body['gamification_roles'] ?? '',
-        ];
-        $form->setData($formData);
-
-        if (!$form->isValid()) {
-            $errors = [];
-            foreach ($form->getMessages() as $field => $messages) {
-                if ($field === 'work_group' || $field === 'gamification_roles') {
-                    continue;
-                }
-                foreach ($messages as $message) {
-                    $errors[] = ['field' => $field, 'message' => $message];
-                }
-            }
-            if (!empty($errors)) {
-                return JsonHalResponder::unprocessableEntity($errors);
-            }
-        }
-
-        $command = new PatchUserCommand(
-            id: $id,
-            email: $body['email'] ?? null,
-            password: $body['password'] ?? null,
-            workGroup: $body['work_group'] ?? null,
-            roles: $body['gamification_roles'] ?? null
-        );
 
         $user = $this->commandBus->handle($command);
 

@@ -62,7 +62,13 @@ class UserActionTest extends TestCase
 
     public function testCreateActionWithoutEmailReturns422(): void
     {
-        $action = new CreateAction($this->commandBus, $this->dtoFactory);
+        $formProcessor = $this->createMock(\App\Service\FormProcessor::class);
+        $formProcessor->method('validateOrThrow')
+            ->willThrowException(new \App\Exception\ValidationException([
+                ['field' => 'email', 'message' => 'Email is required'],
+            ]));
+
+        $action = new CreateAction($this->commandBus, $this->dtoFactory, $formProcessor, null);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write(json_encode(['password' => 'secret123']));
@@ -80,7 +86,7 @@ class UserActionTest extends TestCase
 
     public function testUpdateActionWithInvalidIdReturns400(): void
     {
-        $action = new UpdateAction($this->commandBus, $this->dtoFactory);
+        $action = new UpdateAction($this->commandBus, $this->dtoFactory, $this->createMock(\App\Service\FormProcessor::class), null);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write(json_encode(['email' => 'test@test.com']));
@@ -99,7 +105,7 @@ class UserActionTest extends TestCase
 
     public function testPatchActionWithEmptyBodyReturns422(): void
     {
-        $action = new PatchAction($this->commandBus, $this->dtoFactory);
+        $action = new PatchAction($this->commandBus, $this->dtoFactory, $this->createMock(\App\Service\FormProcessor::class), null);
 
         $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
         $stream->write('{}');

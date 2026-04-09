@@ -18,14 +18,17 @@ class UpdateAction
     private CommandBusInterface $commandBus;
     private DtoFactory $dtoFactory;
     private ?ServiceManager $laminasSm;
+    private \App\Service\FormProcessor $formProcessor;
 
     public function __construct(
         CommandBusInterface $commandBus,
         DtoFactory $dtoFactory,
+        \App\Service\FormProcessor $formProcessor,
         ?ServiceManager $laminasSm = null
     ) {
         $this->commandBus = $commandBus;
         $this->dtoFactory = $dtoFactory;
+        $this->formProcessor = $formProcessor;
         $this->laminasSm = $laminasSm;
     }
 
@@ -44,68 +47,62 @@ class UpdateAction
         }
 
         if ($this->laminasSm === null) {
-            if (isset($body['email']) && $body['email'] !== '') {
-                $command = new UpdateUserCommand(
-                    id: $id,
-                    email: $body['email'],
-                    password: $body['password'] ?? null,
-                    workGroup: $body['work_group'] ?? null,
-                    roles: $body['gamification_roles'] ?? []
-                );
+            // Use FormProcessor to validate a lightweight form instance so ValidationException
+            // will be converted to a 422 response by JsonErrorHandler middleware.
+            $workGroupMap = new \App\Service\WorkGroupMap();
+            $form = new \App\Form\UserForm(null, ['skip_csrf' => true], null, $workGroupMap);
 
-                $user = $this->commandBus->handle($command);
+            $data = $this->formProcessor->validateOrThrow($form, [
+                'email' => $body['email'] ?? '',
+                'password' => $body['password'] ?? '',
+                'work_group' => $body['work_group'] ?? '',
+                'gamification_roles' => $body['gamification_roles'] ?? '',
+            ]);
 
-                if (!$user) {
-                    return JsonHalResponder::notFound('User not found');
-                }
+            $command = new UpdateUserCommand(
+                id: $id,
+                email: $data['email'] ?? null,
+                password: $data['password'] ?? null,
+                workGroup: $data['work_group'] ?? null,
+                roles: is_array($data['gamification_roles']) ? $data['gamification_roles'] : ($data['gamification_roles'] ? [$data['gamification_roles']] : [])
+            );
 
-                $gamificationRoles = $user->getAllRoles();
-                usort($gamificationRoles, fn($a, $b) => $b->getRank() <=> $a->getRank());
+            $user = $this->commandBus->handle($command);
 
-                $dto = $this->dtoFactory->create($user, [
-                    'userRoles' => $user->getUserRoles()->toArray(),
-                    'workGroup' => $user->getWorkGroups()[0] ?? null,
-                    'gamificationRoles' => $gamificationRoles,
-                ]);
-
-                return JsonHalResponder::resource('user', $user->getId()?->toString() ?? '', $dto);
+            if (!$user) {
+                return JsonHalResponder::notFound('User not found');
             }
-            return JsonHalResponder::badRequest('Invalid request');
+
+            $gamificationRoles = $user->getAllRoles();
+            usort($gamificationRoles, fn($a, $b) => $b->getRank() <=> $a->getRank());
+
+            $dto = $this->dtoFactory->create($user, [
+                'userRoles' => $user->getUserRoles()->toArray(),
+                'workGroup' => $user->getWorkGroups()[0] ?? null,
+                'gamificationRoles' => $gamificationRoles,
+            ]);
+
+            return JsonHalResponder::resource('user', $user->getId()?->toString() ?? '', $dto);
         }
 
+        // Use FormProcessor for validation so ValidationException is handled globally
         $workGroupMap = $this->laminasSm->get(\App\Service\WorkGroupMapInterface::class);
-        $form = new \App\Form\UserForm(null, ['skip_csrf' => true], $this->laminasSm, $workGroupMap);
+        $data = $this->formProcessor->validateOrThrow(
+            new \App\Form\UserForm(null, ['skip_csrf' => true], $this->laminasSm, $workGroupMap),
+            [
+                'email' => $body['email'] ?? '',
+                'password' => $body['password'] ?? '',
+                'work_group' => $body['work_group'] ?? '',
+                'gamification_roles' => $body['gamification_roles'] ?? '',
+            ]
+        );
 
-        $formData = [
-            'email' => $body['email'] ?? '',
-            'password' => $body['password'] ?? '',
-            'work_group' => $body['work_group'] ?? '',
-            'gamification_roles' => $body['gamification_roles'] ?? '',
-        ];
-        $form->setData($formData);
-
-        if (!$form->isValid()) {
-            $errors = [];
-            foreach ($form->getMessages() as $field => $messages) {
-                if ($field === 'work_group' || $field === 'gamification_roles') {
-                    continue;
-                }
-                foreach ($messages as $message) {
-                    $errors[] = ['field' => $field, 'message' => $message];
-                }
-            }
-            if (!empty($errors)) {
-                return JsonHalResponder::unprocessableEntity($errors);
-            }
-        }
-
-        $data = $form->getData();
         $command = new UpdateUserCommand(
             id: $id,
-            email: $body['email'] ?? null,
-            password: $body['password'] ?? null,
-            workGroup: $body['work_group'] ?? null,
-            roles: $body['gamification_roles'] ?? []
+            email: $data['email'] ?? null,
+            password: $data['password'] ?? null,
+            workGroup: $data['work_group'] ?? null,
+            roles: is_array($data['gamification_roles']) ? $data['gamification_roles'] : ($data['gamification_roles'] ? [$data['gamification_roles']] : [])
         );
 
         $user = $this->commandBus->handle($command);

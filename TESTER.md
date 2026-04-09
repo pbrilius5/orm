@@ -835,7 +835,25 @@ bin/console user:create --help
 
 ---
 
-## Common Test Scenarios
+## Validation Error Format
+
+All validation errors now follow a consistent format using the centralized FormProcessor service. When validation fails, you'll receive a 422 Unprocessable Entity response with this structure:
+
+```json
+{
+  "_error": {
+    "status": 422,
+    "title": "Unprocessable Entity",
+    "detail": "Validation failed",
+    "errors": [
+      {
+        "field": "field_name",
+        "message": "Validation error message"
+      }
+    ]
+  }
+}
+```
 
 ### Test Validation - Required Fields Missing
 ```bash
@@ -849,6 +867,20 @@ curl -X POST http://localhost:8080/api/users \
 curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
   -d '{"email": "invalid-email"}'
+```
+
+### Test Validation - Short Password
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "123", "work_group": "developer"}'
+```
+
+### Test Validation - Invalid Work Group
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "secure123", "work_group": "invalid_group"}'
 ```
 
 ### Test 404 - Resource Not Found

@@ -10,6 +10,8 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Oryx\Adr\Responder\ProblemDetailsResponder;
+use App\Responder\JsonHalResponder;
+use App\Exception\ValidationException;
 
 class JsonErrorHandler implements MiddlewareInterface
 {
@@ -52,6 +54,11 @@ class JsonErrorHandler implements MiddlewareInterface
                 $e->getMessage(),
                 (string) $request->getUri()
             );
+        } catch (ValidationException $e) {
+            // ValidationException -> consistent JsonHal unprocessableEntity payload
+            $this->logger->info('Validation failed: ' . $e->getMessage());
+
+            return JsonHalResponder::unprocessableEntity($e->getErrors());
         } catch (\DomainException $e) {
             $errorType = $this->extractErrorType($e);
 

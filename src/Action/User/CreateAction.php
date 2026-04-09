@@ -17,14 +17,17 @@ class CreateAction
     private CommandBusInterface $commandBus;
     private DtoFactory $dtoFactory;
     private ?ServiceManager $laminasSm;
+    private \App\Service\FormProcessor $formProcessor;
 
     public function __construct(
         CommandBusInterface $commandBus,
         DtoFactory $dtoFactory,
+        \App\Service\FormProcessor $formProcessor,
         ?ServiceManager $laminasSm = null
     ) {
         $this->commandBus = $commandBus;
         $this->dtoFactory = $dtoFactory;
+        $this->formProcessor = $formProcessor;
         $this->laminasSm = $laminasSm;
     }
 
@@ -37,27 +40,28 @@ class CreateAction
         }
 
         if ($this->laminasSm === null) {
-            if (empty($body['email']) || empty($body['password']) || empty($body['work_group'])) {
-                $errors = [];
-                if (empty($body['email'])) {
-                    $errors[] = ['field' => 'email', 'message' => 'Email is required'];
-                }
-                if (empty($body['password'])) {
-                    $errors[] = ['field' => 'password', 'message' => 'Password is required'];
-                }
-                if (empty($body['work_group'])) {
-                    $errors[] = ['field' => 'work_group', 'message' => 'Work group is required'];
-                }
-                return JsonHalResponder::unprocessableEntity($errors);
+            // Create a simple form instance and use the central FormProcessor to validate.
+            $workGroupMap = new \App\Service\WorkGroupMap();
+            $form = new \App\Form\UserForm(null, ['skip_csrf' => true], null, $workGroupMap);
+
+            try {
+                $data = $this->formProcessor->validateOrThrow($form, [
+                    'email' => $body['email'] ?? '',
+                    'password' => $body['password'] ?? '',
+                    'work_group' => $body['work_group'] ?? '',
+                    'gamification_roles' => $body['gamification_roles'] ?? '',
+                ]);
+            } catch (\App\Exception\ValidationException $e) {
+                return JsonHalResponder::unprocessableEntity($e->getErrors());
             }
 
             $command = new CreateUserCommand(
-                email: $body['email'],
-                password: $body['password'],
-                workGroup: $body['work_group'],
-                roles: is_array($body['gamification_roles'])
-                    ? $body['gamification_roles']
-                    : ($body['gamification_roles'] ? [$body['gamification_roles']] : [])
+                email: $data['email'],
+                password: $data['password'],
+                workGroup: $data['work_group'],
+                roles: is_array($data['gamification_roles'])
+                    ? $data['gamification_roles']
+                    : ($data['gamification_roles'] ? [$data['gamification_roles']] : [])
             );
 
             $user = $this->commandBus->handle($command);

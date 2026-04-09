@@ -133,6 +133,8 @@ class Kernel
         $this->container->set(DtoFactory::class, autowire());
         // WorkGroupMap service (injectable implementation)
         $this->container->set(\App\Service\WorkGroupMapInterface::class, autowire(\App\Service\WorkGroupMap::class));
+        // Central FormProcessor service for consistent form validation
+        $this->container->set(\App\Service\FormProcessor::class, autowire());
 
         $this->registerCommandBus();
     }
