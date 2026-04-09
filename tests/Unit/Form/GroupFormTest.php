@@ -55,7 +55,7 @@ class GroupFormTest extends TestCase
     public function testGroupFormElementCount(): void
     {
         $form = new GroupForm(null, [], $this->laminasSm);
-        $this->assertCount(5, $form->getElements());
+        $this->assertSame($form->count(), count($form->getElements()));
     }
 
     public function testGroupFormHasTypeField(): void

@@ -175,7 +175,15 @@ class MvcApplication
             $form->setGamificationRoles($user->getGamificationRoleNames());
             $workGroup = $user->getWorkGroup();
             if ($workGroup) {
-                $form->get('work_group_id')->setValue($workGroup->getId()->toString());
+                $discriminator = match (true) {
+                    $workGroup instanceof \App\Entity\DeveloperGroup => 'developer',
+                    $workGroup instanceof \App\Entity\DesignerGroup => 'designer',
+                    $workGroup instanceof \App\Entity\TesterGroup => 'tester',
+                    default => null,
+                };
+                if ($discriminator) {
+                    $form->get('work_group')->setValue($discriminator);
+                }
             }
             return new Response($this->view->renderWithLayout('users/edit', [
                 'user' => $user,

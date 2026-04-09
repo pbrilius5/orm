@@ -93,7 +93,7 @@ class UserController
         $this->logger->debug('Creating user', [
             'email' => $data['email'] ?? '',
             'hasPassword' => !empty($data['password']),
-            'groupId' => $data['work_group_id'] ?? null,
+            'workGroup' => $data['work_group'] ?? null,
             'roles' => $data['gamification_roles'] ?? [],
         ]);
 
@@ -105,13 +105,13 @@ class UserController
         $command = new CreateUserCommand(
             email: $data['email'],
             password: $data['password'] ?? '',
-            groupId: $data['work_group_id'] ?? null,
+            workGroup: $data['work_group'] ?? null,
             roles: $roles
         );
 
         $this->logger->debug('Created CreateUserCommand', [
             'email' => $command->email,
-            'groupId' => $command->groupId,
+            'workGroup' => $command->workGroup,
             'roles' => $command->roles,
         ]);
 
@@ -131,7 +131,7 @@ class UserController
             'userId' => $id,
             'email' => $data['email'] ?? '',
             'hasPassword' => !empty($data['password']),
-            'groupId' => $data['work_group_id'] ?? null,
+            'workGroup' => $data['work_group'] ?? null,
             'roles' => $data['gamification_roles'] ?? [],
         ]);
 
@@ -143,15 +143,15 @@ class UserController
         $command = new UpdateUserCommand(
             id: $id,
             email: $data['email'] ?? '',
-            password: $data['password'] ?? '',
-            groupId: $data['work_group_id'] ?? null,
+            password: $data['password'] ?? null,
+            workGroup: $data['work_group'] ?? null,
             roles: $roles
         );
 
         $this->logger->debug('Created UpdateUserCommand', [
             'id' => $command->id,
             'email' => $command->email,
-            'groupId' => $command->groupId,
+            'workGroup' => $command->workGroup,
             'roles' => $command->roles,
         ]);
 

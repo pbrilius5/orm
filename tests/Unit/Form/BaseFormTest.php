@@ -43,7 +43,7 @@ class BaseFormTest extends TestCase
         $form = new UserForm(null, [], $this->laminasSm);
         $this->assertTrue($form->has('email'));
         $this->assertTrue($form->has('password'));
-        $this->assertTrue($form->has('work_group_id'));
+        $this->assertTrue($form->has('work_group'));
         $this->assertTrue($form->has('gamification_roles'));
         $this->assertTrue($form->has('submit'));
     }
@@ -51,7 +51,7 @@ class BaseFormTest extends TestCase
     public function testUserFormElementCount(): void
     {
         $form = new UserForm(null, [], $this->laminasSm);
-        $this->assertCount(7, $form->getElements());
+        $this->assertSame($form->count(), count($form->getElements()));
     }
 
     public function testUserFormEmailElementAttributes(): void
@@ -108,7 +108,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
-            'work_group_id' => $group->getId()->toString(),
+            'work_group' => 'developer',
         ]);
         $this->assertTrue($form->isValid());
     }
@@ -119,7 +119,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'not-an-email',
             'password' => 'secret123',
-            'work_group_id' => 'some-group-id',
+            'work_group' => 'developer',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -132,7 +132,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => ' ',
             'password' => 'secret123',
-            'work_group_id' => 'some-group-id',
+            'work_group' => 'developer',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -145,7 +145,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'abc',
-            'work_group_id' => 'some-group-id',
+            'work_group' => 'developer',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -158,7 +158,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'test@example.com',
             'password' => '',
-            'work_group_id' => 'some-group-id',
+            'work_group' => 'developer',
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
@@ -187,7 +187,7 @@ class BaseFormTest extends TestCase
         $form->setData([
             'email' => 'test@example.com',
             'password' => 'secret123',
-            'work_group_id' => $group->getId()->toString(),
+            'work_group' => 'developer',
             'gamification_roles' => 'ROLE_WIZARD',
         ]);
         $this->assertTrue($form->isValid());

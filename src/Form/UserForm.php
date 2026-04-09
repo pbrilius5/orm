@@ -44,28 +44,15 @@ class UserForm extends BaseForm
         ]);
 
         $this->add([
-            'name' => 'work_group_id',
+            'name' => 'work_group',
             'type' => 'select',
             'options' => [
                 'label' => 'Work Group',
                 'empty_option' => 'Select your work group',
-                'value_options' => $this->getWorkGroupValueOptions(),
-            ],
-            'attributes' => [
-                'required' => true,
-            ],
-        ]);
-
-        $this->add([
-            'name' => 'work_group',
-            'type' => 'select',
-            'options' => [
-                'label' => 'Work Group (API)',
-                'empty_option' => 'Select your work group',
                 'value_options' => [
-                    'developer' => 'Developer (rank: 3)',
-                    'designer' => 'Designer (rank: 2)',
                     'tester' => 'Tester (rank: 1)',
+                    'designer' => 'Designer (rank: 2)',
+                    'developer' => 'Developer (rank: 3)',
                 ],
             ],
             'attributes' => [
@@ -85,7 +72,7 @@ class UserForm extends BaseForm
                 ],
             ],
             'attributes' => [
-                'required' => true,
+                'required' => false,
             ],
         ]);
 
@@ -122,14 +109,10 @@ class UserForm extends BaseForm
         ];
 
         $workGroupSpec = [
-            'name' => 'work_group_id',
-            'required' => true,
-        ];
-
-        $workGroupApiSpec = [
             'name' => 'work_group',
-            'required' => false,
+            'required' => true,
             'validators' => [
+                ['name' => 'NotEmpty'],
                 ['name' => 'InArray', 'options' => ['haystack' => ['developer', 'designer', 'tester']]],
             ],
         ];
@@ -143,7 +126,6 @@ class UserForm extends BaseForm
             $emailSpec,
             $passwordSpec,
             $workGroupSpec,
-            $workGroupApiSpec,
             $rolesSpec,
         ]);
 
@@ -153,12 +135,29 @@ class UserForm extends BaseForm
     public function setWorkGroups(array $workGroups): void
     {
         $this->workGroups = $workGroups;
-        if ($this->has('work_group_id')) {
-            $element = $this->get('work_group_id');
+        if ($this->has('work_group')) {
+            $element = $this->get('work_group');
             if (method_exists($element, 'setValueOptions')) {
                 $element->setValueOptions($this->getWorkGroupValueOptions());
             }
+
+            $inputFilter = $this->getInputFilter();
+            $workGroupInput = $inputFilter->get('work_group');
+            if ($workGroupInput !== null) {
+                $validators = $workGroupInput->getValidatorChain()->getValidators();
+                foreach ($validators as $validator) {
+                    $v = $validator['instance'];
+                    if ($v instanceof \Laminas\Validator\InArray) {
+                        $v->setHaystack($this->getStaticWorkGroupDiscriminators());
+                    }
+                }
+            }
         }
+    }
+
+    private function getStaticWorkGroupDiscriminators(): array
+    {
+        return ['tester', 'designer', 'developer'];
     }
 
     private function getWorkGroupValueOptions(): array

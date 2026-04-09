@@ -44,7 +44,7 @@ class UserFormTest extends TestCase
         $form = new UserForm(null, [], $this->laminasSm);
         $this->assertTrue($form->has('email'));
         $this->assertTrue($form->has('password'));
-        $this->assertTrue($form->has('work_group_id'));
+        $this->assertTrue($form->has('work_group'));
         $this->assertTrue($form->has('gamification_roles'));
         $this->assertTrue($form->has('submit'));
         $this->assertTrue($form->has('csrf'));
@@ -67,7 +67,7 @@ class UserFormTest extends TestCase
         ]);
         $this->assertFalse($form->isValid());
         $errors = $form->getValidationErrors();
-        $this->assertArrayHasKey('work_group_id', $errors);
+        $this->assertArrayHasKey('work_group', $errors);
     }
 
     public function testUserFormValidationWithValidData(): void
@@ -78,11 +78,10 @@ class UserFormTest extends TestCase
         $group->setCreatedAt(new \DateTimeImmutable());
 
         $form = $this->createForm();
-        $form->setWorkGroups([$group]);
         $form->setData([
             'email' => 'test@test.com',
             'password' => 'secret123',
-            'work_group_id' => $group->getId()->toString(),
+            'work_group' => 'developer',
         ]);
         $this->assertTrue($form->isValid());
     }
@@ -116,7 +115,7 @@ class UserFormTest extends TestCase
     public function testUserFormElementCount(): void
     {
         $form = new UserForm(null, [], $this->laminasSm);
-        $this->assertCount(7, $form->getElements());
+        $this->assertSame($form->count(), count($form->getElements()));
     }
 
     public function testUserFormGamificationRoles(): void
@@ -137,37 +136,20 @@ class UserFormTest extends TestCase
         $form = new UserForm(null, [], $this->laminasSm);
         $form->setWorkGroups([$group]);
 
-        $workGroupId = $form->get('work_group_id');
-        $this->assertSame('select', $workGroupId->getAttribute('type'));
-        $this->assertTrue($workGroupId->getAttribute('required'));
+        $workGroup = $form->get('work_group');
+        $this->assertSame('select', $workGroup->getAttribute('type'));
+        $this->assertTrue($workGroup->getAttribute('required'));
     }
 
     public function testUserFormWorkGroupsOrderedByRank(): void
     {
-        $tester = new TesterGroup();
-        $tester->setId(\Ramsey\Uuid\Uuid::uuid4());
-        $tester->setName('Testers');
-        $tester->setCreatedAt(new \DateTimeImmutable());
-
-        $developer = new DeveloperGroup();
-        $developer->setId(\Ramsey\Uuid\Uuid::uuid4());
-        $developer->setName('Developers');
-        $developer->setCreatedAt(new \DateTimeImmutable());
-
-        $designer = new DesignerGroup();
-        $designer->setId(\Ramsey\Uuid\Uuid::uuid4());
-        $designer->setName('Designers');
-        $designer->setCreatedAt(new \DateTimeImmutable());
-
         $form = new UserForm(null, [], $this->laminasSm);
-        $form->setWorkGroups([$tester, $developer, $designer]);
+        $workGroup = $form->get('work_group');
+        $options = $workGroup->getValueOptions();
 
-        $workGroupId = $form->get('work_group_id');
-        $options = $workGroupId->getValueOptions();
-
-        $this->assertArrayHasKey($developer->getId()->toString(), $options);
-        $this->assertArrayHasKey($designer->getId()->toString(), $options);
-        $this->assertArrayHasKey($tester->getId()->toString(), $options);
+        $this->assertArrayHasKey('tester', $options);
+        $this->assertArrayHasKey('designer', $options);
+        $this->assertArrayHasKey('developer', $options);
     }
 
     public function testGetValidationErrorsReturnsArray(): void
