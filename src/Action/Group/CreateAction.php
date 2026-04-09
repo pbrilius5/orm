@@ -38,13 +38,13 @@ class CreateAction
 
         $command = new CreateGroupCommand(
             name: $body['name'],
-            description: $body['description'] ?? null
+            description: $body['description'] ?? null,
+            type: $body['type'] ?? null
         );
 
         $group = $this->commandBus->handle($command);
         $dto = $this->dtoFactory->create($group, [
             'users' => $group->getUsers()->toArray(),
-            'gamificationRoles' => $group->getGamificationRoles(),
         ]);
 
         return JsonHalResponder::created(

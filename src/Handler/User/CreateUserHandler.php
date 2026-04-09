@@ -29,7 +29,7 @@ class CreateUserHandler
         $this->logger?->debug('Creating user details', [
             'email' => $command->email,
             'hasPassword' => !empty($command->password),
-            'groupId' => $command->groupId,
+            'workGroup' => $command->workGroup,
             'rolesCount' => is_array($command->roles) ? count($command->roles) : 0,
         ]);
 
@@ -47,23 +47,26 @@ class CreateUserHandler
         $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
         $user->setCreatedAt(new \DateTimeImmutable());
 
-        if ($command->groupId) {
-            $this->logger?->debug('Processing group association', [
-                'groupId' => $command->groupId,
+        if ($command->workGroup) {
+            $this->logger?->debug('Processing work group association', [
+                'workGroup' => $command->workGroup,
             ]);
-            $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
-            $group = $groupRepo->find($command->groupId);
-            if ($group && $group->isWorkGroup()) {
-                $userGroup = new \App\Entity\UserGroup();
-                $userGroup->setUser($user);
-                $userGroup->setGroup($group);
-                $userGroup->setGrantedAt(new \DateTimeImmutable());
-                $this->em->persist($userGroup);
-                $this->logger?->debug('Group association successful');
-            } else {
-                $this->logger?->warning('Group not found or not a work group', [
-                    'groupId' => $command->groupId,
-                ]);
+            $groupClass = match ($command->workGroup) {
+                'developer' => \App\Entity\DeveloperGroup::class,
+                'designer' => \App\Entity\DesignerGroup::class,
+                'tester' => \App\Entity\TesterGroup::class,
+                default => null,
+            };
+            if ($groupClass) {
+                $group = $this->em->getRepository($groupClass)->findOneBy([]);
+                if ($group) {
+                    $userGroup = new \App\Entity\UserGroup();
+                    $userGroup->setUser($user);
+                    $userGroup->setGroup($group);
+                    $userGroup->setGrantedAt(new \DateTimeImmutable());
+                    $this->em->persist($userGroup);
+                    $this->logger?->debug('Work group association successful');
+                }
             }
         }
 

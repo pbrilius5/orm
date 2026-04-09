@@ -38,10 +38,13 @@ class ShowAction
             return JsonHalResponder::notFound('User not found');
         }
 
+        $gamificationRoles = $user->getAllRoles();
+        usort($gamificationRoles, fn($a, $b) => $b->getRank() <=> $a->getRank());
+
         $dto = $this->dtoFactory->create($user, [
             'userRoles' => $user->getUserRoles()->toArray(),
             'workGroup' => $user->getWorkGroups()[0] ?? null,
-            'gamificationRoles' => [],
+            'gamificationRoles' => $gamificationRoles,
         ]);
 
         return JsonHalResponder::resource(

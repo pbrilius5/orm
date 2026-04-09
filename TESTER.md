@@ -79,24 +79,21 @@ curl -X GET http://localhost:8080/api/users
 **Response:**
 ```json
 {
-  "data": [
-    {
-      "id": 1,
-      "email": "admin@example.com",
-      "role": "ROLE_WIZARD",
-      "created_at": "2026-01-01T00:00:00+00:00",
-      "_links": {
-        "self": { "href": "/api/users/1" },
-        "update": { "href": "/api/users/1" },
-        "delete": { "href": "/api/users/1" }
-      }
-    }
-  ],
   "_links": {
-    "self": { "href": "/api/users" },
-    "create": { "href": "/api/users" }
+    "self": { "href": "/users" }
   },
-  "meta": {
+  "_embedded": {
+    "users": [
+      {
+        "id": "8821f533-4028-4695-aa95-0c0fb6633c87",
+        "email": "laila58@example.org",
+        "workGroupName": "Designers",
+        "role": "ROLE_ARCHITECT",
+        "createdAt": { "date": "2026-04-08 16:05:12.000000", "timezone_type": 3, "timezone": "UTC" }
+      }
+    ]
+  },
+  "_meta": {
     "total": 1,
     "count": 1
   }
@@ -114,7 +111,7 @@ curl -X POST http://localhost:8080/api/users \
   -d '{
     "email": "tester@example.com",
     "password": "securePass123",
-    "group_id": "550e8400-e29b-41d4-a716-446655440000",
+    "work_group": "developer",
     "gamification_roles": "ROLE_WIZARD"
   }'
 ```
@@ -122,16 +119,42 @@ curl -X POST http://localhost:8080/api/users \
 **Response:**
 ```json
 {
-  "data": {
-    "id": 2,
+  "_links": {
+    "self": { "href": "/api/users/d005be55-76c1-4bc9-9670-27eb63d1d9c1" },
+    "collection": { "href": "/api/users" }
+  },
+  "user": {
+    "id": "d005be55-76c1-4bc9-9670-27eb63d1d9c1",
     "email": "tester@example.com",
-    "role": "ROLE_WIZARD",
-    "created_at": "2026-04-03T12:00:00+00:00",
-    "_links": {
-      "self": { "href": "/api/users/2" },
-      "update": { "href": "/api/users/2" },
-      "delete": { "href": "/api/users/2" }
-    }
+    "workGroupName": null,
+    "role": null,
+    "createdAt": { "date": "2026-04-09 07:21:50.331554", "timezone_type": 3, "timezone": "UTC" }
+  }
+}
+```
+
+**Note:** Initial response returns `workGroupName: null` and `role: null`. Subsequent GET request returns correct values.
+
+**Validation Error Specimen (Invalid Email):**
+```bash
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"email": "not-an-email", "password": "secret123", "work_group": "developer"}'
+```
+
+**Response:**
+```json
+{
+  "_links": {
+    "self": { "href": "/api/users/d005be55-76c1-4bc9-9670-27eb63d1d9c1" },
+    "collection": { "href": "/api/users" }
+  },
+  "user": {
+    "id": "d005be55-76c1-4bc9-9670-27eb63d1d9c1",
+    "email": "tester@example.com",
+    "workGroupName": "Developers",
+    "role": null,
+    "createdAt": { "date": "2026-04-09 07:21:50.331554", "timezone_type": 3, "timezone": "UTC" }
   }
 }
 ```
@@ -140,7 +163,7 @@ curl -X POST http://localhost:8080/api/users \
 ```bash
 curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
-  -d '{"email": "not-an-email", "password": "secret123", "group_id": "550e8400-e29b-41d4-a716-446655440000"}'
+  -d '{"email": "not-an-email", "password": "secret123", "work_group": "developer"}'
 ```
 
 ```json
@@ -221,7 +244,7 @@ curl -X PUT http://localhost:8080/api/users/1 \
   -d '{
     "email": "updated@example.com",
     "password": "newpassword456",
-    "group_id": "550e8400-e29b-41d4-a716-446655440000",
+    "work_group": "developer",
     "gamification_roles": "ROLE_GAME_MASTER"
   }'
 ```
@@ -353,23 +376,21 @@ curl -X POST http://localhost:8080/api/groups \
 
 **Request:**
 ```bash
-curl -X GET http://localhost:8080/api/groups/550e8400-e29b-41d4-a716-446655440000
+curl -X GET http://localhost:8080/api/groups/5c5bb3dc-65e2-4ac4-8244-cfa7921c09aa
 ```
 
 **Response:**
 ```json
 {
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "Users",
-    "description": "Default group for all users",
-    "type": "group",
-    "created_at": "2026-01-01T00:00:00+00:00",
-    "_links": {
-      "self": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
-      "update": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" },
-      "delete": { "href": "/api/groups/550e8400-e29b-41d4-a716-446655440000" }
-    }
+  "_links": {
+    "self": { "href": "/api/groups/5c5bb3dc-65e2-4ac4-8244-cfa7921c09aa" },
+    "collection": { "href": "/api/groups" }
+  },
+  "group": {
+    "id": "5c5bb3dc-65e2-4ac4-8244-cfa7921c09aa",
+    "name": "Developers",
+    "description": null,
+    "createdAt": { "date": "2026-04-08 16:05:12.000000", "timezone_type": 3, "timezone": "UTC" }
   }
 }
 ```
@@ -484,29 +505,33 @@ curl -X POST http://localhost:8080/api/groups \
 
 ### UserGroup (Many-to-Many)
 
-Users can belong to multiple groups via the `UserGroup` join entity. The `group_id` field is required when creating a user.
+Users can belong to multiple work groups via the `UserGroup` join entity. Use `work_group` discriminator:
 
-#### 17. Assign User to Multiple Groups
+| Discriminator | Class |
+|---------------|-------|
+| `developer` | DeveloperGroup (rank: 3) |
+| `designer` | DesignerGroup (rank: 2) |
+| `tester` | TesterGroup (rank: 1) |
+
+#### 17. Change User's Work Group
 
 **Request (PATCH):**
 ```bash
 curl -X PATCH http://localhost:8080/api/users/1 \
   -H "Content-Type: application/json" \
   -d '{
-    "group_id": "660e8400-e29b-41d4-a716-446655440000"
+    "work_group": "designer"
   }'
 ```
 
-This replaces the user's current group with the new one. To add to multiple groups, use the MVC form or console command.
-
-#### 18. Remove User from All Groups
+#### 18. Remove User from Work Group
 
 **Request (PATCH):**
 ```bash
 curl -X PATCH http://localhost:8080/api/users/1 \
   -H "Content-Type: application/json" \
   -d '{
-    "group_id": ""
+    "work_group": ""
   }'
 ```
 
@@ -587,7 +612,7 @@ Import the following JSON into Postman for quick testing:
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\": \"newuser@example.com\", \"password\": \"password123\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": \"ROLE_WIZARD\"}"
+              "raw": "{\"email\": \"newuser@example.com\", \"password\": \"password123\", \"work_group\": \"developer\", \"gamification_roles\": \"ROLE_WIZARD\"}"
             }
           }
         },
@@ -606,7 +631,7 @@ Import the following JSON into Postman for quick testing:
             "header": [{"key": "Content-Type", "value": "application/json"}],
             "body": {
               "mode": "raw",
-              "raw": "{\"email\": \"updated@example.com\", \"password\": \"newpass\", \"group_id\": \"550e8400-e29b-41d4-a716-446655440000\", \"gamification_roles\": \"ROLE_ARCHITECT\"}"
+              "raw": "{\"email\": \"updated@example.com\", \"password\": \"newpass\", \"work_group\": \"designer\", \"gamification_roles\": \"ROLE_ARCHITECT\"}"
             }
           }
         },

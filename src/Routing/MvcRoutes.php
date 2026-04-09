@@ -12,6 +12,7 @@ use App\Http\Response;
 use App\View\ViewRenderer;
 use Oryx\ORM\EntityManager;
 use League\Tactician\CommandBus;
+use Psr\Log\LoggerInterface;
 
 class MvcRoutes
 {
@@ -19,12 +20,12 @@ class MvcRoutes
     private array $controllers;
     private ViewRenderer $view;
 
-    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory)
+    public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory, LoggerInterface $logger)
     {
         $this->router = new Router();
         $this->view = new ViewRenderer();
         $this->controllers = [
-            'user' => new UserController($em, $commandBus, $dtoFactory),
+            'user' => new UserController($em, $commandBus, $dtoFactory, $logger),
         ];
         $this->register();
     }

@@ -45,8 +45,8 @@ class PatchAction
             id: $id,
             email: $body['email'] ?? null,
             password: $body['password'] ?? null,
-            groupId: $body['group_id'] ?? null,
-            roles: $body['roles'] ?? null
+            workGroup: $body['work_group'] ?? null,
+            roles: $body['gamification_roles'] ?? null
         );
 
         $user = $this->commandBus->handle($command);
@@ -55,10 +55,13 @@ class PatchAction
             return JsonHalResponder::notFound('User not found');
         }
 
+        $gamificationRoles = $user->getAllRoles();
+        usort($gamificationRoles, fn($a, $b) => $b->getRank() <=> $a->getRank());
+
         $dto = $this->dtoFactory->create($user, [
             'userRoles' => $user->getUserRoles()->toArray(),
             'workGroup' => $user->getWorkGroups()[0] ?? null,
-            'gamificationRoles' => [],
+            'gamificationRoles' => $gamificationRoles,
         ]);
 
         return JsonHalResponder::resource(

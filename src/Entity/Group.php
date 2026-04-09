@@ -115,6 +115,11 @@ class Group
         return $this->userGroups;
     }
 
+    public function getUsers(): Collection
+    {
+        return $this->userGroups->map(fn(UserGroup $ug) => $ug->getUser());
+    }
+
     public function getRank(): int
     {
         return 0;

@@ -10,7 +10,7 @@ class UpdateUserCommand
         public readonly string $id,
         public readonly string $email,
         public readonly string $password,
-        public readonly ?string $groupId = null,
+        public readonly ?string $workGroup = null,
         public readonly array $roles = [],
     ) {}
 }

@@ -41,8 +41,8 @@ class UpdateAction
             id: $id,
             email: $body['email'] ?? "user-{$id}@example.com",
             password: $body['password'] ?? 'password',
-            groupId: $body['group_id'] ?? null,
-            roles: $body['roles'] ?? []
+            workGroup: $body['work_group'] ?? null,
+            roles: $body['gamification_roles'] ?? []
         );
 
         $user = $this->commandBus->handle($command);
@@ -51,10 +51,13 @@ class UpdateAction
             return JsonHalResponder::notFound('User not found');
         }
 
+        $gamificationRoles = $user->getAllRoles();
+        usort($gamificationRoles, fn($a, $b) => $b->getRank() <=> $a->getRank());
+
         $dto = $this->dtoFactory->create($user, [
             'userRoles' => $user->getUserRoles()->toArray(),
             'workGroup' => $user->getWorkGroups()[0] ?? null,
-            'gamificationRoles' => [],
+            'gamificationRoles' => $gamificationRoles,
         ]);
 
         return JsonHalResponder::resource(

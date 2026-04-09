@@ -9,5 +9,6 @@ class CreateGroupCommand
     public function __construct(
         public readonly string $name,
         public readonly ?string $description = null,
+        public readonly ?string $type = null,
     ) {}
 }

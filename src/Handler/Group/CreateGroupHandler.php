@@ -29,9 +29,15 @@ class CreateGroupHandler
         $this->logger?->debug('Creating group details', [
             'name' => $command->name,
             'description' => $command->description,
+            'type' => $command->type,
         ]);
 
-        $group = new Group();
+        $group = match ($command->type) {
+            'developer' => new \App\Entity\DeveloperGroup(),
+            'designer' => new \App\Entity\DesignerGroup(),
+            'tester' => new \App\Entity\TesterGroup(),
+            default => new Group(),
+        };
         $group->setName($command->name);
         $group->setDescription($command->description);
         $group->setCreatedAt(new \DateTimeImmutable());

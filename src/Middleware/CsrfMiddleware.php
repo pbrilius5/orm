@@ -21,6 +21,10 @@ class CsrfMiddleware implements MiddlewareInterface
         'GET' => ['/api/health', '/manifest.json', '/api/users'],
         'HEAD' => ['/api/health', '/manifest.json'],
         'OPTIONS' => ['*'],
+        'POST' => ['/api/*'],
+        'PUT' => ['/api/*'],
+        'PATCH' => ['/api/*'],
+        'DELETE' => ['/api/*'],
     ];
 
     public function __construct(LoggerInterface $logger)

@@ -30,7 +30,7 @@ class PatchUserHandler
             'userId' => $command->id,
             'email' => $command->email,
             'hasPassword' => !is_null($command->password),
-            'groupId' => $command->groupId,
+            'workGroup' => $command->workGroup,
         ]);
 
         $user = $this->repository->find($command->id);
@@ -54,33 +54,44 @@ class PatchUserHandler
             $this->logger?->debug('Updating password');
             $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
         }
-        if ($command->groupId !== null) {
-            $this->logger?->debug('Processing group change', [
-                'newGroupId' => $command->groupId,
+        if ($command->workGroup !== null) {
+            $this->logger?->debug('Processing work group change', [
+                'newWorkGroup' => $command->workGroup,
             ]);
 
             $currentGroups = $user->getAllGroups();
-            $this->logger?->debug('Removing existing groups', [
-                'groupsCount' => count($currentGroups),
-            ]);
-
             foreach ($currentGroups as $existingGroup) {
+                foreach ($user->getUserGroups() as $userGroup) {
+                    if ($userGroup->getGroup() === $existingGroup) {
+                        $this->em->remove($userGroup);
+                        break;
+                    }
+                }
                 $user->removeGroup($existingGroup);
             }
 
-            if ($command->groupId) {
-                $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
-                $group = $groupRepo->find($command->groupId);
-                $user->addGroup($group);
-                $this->logger?->debug('Added user to group', [
-                    'groupId' => $group->getId(),
-                    'groupName' => $group->getName(),
-                ]);
+            if ($command->workGroup) {
+                $groupClass = match ($command->workGroup) {
+                    'developer' => \App\Entity\DeveloperGroup::class,
+                    'designer' => \App\Entity\DesignerGroup::class,
+                    'tester' => \App\Entity\TesterGroup::class,
+                    default => null,
+                };
+                if ($groupClass) {
+                    $group = $this->em->getRepository($groupClass)->findOneBy([]);
+                    if ($group) {
+                        $userGroup = $user->addGroup($group);
+                        $this->em->persist($userGroup);
+                        $this->logger?->debug('Added user to work group', [
+                            'groupName' => $group->getName(),
+                        ]);
+                    }
+                }
             } else {
-                $this->logger?->debug('Setting user to no group');
+                $this->logger?->debug('Setting user to no work group');
             }
         } else {
-            $this->logger?->debug('No group change requested');
+            $this->logger?->debug('No work group change requested');
         }
 
         $user->setUpdatedAt(new \DateTimeImmutable());

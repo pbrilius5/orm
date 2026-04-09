@@ -40,15 +40,20 @@ class CreateAction
         $command = new CreateUserCommand(
             email: $body['email'],
             password: $body['password'],
-            groupId: $body['group_id'] ?? null,
-            roles: $body['roles'] ?? []
+            workGroup: $body['work_group'] ?? null,
+            roles: is_array($body['gamification_roles'])
+                ? $body['gamification_roles']
+                : ($body['gamification_roles'] ? [$body['gamification_roles']] : [])
         );
 
         $user = $this->commandBus->handle($command);
+        $gamificationRoles = $user->getAllRoles();
+        usort($gamificationRoles, fn($a, $b) => $b->getRank() <=> $a->getRank());
+
         $dto = $this->dtoFactory->create($user, [
             'userRoles' => $user->getUserRoles()->toArray(),
             'workGroup' => $user->getWorkGroups()[0] ?? null,
-            'gamificationRoles' => [],
+            'gamificationRoles' => $gamificationRoles,
         ]);
 
         return JsonHalResponder::created(

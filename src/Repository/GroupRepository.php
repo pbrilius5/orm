@@ -26,17 +26,22 @@ class GroupRepository
         return $this->em->getRepository(Group::class)->findAll();
     }
 
+    public function findAllApiClasses(): array
+    {
+        return array_merge(
+            $this->em->getRepository(DeveloperGroup::class)->findAll(),
+            $this->em->getRepository(DesignerGroup::class)->findAll(),
+            $this->em->getRepository(TesterGroup::class)->findAll(),
+        );
+    }
+
     /**
      * Find all groups with eager-loaded users for API (avoids N+1).
      * Returns Group[] with pre-loaded users.
      */
     public function findAllForApi(): array
     {
-        return $this->em->createQueryBuilder()
-            ->select('g')
-            ->from(Group::class, 'g')
-            ->getQuery()
-            ->getResult();
+        return $this->findAllApiClasses();
     }
 
     /**
@@ -46,16 +51,27 @@ class GroupRepository
     {
         $qb = $this->em->createQueryBuilder()
             ->select('g')
-            ->from(Group::class, 'g');
+            ->from(DeveloperGroup::class, 'g')
+            ->setMaxResults($limit ?? 100)
+            ->setFirstResult($offset ?? 0);
 
-        if ($limit !== null) {
-            $qb->setMaxResults($limit);
-        }
-        if ($offset !== null) {
-            $qb->setFirstResult($offset);
-        }
+        $developerResults = $qb->getQuery()->getResult();
 
-        return $qb->getQuery()->getResult();
+        $qb2 = $this->em->createQueryBuilder()
+            ->select('g')
+            ->from(DesignerGroup::class, 'g')
+            ->setMaxResults($limit ?? 100)
+            ->setFirstResult($offset ?? 0);
+        $designerResults = $qb2->getQuery()->getResult();
+
+        $qb3 = $this->em->createQueryBuilder()
+            ->select('g')
+            ->from(TesterGroup::class, 'g')
+            ->setMaxResults($limit ?? 100)
+            ->setFirstResult($offset ?? 0);
+        $testerResults = $qb3->getQuery()->getResult();
+
+        return array_merge($developerResults, $designerResults, $testerResults);
     }
 
     /**
@@ -63,11 +79,7 @@ class GroupRepository
      */
     public function countAll(): int
     {
-        return (int) $this->em->createQueryBuilder()
-            ->select('COUNT(g)')
-            ->from(Group::class, 'g')
-            ->getQuery()
-            ->getSingleScalarResult();
+        return count($this->findAllApiClasses());
     }
 
     /**
@@ -75,30 +87,25 @@ class GroupRepository
      */
     public function countAllWithFilter(?string $search): int
     {
-        $qb = $this->em->createQueryBuilder()
-            ->select('COUNT(g)')
-            ->from(Group::class, 'g');
-
-        if ($search !== null && $search !== '') {
-            $qb->andWhere('g.name LIKE :search')
-               ->setParameter('search', "%{$search}%");
-        }
-
-        return (int) $qb->getQuery()->getSingleScalarResult();
+        return count($this->findAllWithFilter($search));
     }
 
     public function findAllWithFilter(?string $search = null): array
     {
-        $qb = $this->em->createQueryBuilder()
-            ->select('g')
-            ->from(Group::class, 'g');
+        $results = [];
+        foreach ([DeveloperGroup::class, DesignerGroup::class, TesterGroup::class] as $class) {
+            $qb = $this->em->createQueryBuilder()
+                ->select('g')
+                ->from($class, 'g');
 
-        if ($search !== null && $search !== '') {
-            $qb->andWhere($qb->expr()->like('g.name', ':search'))
-               ->setParameter('search', "%{$search}%");
+            if ($search !== null && $search !== '') {
+                $qb->andWhere($qb->expr()->like('g.name', ':search'))
+                   ->setParameter('search', "%{$search}%");
+            }
+
+            $results = array_merge($results, $qb->getQuery()->getResult());
         }
-
-        return $qb->getQuery()->getResult();
+        return $results;
     }
 
     /**
@@ -106,21 +113,18 @@ class GroupRepository
      */
     public function findAllWithFilterForApi(?string $search = null): array
     {
-        $qb = $this->em->createQueryBuilder()
-            ->select('g')
-            ->from(Group::class, 'g');
-
-        if ($search !== null && $search !== '') {
-            $qb->andWhere('g.name LIKE :search')
-               ->setParameter('search', "%{$search}%");
-        }
-
-        return $qb->getQuery()->getResult();
+        return $this->findAllWithFilter($search);
     }
 
     public function find(UuidInterface|string|int $id): ?Group
     {
-        return $this->em->getRepository(Group::class)->find($id);
+        foreach ([DeveloperGroup::class, DesignerGroup::class, TesterGroup::class] as $class) {
+            $result = $this->em->getRepository($class)->find($id);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+        return null;
     }
 
     /**
@@ -128,21 +132,7 @@ class GroupRepository
      */
     public function findForApi(int|string $id): ?Group
     {
-        $results = $this->em->createQueryBuilder()
-            ->select('g, u')
-            ->from(Group::class, 'g')
-            ->leftJoin('g.userGroups', 'ug')
-            ->leftJoin('ug.user', 'u')
-            ->where('g.id = :id')
-            ->setParameter('id', $id)
-            ->getQuery()
-            ->getResult();
-
-        if (!$results) {
-            return null;
-        }
-
-        return $results[0][0];
+        return $this->find($id);
     }
 
     public function save(Group $group): void

@@ -146,7 +146,7 @@ class UserRepository
      */
     public function findForApi(int|string $id): ?User
     {
-        $result = $this->em->createQueryBuilder()
+        return $this->em->createQueryBuilder()
             ->select('u, ur, r, ug, g')
             ->from(User::class, 'u')
             ->leftJoin('u.userRoles', 'ur')
@@ -157,12 +157,6 @@ class UserRepository
             ->setParameter('id', $id)
             ->getQuery()
             ->getOneOrNullResult();
-
-        if (!$result) {
-            return null;
-        }
-
-        return $result[0];
     }
 
     public function findByEmail(string $email): ?User

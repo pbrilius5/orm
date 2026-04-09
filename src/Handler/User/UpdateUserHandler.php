@@ -30,7 +30,7 @@ class UpdateUserHandler
             'userId' => $command->id,
             'email' => $command->email,
             'hasPassword' => !empty($command->password),
-            'groupId' => $command->groupId,
+            'workGroup' => $command->workGroup,
             'roles' => $command->roles ?? [],
         ]);
 
@@ -60,32 +60,21 @@ class UpdateUserHandler
         $user->setEmail($command->email);
         $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
 
-        if ($command->groupId !== null) {
-            $this->logger?->debug('Processing group change', [
-                'newGroupId' => $command->groupId,
+        if ($command->workGroup !== null) {
+            $this->logger?->debug('Processing work group change', [
+                'newWorkGroup' => $command->workGroup,
             ]);
 
             $currentWorkGroup = $user->getWorkGroup();
-            if ($currentWorkGroup && (string) $currentWorkGroup->getId() === $command->groupId) {
-                $this->logger?->debug('Group unchanged, skipping', [
-                    'currentGroupId' => (string) $currentWorkGroup->getId(),
-                ]);
+            $currentDiscriminator = $currentWorkGroup ? $this->getGroupDiscriminator($currentWorkGroup) : null;
+
+            if ($currentDiscriminator === $command->workGroup) {
+                $this->logger?->debug('Work group unchanged, skipping');
             } else {
                 $currentGroups = $user->getAllGroups();
-                $this->logger?->debug('Removing existing groups', [
-                    'groupsCount' => count($currentGroups),
-                ]);
-
                 foreach ($currentGroups as $existingGroup) {
-                    $this->logger?->debug('Removing group', [
-                        'groupName' => $existingGroup->getName(),
-                        'groupId' => $existingGroup->getId(),
-                    ]);
                     foreach ($user->getUserGroups() as $userGroup) {
                         if ($userGroup->getGroup() === $existingGroup) {
-                            $this->logger?->debug('Removing UserGroup from DB', [
-                                'userGroupId' => $userGroup->getId(),
-                            ]);
                             $this->em->remove($userGroup);
                             break;
                         }
@@ -93,23 +82,25 @@ class UpdateUserHandler
                     $user->removeGroup($existingGroup);
                 }
 
-                if ($command->groupId) {
-                    $groupRepo = $this->em->getRepository(\App\Entity\Group::class);
-                    $group = $groupRepo->find($command->groupId);
-                    if ($group && $group->isWorkGroup()) {
-                        $userGroup = $user->addGroup($group);
-                        $this->em->persist($userGroup);
-                        $this->logger?->debug('Added user to group', [
-                            'groupId' => $group->getId(),
-                            'groupName' => $group->getName(),
-                        ]);
-                    } else {
-                        $this->logger?->warning('Group not found or not a work group', [
-                            'groupId' => $command->groupId,
-                        ]);
+                if ($command->workGroup) {
+                    $groupClass = match ($command->workGroup) {
+                        'developer' => \App\Entity\DeveloperGroup::class,
+                        'designer' => \App\Entity\DesignerGroup::class,
+                        'tester' => \App\Entity\TesterGroup::class,
+                        default => null,
+                    };
+                    if ($groupClass) {
+                        $group = $this->em->getRepository($groupClass)->findOneBy([]);
+                        if ($group) {
+                            $userGroup = $user->addGroup($group);
+                            $this->em->persist($userGroup);
+                            $this->logger?->debug('Added user to work group', [
+                                'groupName' => $group->getName(),
+                            ]);
+                        }
                     }
                 } else {
-                    $this->logger?->debug('Setting user to no group');
+                    $this->logger?->debug('Setting user to no work group');
                 }
             }
         } else {
@@ -190,5 +181,15 @@ class UpdateUserHandler
         ]);
 
         return $user;
+    }
+
+    private function getGroupDiscriminator(\App\Entity\Group $group): string
+    {
+        return match (true) {
+            $group instanceof \App\Entity\DeveloperGroup => 'developer',
+            $group instanceof \App\Entity\DesignerGroup => 'designer',
+            $group instanceof \App\Entity\TesterGroup => 'tester',
+            default => 'group',
+        };
     }
 }
