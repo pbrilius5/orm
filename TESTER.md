@@ -126,14 +126,12 @@ curl -X POST http://localhost:8080/api/users \
   "user": {
     "id": "d005be55-76c1-4bc9-9670-27eb63d1d9c1",
     "email": "tester@example.com",
-    "workGroupName": null,
-    "role": null,
-    "createdAt": { "date": "2026-04-09 07:21:50.331554", "timezone_type": 3, "timezone": "UTC" }
+    "workGroupName": "Developers",
+    "role": "ROLE_WIZARD",
+    "createdAt": { "date": "2026-04-09 11:16:57.000000", "timezone_type": 3, "timezone": "UTC" }
   }
 }
 ```
-
-**Note:** Initial response returns `workGroupName: null` and `role: null`. Subsequent GET request returns correct values.
 
 **Validation Error Specimen (Invalid Email):**
 ```bash

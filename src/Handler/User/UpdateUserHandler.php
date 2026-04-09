@@ -180,7 +180,7 @@ class UpdateUserHandler
             'updatedAt' => $user->getUpdatedAt()->format('Y-m-d H:i:s'),
         ]);
 
-        return $user;
+        return $this->repository->findForApi($command->id);
     }
 
     private function getGroupDiscriminator(\App\Entity\Group $group): string

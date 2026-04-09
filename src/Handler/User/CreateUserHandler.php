@@ -123,14 +123,16 @@ class CreateUserHandler
         $this->em->persist($user);
         $this->logger?->debug('User entity prepared for persistence');
 
+        $userId = $user->getId();
         $this->em->flush();
-        $this->logger?->info('User created: ' . $user->getId());
+        $this->logger?->info('User created: ' . $userId);
         $this->logger?->debug('User creation completed', [
-            'userId' => $user->getId(),
+            'userId' => $userId,
             'email' => $user->getEmail(),
             'createdAt' => $user->getCreatedAt()->format('Y-m-d H:i:s'),
         ]);
 
-        return $user;
+        $this->em->clear();
+        return $this->repository->findForApi((string) $userId);
     }
 }

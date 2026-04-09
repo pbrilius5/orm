@@ -105,6 +105,6 @@ class PatchUserHandler
             'updatedAt' => $user->getUpdatedAt()->format('Y-m-d H:i:s'),
         ]);
 
-        return $user;
+        return $this->repository->findForApi($command->id);
     }
 }
