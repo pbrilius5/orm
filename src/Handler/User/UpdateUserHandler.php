@@ -57,8 +57,12 @@ class UpdateUserHandler
             throw new \InvalidArgumentException('Email already in use by another user');
         }
 
-        $user->setEmail($command->email);
-        $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
+        if ($command->email !== null) {
+            $user->setEmail($command->email);
+        }
+        if ($command->password !== null) {
+            $user->setPassword(password_hash($command->password, PASSWORD_BCRYPT));
+        }
 
         if ($command->workGroup !== null) {
             $this->logger?->debug('Processing work group change', [

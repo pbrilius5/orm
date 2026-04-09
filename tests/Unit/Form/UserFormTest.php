@@ -116,7 +116,7 @@ class UserFormTest extends TestCase
     public function testUserFormElementCount(): void
     {
         $form = new UserForm(null, [], $this->laminasSm);
-        $this->assertCount(6, $form->getElements());
+        $this->assertCount(7, $form->getElements());
     }
 
     public function testUserFormGamificationRoles(): void

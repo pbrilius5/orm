@@ -57,6 +57,23 @@ class UserForm extends BaseForm
         ]);
 
         $this->add([
+            'name' => 'work_group',
+            'type' => 'select',
+            'options' => [
+                'label' => 'Work Group (API)',
+                'empty_option' => 'Select your work group',
+                'value_options' => [
+                    'developer' => 'Developer (rank: 3)',
+                    'designer' => 'Designer (rank: 2)',
+                    'tester' => 'Tester (rank: 1)',
+                ],
+            ],
+            'attributes' => [
+                'required' => true,
+            ],
+        ]);
+
+        $this->add([
             'name' => 'gamification_roles',
             'type' => 'radio',
             'options' => [
@@ -109,6 +126,14 @@ class UserForm extends BaseForm
             'required' => true,
         ];
 
+        $workGroupApiSpec = [
+            'name' => 'work_group',
+            'required' => false,
+            'validators' => [
+                ['name' => 'InArray', 'options' => ['haystack' => ['developer', 'designer', 'tester']]],
+            ],
+        ];
+
         $rolesSpec = [
             'name' => 'gamification_roles',
             'required' => false,
@@ -118,6 +143,7 @@ class UserForm extends BaseForm
             $emailSpec,
             $passwordSpec,
             $workGroupSpec,
+            $workGroupApiSpec,
             $rolesSpec,
         ]);
 
@@ -128,7 +154,10 @@ class UserForm extends BaseForm
     {
         $this->workGroups = $workGroups;
         if ($this->has('work_group_id')) {
-            $this->get('work_group_id')->setValueOptions($this->getWorkGroupValueOptions());
+            $element = $this->get('work_group_id');
+            if (method_exists($element, 'setValueOptions')) {
+                $element->setValueOptions($this->getWorkGroupValueOptions());
+            }
         }
     }
 
