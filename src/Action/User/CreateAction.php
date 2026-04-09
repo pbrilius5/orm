@@ -31,11 +31,18 @@ class CreateAction
             return JsonHalResponder::badRequest('Invalid JSON in request body');
         }
 
-        if (empty($body['email']) || empty($body['password'])) {
-            return JsonHalResponder::unprocessableEntity([
-                ['field' => 'email', 'message' => 'Email is required'],
-                ['field' => 'password', 'message' => 'Password is required'],
-            ]);
+        if (empty($body['email']) || empty($body['password']) || empty($body['work_group'])) {
+            $errors = [];
+            if (empty($body['email'])) {
+                $errors[] = ['field' => 'email', 'message' => 'Email is required'];
+            }
+            if (empty($body['password'])) {
+                $errors[] = ['field' => 'password', 'message' => 'Password is required'];
+            }
+            if (empty($body['work_group'])) {
+                $errors[] = ['field' => 'work_group', 'message' => 'Work group is required'];
+            }
+            return JsonHalResponder::unprocessableEntity($errors);
         }
 
         $emailValidator = new EmailAddress();
@@ -45,10 +52,22 @@ class CreateAction
             ]);
         }
 
+        if (strlen($body['password']) < 6) {
+            return JsonHalResponder::unprocessableEntity([
+                ['field' => 'password', 'message' => 'Password must be at least 6 characters'],
+            ]);
+        }
+
+        if (!in_array($body['work_group'], ['developer', 'designer', 'tester'], true)) {
+            return JsonHalResponder::unprocessableEntity([
+                ['field' => 'work_group', 'message' => 'Work group must be one of: developer, designer, tester'],
+            ]);
+        }
+
         $command = new CreateUserCommand(
             email: $body['email'],
             password: $body['password'],
-            workGroup: $body['work_group'] ?? null,
+            workGroup: $body['work_group'],
             roles: is_array($body['gamification_roles'])
                 ? $body['gamification_roles']
                 : ($body['gamification_roles'] ? [$body['gamification_roles']] : [])

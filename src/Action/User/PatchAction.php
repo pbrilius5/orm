@@ -8,6 +8,7 @@ use App\Command\CommandBusInterface;
 use App\Command\User\PatchUserCommand;
 use App\Dto\DtoFactory;
 use App\Responder\JsonHalResponder;
+use Laminas\Validator\EmailAddress;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Uuid;
@@ -39,6 +40,27 @@ class PatchAction
 
         if (empty($body)) {
             return JsonHalResponder::unprocessableEntity([['field' => 'body', 'message' => 'No fields provided']]);
+        }
+
+        if (isset($body['email']) && $body['email'] !== '') {
+            $emailValidator = new \Laminas\Validator\EmailAddress();
+            if (!$emailValidator->isValid($body['email'])) {
+                return JsonHalResponder::unprocessableEntity([
+                    ['field' => 'email', 'message' => 'Email must be a valid email address'],
+                ]);
+            }
+        }
+
+        if (isset($body['password']) && $body['password'] !== '' && strlen($body['password']) < 6) {
+            return JsonHalResponder::unprocessableEntity([
+                ['field' => 'password', 'message' => 'Password must be at least 6 characters'],
+            ]);
+        }
+
+        if (isset($body['work_group']) && $body['work_group'] !== '' && !in_array($body['work_group'], ['developer', 'designer', 'tester'], true)) {
+            return JsonHalResponder::unprocessableEntity([
+                ['field' => 'work_group', 'message' => 'Work group must be one of: developer, designer, tester'],
+            ]);
         }
 
         $command = new PatchUserCommand(

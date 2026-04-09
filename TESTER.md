@@ -165,23 +165,25 @@ curl -X POST http://localhost:8080/api/users \
 
 ```json
 {
-  "_errors": [
-    {
-      "status": 422,
-      "title": "Validation Error",
-      "detail": "Email is required"
-    },
-    {
-      "status": 422,
-      "title": "Validation Error", 
-      "detail": "Password is required"
-    },
-    {
-      "status": 422,
-      "title": "Validation Error",
-      "detail": "Group is required"
-    }
-  ]
+  "_error": {
+    "status": 422,
+    "title": "Unprocessable Entity",
+    "detail": "Validation failed",
+    "errors": [
+      {
+        "field": "email",
+        "message": "Email is required"
+      },
+      {
+        "field": "password",
+        "message": "Password is required"
+      },
+      {
+        "field": "work_group",
+        "message": "Work group is required"
+      }
+    ]
+  }
 }
 ```
 
@@ -338,13 +340,17 @@ curl -X POST http://localhost:8080/api/groups \
 
 ```json
 {
-  "_errors": [
-    {
-      "status": 422,
-      "title": "Validation Error",
-      "detail": "Name must be between 2 and 255 characters"
-    }
-  ]
+  "_error": {
+    "status": 422,
+    "title": "Unprocessable Entity",
+    "detail": "Validation failed",
+    "errors": [
+      {
+        "field": "name",
+        "message": "Name must be between 2 and 255 characters"
+      }
+    ]
+  }
 }
 ```
 
