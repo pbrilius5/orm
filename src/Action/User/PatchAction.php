@@ -43,7 +43,7 @@ class PatchAction
         }
 
         if (isset($body['email']) && $body['email'] !== '') {
-            $emailValidator = new \Laminas\Validator\EmailAddress();
+            $emailValidator = new EmailAddress();
             if (!$emailValidator->isValid($body['email'])) {
                 return JsonHalResponder::unprocessableEntity([
                     ['field' => 'email', 'message' => 'Email must be a valid email address'],
