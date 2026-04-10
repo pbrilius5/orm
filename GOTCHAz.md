@@ -91,3 +91,18 @@ curl -X PATCH http://localhost:8080/api/users/2580e199-885d-4f91-9072-fff25abdf0
 [2026-04-10T14:56:42.885460+00:00] app.DEBUG: CorsMiddleware adding CORS headers {"method":"PATCH","origin":"(none)","status_code":200} {"app_env":"dev","app_debug":true,"php_version":"8.4.11","script_name":"/index.php","memory_usage":"2 MB","file":"/home/povilasb/.src/orm-develop/src/Middleware/CorsMiddleware.php","line":56,"class":"App\\Middleware\\CorsMiddleware","callType":"->","function":"process","uid":"9c4319a"}
 [2026-04-10T14:56:42.886441+00:00] app.DEBUG: SecurityMiddleware finished processing {"method":"PATCH","uri":"/api/users/2580e199-885d-4f91-9072-fff25abdf0b2","status_code":200} {"app_env":"dev","app_debug":true,"php_version":"8.4.11","script_name":"/index.php","memory_usage":"2 MB","file":"/home/povilasb/.src/orm-develop/src/Middleware/SecurityMiddleware.php","line":34,"class":"App\\Middleware\\SecurityMiddleware","callType":"->","function":"process","uid":"9c4319a"}
 ```
+
+### Monochromatic logger
+
+Using a Monolog Formatter (Recommended for Developers) `composer require bramus/monolog-colored-line-formatter`.
+
+```php
+use Bramus\Monolog\Formatter\ColoredLineFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+
+$log = new Logger('name');
+$handler = new StreamHandler('php://stdout', Logger::DEBUG);
+$handler->setFormatter(new ColoredLineFormatter());
+$log->pushHandler($handler);
+```
