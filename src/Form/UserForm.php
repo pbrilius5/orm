@@ -34,7 +34,7 @@ class UserForm extends BaseForm
                 'label' => 'Email',
             ],
             'attributes' => [
-                'required' => true,
+                'required' => !isset($options['isPatch']) || !$options['isPatch'],
                 'placeholder' => 'user@example.com',
             ],
         ]);
@@ -46,7 +46,7 @@ class UserForm extends BaseForm
                 'label' => 'Password',
             ],
             'attributes' => [
-                'required' => true,
+                'required' => !isset($options['isPatch']) || !$options['isPatch'],
                 'placeholder' => 'Password',
                 'minlength' => 6,
             ],
@@ -77,7 +77,7 @@ class UserForm extends BaseForm
                 ],
             ],
             'attributes' => [
-                'required' => true,
+                'required' => !isset($options['isPatch']) || !$options['isPatch'],
             ],
         ]);
 
@@ -110,7 +110,7 @@ class UserForm extends BaseForm
 
         $emailSpec = [
             'name' => 'email',
-            'required' => true,
+            'required' => !isset($this->getOptions()['isPatch']) || !$this->getOptions()['isPatch'],
             'filters' => [
                 ['name' => 'StringTrim'],
             ],
@@ -122,7 +122,7 @@ class UserForm extends BaseForm
 
         $passwordSpec = [
             'name' => 'password',
-            'required' => true,
+            'required' => !isset($this->getOptions()['isPatch']) || !$this->getOptions()['isPatch'],
             'validators' => [
                 ['name' => 'NotEmpty'],
                 ['name' => 'StringLength', 'options' => ['min' => 6]],
@@ -131,7 +131,7 @@ class UserForm extends BaseForm
 
         $workGroupSpec = [
             'name' => 'work_group',
-            'required' => true,
+            'required' => !isset($this->getOptions()['isPatch']) || !$this->getOptions()['isPatch'],
             'validators' => [
                 ['name' => 'NotEmpty'],
                 ['name' => 'InArray', 'options' => ['haystack' => $this->workGroupMap->getAllDiscriminators()]],
@@ -158,7 +158,7 @@ class UserForm extends BaseForm
         $this->workGroups = $workGroups;
         if ($this->has('work_group')) {
             $element = $this->get('work_group');
-            if (method_exists($element, 'setValueOptions')) {
+            if ($element instanceof \Laminas\Form\Element\Select && method_exists($element, 'setValueOptions')) {
                 $element->setValueOptions($this->getWorkGroupValueOptions());
             }
 

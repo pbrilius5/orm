@@ -50,17 +50,27 @@ class PatchAction
             return JsonHalResponder::unprocessableEntity([['field' => 'body', 'message' => 'No fields provided']]);
         }
 
+        // Build data array with only the fields that are present in the request
+        $patchData = [];
+        if (array_key_exists('email', $body)) {
+            $patchData['email'] = $body['email'];
+        }
+        if (array_key_exists('password', $body)) {
+            $patchData['password'] = $body['password'];
+        }
+        if (array_key_exists('work_group', $body)) {
+            $patchData['work_group'] = $body['work_group'];
+        }
+        if (array_key_exists('gamification_roles', $body)) {
+            $patchData['gamification_roles'] = $body['gamification_roles'];
+        }
+
         if ($this->laminasSm === null) {
             // Use FormProcessor for validation so ValidationException is handled globally
             $workGroupMap = new \App\Service\WorkGroupMap();
-            $form = new \App\Form\UserForm(null, ['skip_csrf' => true], null, $workGroupMap);
+            $form = new \App\Form\UserForm(null, ['skip_csrf' => true, 'isPatch' => true], null, $workGroupMap);
 
-            $data = $this->formProcessor->validateOrThrow($form, [
-                'email' => $body['email'] ?? '',
-                'password' => $body['password'] ?? '',
-                'work_group' => $body['work_group'] ?? '',
-                'gamification_roles' => $body['gamification_roles'] ?? '',
-            ]);
+            $data = $this->formProcessor->validateOrThrow($form, $patchData);
 
             $command = new PatchUserCommand(
                 id: $id,
@@ -73,13 +83,8 @@ class PatchAction
             // Use FormProcessor for validation so ValidationException is handled globally
             $workGroupMap = $this->laminasSm->get(\App\Service\WorkGroupMapInterface::class);
             $data = $this->formProcessor->validateOrThrow(
-                new \App\Form\UserForm(null, ['skip_csrf' => true], $this->laminasSm, $workGroupMap),
-                [
-                    'email' => $body['email'] ?? '',
-                    'password' => $body['password'] ?? '',
-                    'work_group' => $body['work_group'] ?? '',
-                    'gamification_roles' => $body['gamification_roles'] ?? '',
-                ]
+                new \App\Form\UserForm(null, ['skip_csrf' => true, 'isPatch' => true], $this->laminasSm, $workGroupMap),
+                $patchData
             );
 
             $command = new PatchUserCommand(

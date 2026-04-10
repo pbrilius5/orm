@@ -237,7 +237,7 @@ curl -X PUT http://localhost:8080/api/users/1 \
 ```bash
 curl -X PATCH http://localhost:8080/api/users/1 \
   -H "Content-Type: application/json" \
-  -d '{"gamification_roles": "ROLE_WIZARD"}'
+  -d '{"gamification_roles": "ROLE_ARCHITECT"}'
 ```
 
 ---
