@@ -1461,15 +1461,11 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 | `APP_SECRET` | Application secret key | `change-me-in-production` | No |
 | `ORM_PROXY_DIR` | Proxy directory storage | `/tmp/orm/proxies` | No |
 | `ORM_PROXY_NAMESPACE` | Proxy namespace | `Oryx\ORM\Proxy` | No |
-| `CACHE_DRIVER` | Cache driver (array/memcached) | `array` | No |
-| `CACHE_HOST` | Cache server hostname | `localhost` | No |
-| `CACHE_PORT` | Cache server port | `11211` | No |
+| `CACHE_DRIVER` | Cache driver | `array` | No |
 | `CACHE_TTL` | Cache time-to-live (seconds) | `3600` | No |
 | `RATE_LIMIT_ENABLED` | Enable rate limiting | `true` | No |
 | `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `60` | No |
 | `RATE_LIMIT_WINDOW` | Rate limit window (seconds) | `60` | No |
-| `MEMCACHED_HOST` | Memcached hostname | `localhost` | No |
-| `MEMCACHED_PORT` | Memcached port | `11211` | No |
 | `MAILER_TRANSPORT` | Mailer transport | `smtp` | No |
 | `MAILER_HOST` | Mailer hostname | `localhost` | No |
 | `MAILER_PORT` | Mailer port | `25` | No |
@@ -1478,65 +1474,7 @@ $secret = $config->require('APP_SECRET', 'Application secret is required');
 
 ---
 
-## 15. Doctrine Regional Cache
-
-**Environment-aware caching for Doctrine ORM metadata and query cache.**
-
-### 15.1 Cache by Environment
-
-| Environment | Cache Driver | Extension | Purpose |
-|-------------|-------------|-----------|---------|
-| `dev` | Array (in-memory) | `array` | Local development |
-| `prod` | Array / PSR-based cache | `array` | Production deployment (use PSR-6/PSR-16 adapters)
-
-### 15.2 Configuration
-
-In `.env.yaml`:
-
-```yaml
-app:
-  env: dev  # or prod
-
-cache:
-  enabled: true
-  host: localhost      # Memcached host (dev)
-  port: 11211           # (deprecated) Memcached port (dev)
-  # Redis host/port removed; persistent cache should be provided via PSR adapters if needed
-```
-
-### 15.3 Implementation
-
-```php
-// src/Oryx/ORM/EntityManager.php
-$appEnv = $config['app.env'] ?? 'dev';
-
-if ($appEnv === 'dev' && extension_loaded('memcached')) {
-    // Memcached for development
-    $memcached = new \Memcached();
-    $memcached->addServer($host, $port);
-    // ... create cache adapter
-} elseif ($appEnv === 'prod' && extension_loaded('redis')) {
-    // Redis for production
-    $redis = new \Redis();
-    $redis->connect($host, $port);
-    // ... create cache adapter
-}
-```
-
-### 15.4 Cache Usage
-
-The regional cache is used for:
-- **Metadata cache** - Class mappings, associations
-- **Query cache** - DQL parsed queries
-
-```php
-$config->setMetadataCache($cache);
-$config->setQueryCache($cache);
-```
-
----
-
-## 16. XML Schema-Driven Entity Generation
+## 15. XML Schema-Driven Entity Generation
 
 ### 16.1 Schema Location
 
