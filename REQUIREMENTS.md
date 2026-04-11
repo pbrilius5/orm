@@ -18,8 +18,7 @@
 ### Optional Extensions
 | Extension | Purpose |
 |-----------|---------|
-| `memcached` | Development cache server (APP_ENV=dev) |
-| `redis` | Production cache server (APP_ENV=prod) |
+| `yaml` | YAML parsing for .env.yaml config (PECL, opt-in performance boost) |
 
 ## Dependencies
 

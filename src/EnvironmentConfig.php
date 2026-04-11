@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App;
 
-use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Dotenv\Dotenv;
+use Symfony\Component\Yaml\Yaml as SymfonyYaml;
 
 /**
  * Environment configuration service with multi-format support.
@@ -131,19 +131,48 @@ class EnvironmentConfig
 
     /**
      * Parse a YAML configuration file.
+     * Uses PECL ext-yaml if available, falls back to symfony/yaml.
      */
     private function parseYamlFile(string $filePath): array
     {
-        $content = Yaml::parseFile($filePath, Yaml::PARSE_CONSTANT);
+        if (extension_loaded('yaml')) {
+            $content = yaml_parse_file($filePath);
+        } else {
+            $content = SymfonyYaml::parseFile($filePath, SymfonyYaml::PARSE_CONSTANT);
+        }
 
-        if (!is_array($content)) {
+        if ($content === false || !is_array($content)) {
             return [];
         }
 
         $vars = [];
 
-        // Flatten nested structures into dot-notation keys
         $this->flattenArray($content, '', $vars);
+
+        if (extension_loaded('yaml')) {
+            $vars = $this->normalizeYamlValues($vars);
+        }
+
+        return $vars;
+    }
+
+    /**
+     * Normalize YAML string values to appropriate PHP types.
+     * PECL ext-yaml returns strings for true/false/null, convert to proper types.
+     */
+    private function normalizeYamlValues(array $vars): array
+    {
+        foreach ($vars as $key => $value) {
+            if ($value === 'true') {
+                $vars[$key] = true;
+            } elseif ($value === 'false') {
+                $vars[$key] = false;
+            } elseif ($value === 'null') {
+                $vars[$key] = null;
+            } elseif (is_numeric($value)) {
+                $vars[$key] = strpos($value, '.') !== false ? (float) $value : (int) $value;
+            }
+        }
 
         return $vars;
     }
@@ -414,28 +443,6 @@ class EnvironmentConfig
     public function getOrmProxyNamespace(): string
     {
         return (string) $this->get('ORM_PROXY_NAMESPACE', 'Oryx\ORM\Proxy');
-    }
-
-    /**
-     * Get Memcached configuration for rate limiting.
-     */
-    public function getMemcachedConfig(): array
-    {
-        // Memcached is no longer a required runtime component for cache. Return disabled by default.
-        return [
-            'host' => $this->get('MEMCACHED_HOST', 'localhost'),
-            'port' => (int) $this->get('MEMCACHED_PORT', '11211'),
-            'enabled' => false,
-        ];
-    }
-
-    /**
-     * Check if Memcached is enabled.
-     */
-    public function isMemcachedEnabled(): bool
-    {
-        // Always report false: memcached-based caching removed. Keep method for BC.
-        return false;
     }
 
     /**
