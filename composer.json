@@ -1,4 +1,4 @@
-{
+w{
   "name": "oryx/orm",
   "description": "DQL-centric ORM for PHP 8.0+ with Symfony-inspired scout querying & oryx/mvc-adr integration",
   "type": "library",
@@ -16,7 +16,7 @@
     "league/fractal": "^0.21",
     "league/pipeline": "^1.0",
     "league/tactician": "^2.0",
-    "league/uri": "^6.0",
+    "league/uri": "^7.0",
     "symfony/dotenv": "^6.4",
     "league/climate": "^3.10",
     "doctrine/instantiator": "^1.5",
