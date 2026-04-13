@@ -1,4 +1,4 @@
-w{
+{
   "name": "oryx/orm",
   "description": "DQL-centric ORM for PHP 8.0+ with Symfony-inspired scout querying & oryx/mvc-adr integration",
   "type": "library",
