@@ -36,6 +36,6 @@ class DeleteAction extends AbstractAdrAction
             return JsonHalResponder::notFound('User not found');
         }
 
-        return JsonHalResponder::noContent();
+        return JsonHalResponder::noContent()->respond();
     }
 }

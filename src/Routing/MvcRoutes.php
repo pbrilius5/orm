@@ -295,7 +295,7 @@ class MvcRoutes
                 'breadcrumbs' => [
                     ['label' => 'Home', 'url' => '/'],
                     ['label' => 'Groups', 'url' => '/groups'],
-                    ['label'] => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
+                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
                     ['label' => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
                 ],
             ]));
@@ -323,9 +323,9 @@ class MvcRoutes
                 'formHelper' => FormHelper::class,
                 'breadcrumbs' => [
                     ['label' => 'Home', 'url' => '/'],
-                    ['label'] => 'Groups', 'url' => '/groups'],
-                    ['label'] => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
-                    ['label'] => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
+                    ['label' => 'Groups', 'url' => '/groups'],
+                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
+                    ['label' => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
                 ],
             ]), 422);
         });

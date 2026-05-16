@@ -11,8 +11,8 @@ declare(strict_types=1);
  * - No laminas/diactoros dependency
  *
  * ADR Mode (for API requests):
- * - Uses laminas/diactoros: ServerRequestFactory, JsonResponse
- * - JSON:API responses
+ * - Uses PSR-7 request/response stack (guzzlehttp/psr7 + oryx/adr responders)
+ * - HAL/JSON and Problem Details responses
  * - League Fractal transformers
  */
 

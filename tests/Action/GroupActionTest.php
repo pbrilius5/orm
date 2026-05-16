@@ -12,15 +12,16 @@ use App\Action\Group\UpdateAction;
 use App\Action\Group\PatchAction;
 use App\Action\Group\DeleteAction;
 use App\Dto\DtoFactory;
-use Laminas\Diactoros\ServerRequest;
-use Laminas\Diactoros\Response;
+use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\ServerRequest;
+use GuzzleHttp\Psr7\Utils;
 
 class GroupActionTest extends TestCase
 {
     public function testListActionReturnsHalJson(): void
     {
         $action = $this->createActionMock(ListAction::class);
-        $request = new ServerRequest();
+        $request = new ServerRequest('GET', '/');
         $response = new Response();
 
         $result = $action($request, $response);
@@ -32,7 +33,7 @@ class GroupActionTest extends TestCase
     {
         $action = $this->createActionMock(ShowAction::class);
 
-        $request = new ServerRequest();
+        $request = new ServerRequest('GET', '/');
         $request = $request->withAttribute('id', 'invalid');
         $response = new Response();
 
@@ -45,7 +46,7 @@ class GroupActionTest extends TestCase
     {
         $action = $this->createActionMock(ShowAction::class);
 
-        $request = new ServerRequest();
+        $request = new ServerRequest('GET', '/');
         $request = $request->withAttribute('id', '550e8400-e29b-41d4-a716-446655440000');
         $response = new Response();
 
@@ -58,13 +59,9 @@ class GroupActionTest extends TestCase
     {
         $action = $this->createActionMock(CreateAction::class);
 
-        $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
-        $stream->write(json_encode([]));
-        $stream->rewind();
-
-        $request = new ServerRequest();
+        $request = new ServerRequest('POST', '/api/groups');
         $request = $request->withMethod('POST');
-        $request = $request->withBody($stream);
+        $request = $request->withBody(Utils::streamFor(json_encode([])));
         $response = new Response();
 
         $result = $action($request, $response);
@@ -76,14 +73,10 @@ class GroupActionTest extends TestCase
     {
         $action = $this->createActionMock(UpdateAction::class);
 
-        $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
-        $stream->write(json_encode(['name' => 'Test']));
-        $stream->rewind();
-
-        $request = new ServerRequest();
+        $request = new ServerRequest('PUT', '/api/groups/invalid');
         $request = $request->withMethod('PUT');
         $request = $request->withAttribute('id', 'invalid');
-        $request = $request->withBody($stream);
+        $request = $request->withBody(Utils::streamFor(json_encode(['name' => 'Test'])));
         $response = new Response();
 
         $result = $action($request, $response);
@@ -95,14 +88,10 @@ class GroupActionTest extends TestCase
     {
         $action = $this->createActionMock(PatchAction::class);
 
-        $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
-        $stream->write('{}');
-        $stream->rewind();
-
-        $request = new ServerRequest();
+        $request = new ServerRequest('PATCH', '/api/groups/550e8400-e29b-41d4-a716-446655440000');
         $request = $request->withMethod('PATCH');
         $request = $request->withAttribute('id', '550e8400-e29b-41d4-a716-446655440000');
-        $request = $request->withBody($stream);
+        $request = $request->withBody(Utils::streamFor('{}'));
         $response = new Response();
 
         $result = $action($request, $response);
@@ -114,7 +103,7 @@ class GroupActionTest extends TestCase
     {
         $action = $this->createActionMock(DeleteAction::class);
 
-        $request = new ServerRequest();
+        $request = new ServerRequest('DELETE', '/api/groups/invalid');
         $request = $request->withAttribute('id', 'invalid');
         $response = new Response();
 

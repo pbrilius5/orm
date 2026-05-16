@@ -13,8 +13,9 @@ use App\Action\User\PatchAction;
 use App\Action\User\DeleteAction;
 use App\Command\CommandBusInterface;
 use App\Dto\DtoFactory;
-use Laminas\Diactoros\ServerRequest;
-use Laminas\Diactoros\Response;
+use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\ServerRequest;
+use GuzzleHttp\Psr7\Utils;
 use Mockery;
 
 class UserActionTest extends TestCase
@@ -36,7 +37,7 @@ class UserActionTest extends TestCase
         $userRepository->method('countAll')->willReturn(0);
 
         $action = new ListAction($this->commandBus, $this->dtoFactory, $userRepository);
-        $request = new ServerRequest();
+        $request = new ServerRequest('GET', '/');
         $response = new Response();
 
         $result = $action($request, $response);
@@ -48,7 +49,7 @@ class UserActionTest extends TestCase
     {
         $action = new ShowAction($this->commandBus, $this->dtoFactory);
 
-        $request = new ServerRequest();
+        $request = new ServerRequest('GET', '/');
         $request = $request->withAttribute('id', 'invalid');
         $response = new Response();
 
@@ -67,13 +68,9 @@ class UserActionTest extends TestCase
 
         $action = new CreateAction($this->commandBus, $this->dtoFactory, $formProcessor, null);
 
-        $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
-        $stream->write(json_encode(['password' => 'secret123']));
-        $stream->rewind();
-
-        $request = new ServerRequest();
+        $request = new ServerRequest('POST', '/api/users');
         $request = $request->withMethod('POST');
-        $request = $request->withBody($stream);
+        $request = $request->withBody(Utils::streamFor(json_encode(['password' => 'secret123'])));
         $response = new Response();
 
         $result = $action($request, $response);
@@ -85,14 +82,10 @@ class UserActionTest extends TestCase
     {
         $action = new UpdateAction($this->commandBus, $this->dtoFactory, $this->createMock(\App\Service\FormProcessor::class), null);
 
-        $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
-        $stream->write(json_encode(['email' => 'test@test.com']));
-        $stream->rewind();
-
-        $request = new ServerRequest();
+        $request = new ServerRequest('PUT', '/api/users/invalid');
         $request = $request->withMethod('PUT');
         $request = $request->withAttribute('id', 'invalid');
-        $request = $request->withBody($stream);
+        $request = $request->withBody(Utils::streamFor(json_encode(['email' => 'test@test.com'])));
         $response = new Response();
 
         $result = $action($request, $response);
@@ -104,14 +97,10 @@ class UserActionTest extends TestCase
     {
         $action = new PatchAction($this->commandBus, $this->dtoFactory, $this->createMock(\App\Service\FormProcessor::class), null);
 
-        $stream = new \Laminas\Diactoros\Stream('php://memory', 'w+');
-        $stream->write('{}');
-        $stream->rewind();
-
-        $request = new ServerRequest();
+        $request = new ServerRequest('PATCH', '/api/users/550e8400-e29b-41d4-a716-446655440000');
         $request = $request->withMethod('PATCH');
         $request = $request->withAttribute('id', '550e8400-e29b-41d4-a716-446655440000');
-        $request = $request->withBody($stream);
+        $request = $request->withBody(Utils::streamFor('{}'));
         $response = new Response();
 
         $result = $action($request, $response);
@@ -123,7 +112,7 @@ class UserActionTest extends TestCase
     {
         $action = new DeleteAction($this->commandBus);
 
-        $request = new ServerRequest();
+        $request = new ServerRequest('DELETE', '/api/users/invalid');
         $request = $request->withAttribute('id', 'invalid');
         $response = new Response();
 

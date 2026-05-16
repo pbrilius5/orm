@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use GuzzleHttp\Psr7\ServerRequest;
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\Utils;
 use PHPUnit\Framework\TestCase;
 use App\Kernel;
-use Laminas\Diactoros\ServerRequestFactory;
-use Laminas\Diactoros\Stream;
 
 class CreateUserValidationTest extends TestCase
 {
@@ -21,15 +22,11 @@ class CreateUserValidationTest extends TestCase
 
         $body = json_encode(['email' => 'not-an-email', 'password' => 'secret123', 'work_group' => 'developer']);
 
-        $request = ServerRequestFactory::fromGlobals();
-        $stream = new Stream('php://memory', 'rw');
-        $stream->write($body);
-        $stream->rewind();
-
-        $request = $request->withMethod('POST')
-            ->withUri(new \Laminas\Diactoros\Uri('/api/users'))
+        $request = ServerRequest::fromGlobals()
+            ->withMethod('POST')
+            ->withUri(new Uri('/api/users'))
             ->withHeader('Content-Type', 'application/json')
-            ->withBody($stream);
+            ->withBody(Utils::streamFor($body));
 
         $response = $kernel->handle($request);
 

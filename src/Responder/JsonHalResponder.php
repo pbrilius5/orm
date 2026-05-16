@@ -8,7 +8,7 @@ use Oryx\Adr\Responder\JsonApiResponder;
 use Oryx\Adr\Responder\ProblemDetailsResponder;
 use Psr\Http\Message\ResponseInterface;
 
-class JsonHalResponder
+class JsonHalResponder extends JsonApiResponder
 {
     public static function resource(
         string $type,
@@ -71,11 +71,6 @@ class JsonHalResponder
     ): ResponseInterface {
         $response = self::resource($type, $id, $attributes, $links, $embedded);
         return $response->withStatus(201);
-    }
-
-    public static function noContent(): ResponseInterface
-    {
-        return (new JsonApiResponder(null, 204))->respond();
     }
 
     public static function error(
@@ -147,7 +142,7 @@ class JsonHalResponder
 
     private static function respondHal(array $data, int $status): ResponseInterface
     {
-        return (new JsonApiResponder($data, $status, [
+        return (new self($data, $status, [
             'Content-Type' => 'application/hal+json; charset=utf-8',
         ]))->respond();
     }

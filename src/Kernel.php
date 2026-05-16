@@ -7,11 +7,12 @@ namespace App;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
-use Laminas\Diactoros\Response\JsonResponse;
+use Laminas\ServiceManager\ServiceManager;
 use DI\ContainerBuilder;
 use DI\Container;
 use Symfony\Component\Dotenv\Dotenv;
 use Oryx\ORM\EntityManager;
+use App\View\ViewRenderer;
 use App\Routing\AdrRoutes;
 use App\Middleware\SecurityMiddleware;
 use App\Middleware\CorsMiddleware;
@@ -20,7 +21,6 @@ use App\Middleware\CsrfMiddleware;
 use App\Middleware\JsonErrorHandler;
 use App\Logger\CrashLogger;
 use App\Logger\LoggerFactory;
-use App\Responder\JsonHalResponder;
 use League\Fractal\Manager as FractalManager;
 use League\Fractal\Serializer\JsonApiSerializer;
 use App\Command\User\CreateUserCommand;
@@ -57,7 +57,6 @@ use App\Handler\Console\GenerateProxiesHandler;
 use App\Handler\Console\ManageUserHandler;
 use App\Command\CommandBusInterface;
 use App\Command\TacticianCommandBus;
-use Oryx\Mvc\Request;
 use League\Tactician\CommandBus;
 use League\Tactician\Handler\CommandHandlerMiddleware;
 use League\Tactician\Handler\Mapping\MapByStaticList;
@@ -65,6 +64,7 @@ use Oryx\ORM\EntityManagerFactory;
 use App\Fixture\FixtureLoader;
 use App\Dto\DtoFactory;
 use App\Routing\MvcRoutes;
+use App\Container\LaminasServiceManagerFactory;
 
 use function DI\autowire;
 
@@ -82,7 +82,7 @@ class Kernel
     private string $environment;
     private Container $container;
     private AdrRoutes $adrRoutes;
-    private MvcRoutes $mvcRoutes;
+    private ?MvcRoutes $mvcRoutes = null;
     private EntityManager $entityManager;
     private FractalManager $fractal;
     private ?CrashLogger $crashLogger = null;
@@ -135,6 +135,7 @@ class Kernel
         $this->container->set(FixtureLoader::class, autowire());
         $this->container->set(DtoFactory::class, autowire());
         $this->container->set(ViewRenderer::class, autowire());
+        $this->container->set(ServiceManager::class, LaminasServiceManagerFactory::create());
         // WorkGroupMap service (injectable implementation)
         $this->container->set(\App\Service\WorkGroupMapInterface::class, autowire(\App\Service\WorkGroupMap::class));
         // Central FormProcessor service for consistent form validation
@@ -195,17 +196,6 @@ class Kernel
         $router->middleware(new RateLimitMiddleware($logger, 100, 60));
         $router->middleware(new CsrfMiddleware($logger));
 
-        $this->mvcRoutes = new MvcRoutes(
-            $this->entityManager, // EntityManager from property
-            $this->container->get(CommandBusInterface::class),
-            $this->container->get(DtoFactory::class),
-            $this->logger, // Logger from property
-            $this->container->get(ViewRenderer::class),
-            $this->container->get(ServiceManager::class), // Laminas ServiceManager
-            $this->container // PHP-DI Container (main container)
-        );
-
-
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -220,8 +210,26 @@ class Kernel
         if (str_starts_with($request->getUri()->getPath(), '/api/')) {
             return $this->adrRoutes->getRouter()->dispatch($request);
         }
-        // MVC maršrutai (HTML)
-        return $this->mvcRoutes->getRouter()->dispatch($request);
+        return $this->getMvcRoutes()->getRouter()->dispatch($request);
+    }
+
+    private function getMvcRoutes(): MvcRoutes
+    {
+        if ($this->mvcRoutes !== null) {
+            return $this->mvcRoutes;
+        }
+
+        $this->mvcRoutes = new MvcRoutes(
+            $this->entityManager,
+            $this->container->get(CommandBusInterface::class),
+            $this->container->get(DtoFactory::class),
+            $this->logger ?? LoggerFactory::create($this->environment),
+            $this->container->get(ViewRenderer::class),
+            $this->container->get(ServiceManager::class),
+            $this->container
+        );
+
+        return $this->mvcRoutes;
     }
 
     private function handleError(\Throwable $e): ResponseInterface

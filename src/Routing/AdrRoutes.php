@@ -17,12 +17,12 @@ use App\Action\Group\UpdateAction as GroupUpdateAction;
 use App\Action\Group\PatchAction as GroupPatchAction;
 use App\Action\Group\DeleteAction as GroupDeleteAction;
 use App\Responder\JsonHalResponder;
+use GuzzleHttp\Psr7\HttpFactory;
 use Oryx\Adr\Action\ActionInterface;
 use Oryx\Adr\Responder\JsonApiResponder;
 use Psr\Container\ContainerInterface;
 use League\Route\Router;
 use League\Route\Strategy\JsonStrategy;
-use Laminas\Diactoros\ResponseFactory;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -30,12 +30,12 @@ class AdrRoutes
 {
     private Router $router;
     private ContainerInterface $container;
-    private ResponseFactory $responseFactory;
+    private HttpFactory $responseFactory;
 
     public function __construct(ContainerInterface $container)
     {
         $this->container = $container;
-        $this->responseFactory = new ResponseFactory();
+        $this->responseFactory = new HttpFactory();
         $this->router = new Router();
         $strategy = new JsonStrategy($this->responseFactory);
         $strategy->setContainer($container);

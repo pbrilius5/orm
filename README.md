@@ -456,6 +456,7 @@ API action klasės (`User/*Action`, `Group/*Action`) paveldi `App\Action\Abstrac
 ### 6.1 Kernel + Routing atskirumas
 
 Maršrutai atskirti nuo Kernelio į `App\Routing\*Routes` klases - lengviau tvarkyti ir testuoti.
+`/api/*` užklausos dispatchinamos per `AdrRoutes` be privalomo `MvcRoutes` inicializavimo, todėl API boot nebepriklauso nuo MVC view sluoksnio.
 
 ```php
 // src/App/Kernel.php
@@ -542,7 +543,7 @@ use Oryx\Adr\Responder\JsonApiResponder;
 use Oryx\Adr\Responder\ProblemDetailsResponder;
 use Psr\Http\Message\ResponseInterface;
 
-class JsonHalResponder
+class JsonHalResponder extends JsonApiResponder
 {
     public static function resource(string $type, string $id, mixed $attributes): ResponseInterface
     {
@@ -551,7 +552,7 @@ class JsonHalResponder
             $type => array_merge(['id' => $id], is_object($attributes) ? get_object_vars($attributes) : $attributes),
         ];
 
-        return (new JsonApiResponder($data, 200, ['Content-Type' => 'application/hal+json; charset=utf-8']))->respond();
+        return (new self($data, 200, ['Content-Type' => 'application/hal+json; charset=utf-8']))->respond();
     }
 
     public static function problem(string $type, string $title, int $status): ResponseInterface
@@ -590,7 +591,7 @@ class JsonHalResponder
 
 **Kas yra HAL?** Hypertext Application Language - standartas, kuris suteikia nuorodas (`_links`) ir įdėtinius resursus (`_embedded`). Skirtumas nuo JSON:API: paprastesnis, lengviau suprasti.
 
-**Kodėl Fractal?** Transformuoja Doctrine entitetus į masyvus, prideda nuorodas ir įdėtinius resursus.
+**Kodėl DTO + JsonHalResponder?** API action'ai grąžina DTO iš `DtoFactory`, o HAL formavimą centralizuoja `JsonHalResponder`, kuris paveldi `Oryx\Adr\Responder\JsonApiResponder`.
 
 ### 7.3 Pagrindinės HAL struktūros
 
