@@ -451,6 +451,8 @@ class MvcApplication
 
 **ADR naudoja PSR-7/PSR-15, o `JsonHalResponder` remiasi `Oryx\\Adr\\Responder\\JsonApiResponder` kaip bazine JSON atsako implementacija.**
 
+API action klasės (`User/*Action`, `Group/*Action`) paveldi `App\Action\AbstractAdrAction`, kuris implementuoja `Oryx\Adr\Action\ActionInterface`. Taip API sluoksnis laikosi vendor ADR kontrakto be `vendor/` modifikacijų.
+
 ### 6.1 Kernel + Routing atskirumas
 
 Maršrutai atskirti nuo Kernelio į `App\Routing\*Routes` klases - lengviau tvarkyti ir testuoti.

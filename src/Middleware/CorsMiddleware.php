@@ -9,7 +9,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
-use Laminas\Diactoros\Response\JsonResponse;
+use Oryx\Adr\Responder\JsonApiResponder;
 
 class CorsMiddleware implements MiddlewareInterface
 {
@@ -49,7 +49,7 @@ class CorsMiddleware implements MiddlewareInterface
                 'requested_method' => $request->getHeaderLine('Access-Control-Request-Method') ?: '(none)',
             ]);
 
-            return new JsonResponse(null, 204, $this->getCorsHeaders($request));
+            return (new JsonApiResponder(null, 204, $this->getCorsHeaders($request)))->respond();
         }
 
         $response = $handler->handle($request);

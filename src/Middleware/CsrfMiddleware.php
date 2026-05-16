@@ -10,6 +10,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use App\Csrf\CsrfSession;
+use App\Responder\JsonHalResponder;
 
 class CsrfMiddleware implements MiddlewareInterface
 {
@@ -71,15 +72,7 @@ class CsrfMiddleware implements MiddlewareInterface
                 'ip' => $request->getServerParams()['REMOTE_ADDR'] ?? 'unknown',
             ]);
 
-            return new \Laminas\Diactoros\Response\JsonResponse([
-                '_error' => [
-                    'status' => 403,
-                    'title' => 'Forbidden',
-                    'detail' => 'CSRF token validation failed',
-                ],
-            ], 403, [
-                'Content-Type' => 'application/hal+json',
-            ]);
+            return JsonHalResponder::forbidden('CSRF token validation failed');
         }
 
         $this->logger->debug('CsrfMiddleware token validation passed', [

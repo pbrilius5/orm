@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Action\Group;
 
+use App\Action\AbstractAdrAction;
 use App\Command\CommandBusInterface;
 use App\Command\Group\PatchGroupCommand;
 use App\Dto\DtoFactory;
@@ -12,7 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Uuid;
 
-class PatchAction
+class PatchAction extends AbstractAdrAction
 {
     private CommandBusInterface $commandBus;
     private DtoFactory $dtoFactory;
@@ -23,7 +24,7 @@ class PatchAction
         $this->dtoFactory = $dtoFactory;
     }
 
-    public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    public function __invoke(ServerRequestInterface $request, ResponseInterface $response, ?callable $next = null): ResponseInterface
     {
         $id = $request->getAttribute('id') ?? '';
 

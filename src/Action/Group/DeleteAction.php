@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Action\Group;
 
+use App\Action\AbstractAdrAction;
 use App\Command\CommandBusInterface;
 use App\Command\Group\DeleteGroupCommand;
 use App\Responder\JsonHalResponder;
@@ -11,7 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Uuid;
 
-class DeleteAction
+class DeleteAction extends AbstractAdrAction
 {
     private CommandBusInterface $commandBus;
 
@@ -20,7 +21,7 @@ class DeleteAction
         $this->commandBus = $commandBus;
     }
 
-    public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    public function __invoke(ServerRequestInterface $request, ResponseInterface $response, ?callable $next = null): ResponseInterface
     {
         $id = $request->getAttribute('id') ?? '';
 

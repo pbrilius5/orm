@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Action\Group;
 
+use App\Action\AbstractAdrAction;
 use App\Command\CommandBusInterface;
 use App\Command\Group\ListGroupsCommand;
 use App\Dto\DtoFactory;
@@ -12,7 +13,7 @@ use App\Responder\JsonHalResponder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-class ListAction
+class ListAction extends AbstractAdrAction
 {
     private CommandBusInterface $commandBus;
     private DtoFactory $dtoFactory;
@@ -28,7 +29,7 @@ class ListAction
         $this->groupRepository = $groupRepository;
     }
 
-    public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    public function __invoke(ServerRequestInterface $request, ResponseInterface $response, ?callable $next = null): ResponseInterface
     {
         $limit = $request->getQueryParams()['limit'] ?? null;
         $offset = $request->getQueryParams()['offset'] ?? null;

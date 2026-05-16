@@ -16,11 +16,13 @@ use App\Action\Group\CreateAction as GroupCreateAction;
 use App\Action\Group\UpdateAction as GroupUpdateAction;
 use App\Action\Group\PatchAction as GroupPatchAction;
 use App\Action\Group\DeleteAction as GroupDeleteAction;
+use App\Responder\JsonHalResponder;
+use Oryx\Adr\Action\ActionInterface;
+use Oryx\Adr\Responder\JsonApiResponder;
 use Psr\Container\ContainerInterface;
 use League\Route\Router;
 use League\Route\Strategy\JsonStrategy;
 use Laminas\Diactoros\ResponseFactory;
-use Laminas\Diactoros\Response\JsonResponse;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -49,12 +51,11 @@ class AdrRoutes
     private function register(): void
     {
         $this->router->map('GET', '/api/health', function (ServerRequestInterface $request): ResponseInterface {
-            return new JsonResponse([
-                '_links' => [
-                    'self' => ['href' => '/api/health'],
-                ],
+            return JsonHalResponder::resource('health', 'status', [
                 'status' => 'ok',
                 'timestamp' => date('c'),
+            ], [
+                'self' => '/api/health',
             ]);
         });
 
@@ -97,7 +98,7 @@ class AdrRoutes
         });
 
         $this->router->map('GET', '/manifest.json', function (ServerRequestInterface $request): ResponseInterface {
-            return new JsonResponse([
+            return (new JsonApiResponder([
                 'name' => 'Oryx ORM App',
                 'short_name' => 'OryxApp',
                 'description' => 'Full-stack ORM with ADR pattern',
@@ -109,13 +110,18 @@ class AdrRoutes
                     ['src' => '/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],
                     ['src' => '/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
                 ],
-            ]);
+            ], 200, [
+                'Content-Type' => 'application/manifest+json',
+            ]))->respond();
         });
     }
 
     private function resolveAction(string $actionClass, ServerRequestInterface $request, array $routeVars = []): ResponseInterface
     {
         $action = $this->container->get($actionClass);
+        if (!$action instanceof ActionInterface) {
+            throw new \RuntimeException("Action {$actionClass} must implement " . ActionInterface::class);
+        }
         $response = $this->responseFactory->createResponse();
 
         foreach ($routeVars as $key => $value) {

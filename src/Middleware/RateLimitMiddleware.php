@@ -9,6 +9,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
+use Oryx\Adr\Responder\JsonApiResponder;
 
 /**
  * Rate limiting middleware with Memcached support.
@@ -97,18 +98,7 @@ class RateLimitMiddleware implements MiddlewareInterface
                     'limit' => $this->maxRequests,
                 ]);
 
-                return new \Laminas\Diactoros\Response\JsonResponse([
-                    '_error' => [
-                        'status' => 429,
-                        'title' => 'Too Many Requests',
-                        'detail' => "Rate limit exceeded. Try again in {$this->windowSeconds} seconds.",
-                    ],
-                ], 429, [
-                    'Content-Type' => 'application/hal+json',
-                    'Retry-After' => (string) $this->windowSeconds,
-                    'X-RateLimit-Limit' => (string) $this->maxRequests,
-                    'X-RateLimit-Remaining' => '0',
-                ]);
+                return $this->createRateLimitExceededResponse();
             }
         } else {
             // Fallback to array-based storage
@@ -134,18 +124,7 @@ class RateLimitMiddleware implements MiddlewareInterface
                     'limit' => $this->maxRequests,
                 ]);
 
-                return new \Laminas\Diactoros\Response\JsonResponse([
-                    '_error' => [
-                        'status' => 429,
-                        'title' => 'Too Many Requests',
-                        'detail' => "Rate limit exceeded. Try again in {$this->windowSeconds} seconds.",
-                    ],
-                ], 429, [
-                    'Content-Type' => 'application/hal+json',
-                    'Retry-After' => (string) $this->windowSeconds,
-                    'X-RateLimit-Limit' => (string) $this->maxRequests,
-                    'X-RateLimit-Remaining' => '0',
-                ]);
+                return $this->createRateLimitExceededResponse();
             }
         }
 
@@ -197,5 +176,21 @@ class RateLimitMiddleware implements MiddlewareInterface
         } else {
             $this->fallbackStorage = [];
         }
+    }
+
+    private function createRateLimitExceededResponse(): ResponseInterface
+    {
+        return (new JsonApiResponder([
+            '_error' => [
+                'status' => 429,
+                'title' => 'Too Many Requests',
+                'detail' => "Rate limit exceeded. Try again in {$this->windowSeconds} seconds.",
+            ],
+        ], 429, [
+            'Content-Type' => 'application/hal+json; charset=utf-8',
+            'Retry-After' => (string) $this->windowSeconds,
+            'X-RateLimit-Limit' => (string) $this->maxRequests,
+            'X-RateLimit-Remaining' => '0',
+        ]))->respond();
     }
 }
