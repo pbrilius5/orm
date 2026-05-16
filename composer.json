@@ -57,17 +57,17 @@
   "repositories": [
     {
       "type": "vcs",
-      "url": "git@gitlab.com:prototype.in/google/google-city-n-soda-disarray-hash-mixer.git",
-      "origin": "gitlab.com",
+      "url": "git@github.com:Prototype-Inn/city-hash-mixer.git",
+      "origin": "github.com",
       "reference": "develop"
     },
     {
       "type": "vcs",
-      "url": "https://gitlab.com/umidigi-ss/mvc.git"
+      "url": "https://github.com/pbrilius5/mvc.git"
     },
     {
       "type": "vcs",
-      "url": "https://gitlab.com/umidigi-ss/adr.git"
+      "url": "https://github.com/pbrilius5/adr.git"
     },
     {
       "type": "composer",
