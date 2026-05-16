@@ -9,7 +9,7 @@
 3. [Running the Application](#3-running-the-application)
 4. [Architecture Overview](#4-architecture-overview)
 5. [MVC Pattern (Oryx\Mvc)](#5-mvc-pattern-oryxmvc)
-6. [ADR Pattern (laminas/diactoros)](#6-adr-pattern-laminasdiactoros)
+6. [ADR Pattern (PSR-7 responders)](#6-adr-pattern-psr-7-responders)
 7. [HAL+JSON API](#7-haljson-api)
 8. [Fractal Transformers](#8-fractal-transformers)
 9. [Command/Handler Pattern (Tactician)](#9-commandhandler-pattern-tactician)
@@ -259,7 +259,7 @@ For complete API testing documentation including all endpoint references, curl e
 │          ▼                                      ▼              │
 │  ┌─────────────────────┐        ┌─────────────────────────┐   │
 │  │    MVC Layer        │        │      ADR Layer          │   │
-│  │  (Oryx\Mvc)         │        │  (laminas/diactoros)    │   │
+│  │  (Oryx\Mvc)         │        │  (PSR-7 responders)     │   │
 │  ├─────────────────────┤        ├─────────────────────────┤   │
 │  │ • App\Http\Request  │        │ • App\Kernel            │   │
 │  │ • App\Http\Response │        │ • App\Action\User\*     │   │
@@ -447,9 +447,9 @@ class MvcApplication
 
 ---
 
-## 6. ADR Pattern (laminas/diactoros)
+## 6. ADR Pattern (PSR-7 responders)
 
-**ADR uses PSR-7/PSR-15 for modern HTTP handling.**
+**ADR naudoja PSR-7/PSR-15, o `JsonHalResponder` remiasi `Oryx\\Adr\\Responder\\JsonApiResponder` kaip bazine JSON atsako implementacija.**
 
 ### 6.1 Kernel + Routing atskirumas
 
@@ -536,57 +536,25 @@ class ListAction
 // src/Responder/JsonHalResponder.php
 namespace App\Responder;
 
-use Laminas\Diactoros\Response\JsonResponse;
+use Oryx\Adr\Responder\JsonApiResponder;
+use Oryx\Adr\Responder\ProblemDetailsResponder;
+use Psr\Http\Message\ResponseInterface;
 
 class JsonHalResponder
 {
-    public static function resource(string $type, string $id, array $attributes, array $links = []): JsonResponse
+    public static function resource(string $type, string $id, mixed $attributes): ResponseInterface
     {
         $data = [
-            '_links' => [
-                'self' => ['href' => "/{$type}/{$id}"],
-            ],
-            '_embedded' => [],
+            '_links' => ['self' => ['href' => "/{$type}/{$id}"]],
+            $type => array_merge(['id' => $id], is_object($attributes) ? get_object_vars($attributes) : $attributes),
         ];
 
-        foreach ($links as $rel => $href) {
-            $data['_links'][$rel] = ['href' => $href];
-        }
-
-        $data[$type] = array_merge(['id' => $id], $attributes);
-
-        return new JsonResponse($data);
+        return (new JsonApiResponder($data, 200, ['Content-Type' => 'application/hal+json; charset=utf-8']))->respond();
     }
 
-    public static function collection(string $type, array $items, array $meta = []): JsonResponse
+    public static function problem(string $type, string $title, int $status): ResponseInterface
     {
-        $data = [
-            '_links' => [
-                'self' => ['href' => "/{$type}"],
-            ],
-            '_embedded' => [
-                $type => $items,
-            ],
-            '_meta' => $meta,
-        ];
-
-        return new JsonResponse($data);
-    }
-
-    public static function error(string $title, int $status, string $detail = ''): JsonResponse
-    {
-        return new JsonResponse([
-            '_error' => [
-                'status' => $status,
-                'title' => $title,
-                'detail' => $detail,
-            ],
-        ], $status);
-    }
-
-    public static function noContent(): JsonResponse
-    {
-        return new JsonResponse(null, 204);
+        return (new ProblemDetailsResponder($type, $title, $status))->respond();
     }
 }
 ```
@@ -2253,7 +2221,7 @@ composer install --no-interaction --prefer-dist
 | Layer | Pattern | HTTP | Templates | Dependencies |
 |-------|---------|------|-----------|---------------|
 | **MVC** | Controller → Model → View | Vanilla PHP | PHP | Doctrine ORM |
-| **ADR** | Action → Domain → Responder | laminas/diactoros | JSON:HAL | League Fractal |
+| **ADR** | Action → Domain → Responder | PSR-7 (`JsonApiResponder` base) | JSON:HAL | League Fractal |
 | **PWA** | Service Worker + Manifest | Both | Cache | Offline-first |
 
 **Key Files:**

@@ -1,6 +1,6 @@
 {
   "name": "oryx/orm",
-  "description": "DQL-centric ORM for PHP 8.0+ with Symfony-inspired scout querying & oryx/mvc-adr integration",
+  "description": "DQL-centric ORM for PHP 8.2+ with Symfony-inspired scout querying and PSR-7 MVC/ADR integration",
   "type": "library",
   "license": "BSD-3-Clause",
   "require": {
@@ -17,6 +17,7 @@
     "league/pipeline": "^1.0",
     "league/tactician": "^2.0",
     "league/uri": "^7.0",
+    "guzzlehttp/psr7": "^2.8",
     "symfony/dotenv": "^6.4",
     "league/climate": "^3.10",
     "doctrine/instantiator": "^1.5",

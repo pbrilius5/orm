@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Responder;
 
-use Laminas\Diactoros\Response\JsonResponse;
+use Oryx\Adr\Responder\JsonApiResponder;
+use Oryx\Adr\Responder\ProblemDetailsResponder;
+use Psr\Http\Message\ResponseInterface;
 
 class JsonHalResponder
 {
@@ -14,7 +16,7 @@ class JsonHalResponder
         mixed $attributes,
         array $links = [],
         array $embedded = []
-    ): JsonResponse {
+    ): ResponseInterface {
         $attributesArray = is_object($attributes) ? get_object_vars($attributes) : $attributes;
         $data = [
             '_links' => [
@@ -31,9 +33,7 @@ class JsonHalResponder
             $data['_embedded'] = $embedded;
         }
 
-        return new JsonResponse($data, 200, [
-            'Content-Type' => 'application/hal+json',
-        ]);
+        return self::respondHal($data, 200);
     }
 
     public static function collection(
@@ -41,7 +41,7 @@ class JsonHalResponder
         array $items,
         array $meta = [],
         array $links = []
-    ): JsonResponse {
+    ): ResponseInterface {
         $data = [
             '_links' => [
                 'self' => ['href' => "/{$type}"],
@@ -59,9 +59,7 @@ class JsonHalResponder
             $data['_links'][$rel] = is_array($href) ? $href : ['href' => $href];
         }
 
-        return new JsonResponse($data, 200, [
-            'Content-Type' => 'application/hal+json',
-        ]);
+        return self::respondHal($data, 200);
     }
 
     public static function created(
@@ -70,14 +68,14 @@ class JsonHalResponder
         mixed $attributes,
         array $links = [],
         array $embedded = []
-    ): JsonResponse {
+    ): ResponseInterface {
         $response = self::resource($type, $id, $attributes, $links, $embedded);
         return $response->withStatus(201);
     }
 
-    public static function noContent(): JsonResponse
+    public static function noContent(): ResponseInterface
     {
-        return new JsonResponse(null, 204);
+        return (new JsonApiResponder(null, 204))->respond();
     }
 
     public static function error(
@@ -85,7 +83,7 @@ class JsonHalResponder
         int $status,
         string $detail = '',
         array $extra = []
-    ): JsonResponse {
+    ): ResponseInterface {
         $data = [
             '_error' => [
                 'status' => $status,
@@ -99,34 +97,32 @@ class JsonHalResponder
 
         $data['_error'] = array_merge($data['_error'], $extra);
 
-        return new JsonResponse($data, $status, [
-            'Content-Type' => 'application/hal+json',
-        ]);
+        return self::respondHal($data, $status);
     }
 
-    public static function badRequest(string $detail = ''): JsonResponse
+    public static function badRequest(string $detail = ''): ResponseInterface
     {
         return self::error('Bad Request', 400, $detail);
     }
 
-    public static function notFound(string $detail = ''): JsonResponse
+    public static function notFound(string $detail = ''): ResponseInterface
     {
         return self::error('Not Found', 404, $detail);
     }
 
-    public static function unprocessableEntity(array $errors): JsonResponse
+    public static function unprocessableEntity(array $errors): ResponseInterface
     {
         return self::error('Unprocessable Entity', 422, 'Validation failed', [
             'errors' => $errors,
         ]);
     }
 
-    public static function unauthorized(string $detail = 'Unauthorized'): JsonResponse
+    public static function unauthorized(string $detail = 'Unauthorized'): ResponseInterface
     {
         return self::error('Unauthorized', 401, $detail);
     }
 
-    public static function forbidden(string $detail = 'Forbidden'): JsonResponse
+    public static function forbidden(string $detail = 'Forbidden'): ResponseInterface
     {
         return self::error('Forbidden', 403, $detail);
     }
@@ -138,25 +134,21 @@ class JsonHalResponder
         string $detail = '',
         ?string $instance = null,
         array $extensions = []
-    ): JsonResponse {
-        $problem = [
-            'type' => $type,
-            'title' => $title,
-            'status' => $status,
-        ];
+    ): ResponseInterface {
+        return (new ProblemDetailsResponder(
+            $type,
+            $title,
+            $status,
+            $detail !== '' ? $detail : null,
+            $instance,
+            $extensions
+        ))->respond();
+    }
 
-        if ($detail) {
-            $problem['detail'] = $detail;
-        }
-
-        if ($instance) {
-            $problem['instance'] = $instance;
-        }
-
-        $problem = array_merge($problem, $extensions);
-
-        return new JsonResponse($problem, $status, [
-            'Content-Type' => 'application/problem+json; charset=utf-8',
-        ]);
+    private static function respondHal(array $data, int $status): ResponseInterface
+    {
+        return (new JsonApiResponder($data, $status, [
+            'Content-Type' => 'application/hal+json; charset=utf-8',
+        ]))->respond();
     }
 }
