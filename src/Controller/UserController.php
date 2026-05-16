@@ -41,6 +41,7 @@ class UserController
 
     public function __construct(EntityManager $em, CommandBus $commandBus, DtoFactory $dtoFactory, LoggerInterface $logger)
     {
+        parent::__construct();
         $this->em = $em;
         $this->commandBus = $commandBus;
         $this->dtoFactory = $dtoFactory;
@@ -191,5 +192,8 @@ class UserController
         ]);
 
         return $result;
+    }
+}
+     return $result;
     }
 }

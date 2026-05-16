@@ -4,32 +4,25 @@ declare(strict_types=1);
 
 namespace App\View;
 
-class ViewRenderer
+use Oryx\Mvc\View\ViewInterface;
+use Oryx\Mvc\View\PlatesView;
+
+class ViewRenderer implements ViewInterface
 {
-    private string $templatePath;
+    private PlatesView $plates;
 
     public function __construct(string $templatePath = null)
     {
-        $this->templatePath = $templatePath ?? dirname(__DIR__, 2) . '/templates';
+        $this->plates = new PlatesView($templatePath ?? dirname(__DIR__, 2) . '/templates');
     }
 
     public function render(string $template, array $data = []): string
     {
-        $file = $this->templatePath . '/' . $template . '.php';
-
-        if (!file_exists($file)) {
-            throw new \RuntimeException("Template not found: {$template}");
-        }
-
-        extract($data);
-        ob_start();
-        include $file;
-        return ob_get_clean();
+        return $this->plates->render($template, $data);
     }
 
     public function renderWithLayout(string $template, array $data = [], string $layout = 'layout'): string
     {
-        $content = $this->render($template, $data);
-        return $this->render($layout, array_merge($data, ['content' => $content]));
+        return $this->plates->render($layout, array_merge($data, ['content' => $this->plates->render($template, $data)]));
     }
 }

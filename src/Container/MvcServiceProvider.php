@@ -9,7 +9,7 @@ use App\Controller\GroupController;
 use App\Controller\UserController;
 use App\Db;
 use App\Dto\DtoFactory;
-use App\Http\Router;
+use Oryx\Mvc\Router;
 use App\View\ViewRenderer;
 use App\Logger\LoggerFactory;
 use App\Logger\CrashLogger;

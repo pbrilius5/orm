@@ -15,6 +15,7 @@ use App\Command\CommandBusInterface;
 use App\Dto\DtoFactory;
 use Laminas\Diactoros\ServerRequest;
 use Laminas\Diactoros\Response;
+use Mockery;
 
 class UserActionTest extends TestCase
 {
@@ -23,12 +24,8 @@ class UserActionTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->commandBus = new class implements CommandBusInterface {
-            public function handle($command)
-            {
-                return [];
-            }
-        };
+        $this->commandBus = Mockery::mock(CommandBusInterface::class);
+        $this->commandBus->shouldReceive('handle')->andReturn([]);
         $this->dtoFactory = $this->createMock(DtoFactory::class);
         $this->dtoFactory->method('create')->willReturn(new \stdClass());
     }

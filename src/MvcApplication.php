@@ -11,9 +11,10 @@ use App\Form\GroupForm;
 use App\Form\UserForm;
 use App\Http\Request;
 use App\Http\Response;
-use App\Http\Router;
+
 use App\View\ViewRenderer;
 use App\View\Helper\FormHelper;
+use App\Routing\MvcRoutes;
 use DI\ContainerBuilder;
 use DI\Container as PhpDiContainer;
 use Laminas\ServiceManager\ServiceManager;
@@ -26,8 +27,8 @@ use function DI\autowire;
 
 class MvcApplication
 {
-    private Router $router;
     private ViewRenderer $view;
+    private MvcRoutes $mvcRoutes;
     private Container $leagueContainer;
     private PhpDiContainer $phpDiContainer;
     private ServiceManager $laminasSm;
@@ -52,312 +53,24 @@ class MvcApplication
         $this->phpDiContainer->set(\App\Service\WorkGroupMapInterface::class, autowire(\App\Service\WorkGroupMap::class));
 
         $this->phpDiContainer->set(EntityManager::class, $em);
+        // Ensure ViewRenderer is available in PHP-DI container for MvcApplication's view rendering
+        $this->phpDiContainer->set(ViewRenderer::class, autowire());
 
-        $this->router = $this->leagueContainer->get(Router::class);
-        $this->view = $this->phpDiContainer->get(ViewRenderer::class);
-        $this->laminasSm = $this->leagueContainer->get(ServiceManager::class);
+        $this->view = $this->phpDiContainer->get(ViewRenderer::class); // Use PHP-DI's ViewRenderer
+        $this->laminasSm = $this->leagueContainer->get(ServiceManager::class); // Re-inserting initialization
 
-        $this->logger = $this->leagueContainer->get(LoggerInterface::class);
-        $this->registerRoutes();
-    }
+        $this->mvcRoutes = new MvcRoutes(
+            $em,
+            $this->leagueContainer->get(CommandBusInterface::class), // CommandBus from League\Container
+            $this->leagueContainer->get(DtoFactory::class),         // DtoFactory from League\Container
+            $this->leagueContainer->get(LoggerInterface::class),    // Logger from League\Container
+            $this->view,                                             // ViewRenderer from PHP-DI container
+            $this->laminasSm,                                        // Laminas ServiceManager
+            $this->phpDiContainer                                   // PHP-DI Container
+        );
 
-    private function resolve(string $class): object
-    {
-        if (str_ends_with($class, 'Controller')) {
-            return $this->leagueContainer->get($class);
-        }
 
-        if ($this->phpDiContainer->has($class)) {
-            return $this->phpDiContainer->get($class);
-        }
-        return $this->leagueContainer->get($class);
-    }
 
-    private function registerRoutes(): void
-    {
-        $this->router->get('/', function (Request $req) {
-            return new Response($this->view->renderWithLayout('home', [
-                'title' => 'Oryx ORM - MVC Application',
-                'description' => 'Full-stack ORM with MVC pattern',
-                'breadcrumbs' => [['label' => 'Home', 'url' => '/']],
-            ]));
-        });
-
-        $this->registerUserRoutes();
-        $this->registerGroupRoutes();
-    }
-
-    private function registerUserRoutes(): void
-    {
-        $this->router->get('/users', function (Request $req) {
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $data = $controller->index();
-            $data['breadcrumbs'] = [
-                ['label' => 'Home', 'url' => '/'],
-                ['label' => 'Users', 'url' => '/users'],
-            ];
-            return new Response($this->view->renderWithLayout('users/index', $data));
-        });
-
-        $this->router->get('/users/create', function (Request $req) {
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
-            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
-            $form->setWorkGroups($controller->getWorkGroups());
-            $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
-            $form->setAttribute('action', '/users/create');
-            return new Response($this->view->renderWithLayout('users/create', [
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Users', 'url' => '/users'],
-                    ['label' => 'Create', 'url' => '/users/create'],
-                ],
-            ]));
-        });
-
-        $this->router->post('/users/create', function (Request $req) {
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
-            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
-            $form->setWorkGroups($controller->getWorkGroups());
-            $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
-            $form->setData($req->all());
-
-            if ($form->isValid()) {
-                try {
-                    $controller = $this->resolve(\App\Controller\UserController::class);
-                    $controller->create($req->all());
-                    header('Location: /users');
-                    exit;
-                } catch (\InvalidArgumentException $e) {
-                    $form->setMessages(['email' => [$e->getMessage()]]);
-                }
-            }
-
-            $form->setData($req->all());
-            return new Response($this->view->renderWithLayout('users/create', [
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Users', 'url' => '/users'],
-                    ['label' => 'Create', 'url' => '/users/create'],
-                ],
-            ]), 422);
-        });
-
-        $this->router->get('/users/{id}', function (Request $req, array $params) {
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $user = $controller->show($params['id']);
-            if (!$user) {
-                return new Response('User not found', 404);
-            }
-            return new Response($this->view->renderWithLayout('users/show', [
-                'user' => $user,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Users', 'url' => '/users'],
-                    ['label' => '#' . $user->getId(), 'url' => '/users/' . $user->getId()],
-                ],
-            ]));
-        });
-
-        $this->router->get('/users/{id}/delete', function (Request $req, array $params) {
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $controller->delete($params['id']);
-            header('Location: /users');
-            exit;
-        });
-
-        $this->router->get('/users/{id}/edit', function (Request $req, array $params) {
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $user = $controller->show($params['id']);
-            if (!$user) {
-                return new Response('User not found', 404);
-            }
-            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
-            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
-            $form->setWorkGroups($controller->getWorkGroups());
-            $form->setAttribute('action', '/users/' . $user->getId() . '/edit');
-            $form->get('email')->setValue($user->getEmail());
-            $form->setGamificationRoles($user->getGamificationRoleNames());
-            $workGroup = $user->getWorkGroup();
-            if ($workGroup) {
-                $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
-                $discriminator = $workGroupMap->getDiscriminatorForGroup($workGroup);
-                if ($discriminator !== 'group') {
-                    $form->get('work_group')->setValue($discriminator);
-                }
-            }
-            return new Response($this->view->renderWithLayout('users/edit', [
-                'user' => $user,
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Users', 'url' => '/users'],
-                    ['label' => '#' . $user->getId(), 'url' => '/users/' . $user->getId()],
-                    ['label' => 'Edit', 'url' => '/users/' . $user->getId() . '/edit'],
-                ],
-            ]));
-        });
-
-        $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $workGroupMap = $this->phpDiContainer->get(\App\Service\WorkGroupMapInterface::class);
-            $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
-            $form->setWorkGroups($controller->getWorkGroups());
-            $form->setData($req->all());
-
-            if ($form->isValid()) {
-                $controller = $this->resolve(\App\Controller\UserController::class);
-                $user = $controller->update($params['id'], $req->all());
-                if (!$user) {
-                    return new Response('User not found', 404);
-                }
-                header('Location: /users');
-                exit;
-            }
-
-            $controller = $this->resolve(\App\Controller\UserController::class);
-            $user = $controller->show($params['id']);
-            return new Response($this->view->renderWithLayout('users/edit', [
-                'user' => $user,
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Users', 'url' => '/users'],
-                    ['label' => '#' . $user->getId(), 'url' => '/users/' . $user->getId()],
-                    ['label' => 'Edit', 'url' => '/users/' . $user->getId() . '/edit'],
-                ],
-            ]), 422);
-        });
-    }
-
-    private function registerGroupRoutes(): void
-    {
-        $this->router->get('/groups', function (Request $req) {
-            $controller = $this->resolve(\App\Controller\GroupController::class);
-            $search = $req->get('search') ?? null;
-            $data = $controller->index($search);
-            $data['breadcrumbs'] = [
-                ['label' => 'Home', 'url' => '/'],
-                ['label' => 'Groups', 'url' => '/groups'],
-            ];
-            return new Response($this->view->renderWithLayout('groups/index', $data));
-        });
-
-        $this->router->get('/groups/create', function (Request $req) {
-            $form = new GroupForm(null, [], $this->laminasSm);
-            $form->setAttribute('action', '/groups/create');
-            return new Response($this->view->renderWithLayout('groups/create', [
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Groups', 'url' => '/groups'],
-                    ['label' => 'Create', 'url' => '/groups/create'],
-                ],
-            ]));
-        });
-
-        $this->router->post('/groups/create', function (Request $req) {
-            $form = new GroupForm(null, [], $this->laminasSm);
-            $form->setData($req->all());
-
-            if ($form->isValid()) {
-                $controller = $this->resolve(\App\Controller\GroupController::class);
-                $controller->create($req->all());
-                header('Location: /groups');
-                exit;
-            }
-
-            return new Response($this->view->renderWithLayout('groups/create', [
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Groups', 'url' => '/groups'],
-                    ['label' => 'Create', 'url' => '/groups/create'],
-                ],
-            ]), 422);
-        });
-
-        $this->router->get('/groups/{id}', function (Request $req, array $params) {
-            $controller = $this->resolve(\App\Controller\GroupController::class);
-            $group = $controller->show((int) $params['id']);
-            if (!$group) {
-                return new Response('Group not found', 404);
-            }
-            return new Response($this->view->renderWithLayout('groups/show', [
-                'group' => $group,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Groups', 'url' => '/groups'],
-                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
-                ],
-            ]));
-        });
-
-        $this->router->get('/groups/{id}/delete', function (Request $req, array $params) {
-            $controller = $this->resolve(\App\Controller\GroupController::class);
-            $controller->delete((int) $params['id']);
-            header('Location: /groups');
-            exit;
-        });
-
-        $this->router->get('/groups/{id}/edit', function (Request $req, array $params) {
-            $controller = $this->resolve(\App\Controller\GroupController::class);
-            $group = $controller->show((int) $params['id']);
-            if (!$group) {
-                return new Response('Group not found', 404);
-            }
-            $form = new GroupForm(null, [], $this->laminasSm);
-            $form->setAttribute('action', '/groups/' . $group->getId() . '/edit');
-            return new Response($this->view->renderWithLayout('groups/edit', [
-                'group' => $group,
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Groups', 'url' => '/groups'],
-                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
-                    ['label' => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
-                ],
-            ]));
-        });
-
-        $this->router->post('/groups/{id}/edit', function (Request $req, array $params) {
-            $form = new GroupForm(null, [], $this->laminasSm);
-            $form->setData($req->all());
-
-            if ($form->isValid()) {
-                $controller = $this->resolve(\App\Controller\GroupController::class);
-                $group = $controller->update((int) $params['id'], $req->all());
-                if (!$group) {
-                    return new Response('Group not found', 404);
-                }
-                header('Location: /groups');
-                exit;
-            }
-
-            $controller = $this->resolve(\App\Controller\GroupController::class);
-            $group = $controller->show((int) $params['id']);
-            return new Response($this->view->renderWithLayout('groups/edit', [
-                'group' => $group,
-                'form' => $form,
-                'formHelper' => FormHelper::class,
-                'breadcrumbs' => [
-                    ['label' => 'Home', 'url' => '/'],
-                    ['label' => 'Groups', 'url' => '/groups'],
-                    ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
-                    ['label' => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
-                ],
-            ]), 422);
-        });
     }
 
     public function run(): void
@@ -368,7 +81,7 @@ class MvcApplication
         ]);
 
         $request = new Request();
-        $response = $this->router->dispatch($request);
+        $response = $this->mvcRoutes->getRouter()->dispatch($request);
 
         if ($response) {
             $response->send();
@@ -377,4 +90,4 @@ class MvcApplication
             echo $this->view->render('error/404', ['message' => 'Page not found']);
         }
     }
-}
+

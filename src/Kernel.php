@@ -57,12 +57,14 @@ use App\Handler\Console\GenerateProxiesHandler;
 use App\Handler\Console\ManageUserHandler;
 use App\Command\CommandBusInterface;
 use App\Command\TacticianCommandBus;
+use Oryx\Mvc\Request;
 use League\Tactician\CommandBus;
 use League\Tactician\Handler\CommandHandlerMiddleware;
 use League\Tactician\Handler\Mapping\MapByStaticList;
 use Oryx\ORM\EntityManagerFactory;
 use App\Fixture\FixtureLoader;
 use App\Dto\DtoFactory;
+use App\Routing\MvcRoutes;
 
 use function DI\autowire;
 
@@ -80,6 +82,7 @@ class Kernel
     private string $environment;
     private Container $container;
     private AdrRoutes $adrRoutes;
+    private MvcRoutes $mvcRoutes;
     private EntityManager $entityManager;
     private FractalManager $fractal;
     private ?CrashLogger $crashLogger = null;
@@ -131,6 +134,7 @@ class Kernel
         $this->container->set(FractalManager::class, $this->fractal);
         $this->container->set(FixtureLoader::class, autowire());
         $this->container->set(DtoFactory::class, autowire());
+        $this->container->set(ViewRenderer::class, autowire());
         // WorkGroupMap service (injectable implementation)
         $this->container->set(\App\Service\WorkGroupMapInterface::class, autowire(\App\Service\WorkGroupMap::class));
         // Central FormProcessor service for consistent form validation
@@ -190,6 +194,18 @@ class Kernel
         $router->middleware(new CorsMiddleware($logger));
         $router->middleware(new RateLimitMiddleware($logger, 100, 60));
         $router->middleware(new CsrfMiddleware($logger));
+
+        $this->mvcRoutes = new MvcRoutes(
+            $this->entityManager, // EntityManager from property
+            $this->container->get(CommandBusInterface::class),
+            $this->container->get(DtoFactory::class),
+            $this->logger, // Logger from property
+            $this->container->get(ViewRenderer::class),
+            $this->container->get(ServiceManager::class), // Laminas ServiceManager
+            $this->container // PHP-DI Container (main container)
+        );
+
+
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -201,7 +217,11 @@ class Kernel
             'user_agent' => $request->getHeaderLine('User-Agent') ?: 'unknown',
         ]);
 
-        return $this->adrRoutes->getRouter()->dispatch($request);
+        if (str_starts_with($request->getUri()->getPath(), '/api/')) {
+            return $this->adrRoutes->getRouter()->dispatch($request);
+        }
+        // MVC maršrutai (HTML)
+        return $this->mvcRoutes->getRouter()->dispatch($request);
     }
 
     private function handleError(\Throwable $e): ResponseInterface

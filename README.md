@@ -8,7 +8,7 @@
 2. [Console CLI Commands](#2-console-cli-commands)
 3. [Running the Application](#3-running-the-application)
 4. [Architecture Overview](#4-architecture-overview)
-5. [MVC Pattern (Vanilla PHP)](#5-mvc-pattern-vanilla-php)
+5. [MVC Pattern (Oryx\Mvc)](#5-mvc-pattern-oryxmvc)
 6. [ADR Pattern (laminas/diactoros)](#6-adr-pattern-laminasdiactoros)
 7. [HAL+JSON API](#7-haljson-api)
 8. [Fractal Transformers](#8-fractal-transformers)
@@ -221,8 +221,8 @@ composer serve
 
 | URL | Pattern | Entry |
 |-----|---------|-------|
-| [http://localhost:8080/](http://localhost:8080/) | MVC | Vanilla HTML |
-| [http://localhost:8080/users](http://localhost:8080/users) | MVC | Vanilla HTML |
+| [http://localhost:8080/](http://localhost:8080/) | MVC | PHP Templates |
+| [http://localhost:8080/users](http://localhost:8080/users) | MVC | PHP Templates |
 | [http://localhost:8080/api/users](http://localhost:8080/api/users) | ADR | HAL+JSON |
 | [http://localhost:8080/api/users/1](http://localhost:8080/api/users/1) | ADR | HAL+JSON |
 | [http://localhost:8080/manifest.json](http://localhost:8080/manifest.json) | PWA | JSON Manifest |
@@ -259,12 +259,13 @@ For complete API testing documentation including all endpoint references, curl e
 │          ▼                                      ▼              │
 │  ┌─────────────────────┐        ┌─────────────────────────┐   │
 │  │    MVC Layer        │        │      ADR Layer          │   │
-│  │  (Vanilla PHP)     │        │  (laminas/diactoros)    │   │
+│  │  (Oryx\Mvc)         │        │  (laminas/diactoros)    │   │
 │  ├─────────────────────┤        ├─────────────────────────┤   │
-│  │ • App\Http\Request │        │ • App\Kernel            │   │
-│  │ • App\Http\Response│        │ • App\Action\User\*    │   │
-│  │ • App\Http\Router │        │ • League\Fractal        │   │
-│  │ • PHP Templates   │        │ • JsonHalResponder      │   │
+│  │ • App\Http\Request  │        │ • App\Kernel            │   │
+│  │ • App\Http\Response │        │ • App\Action\User\*     │   │
+│  │ • App\Routing\MvcRoutes │    │ • League\Fractal        │   │
+│  │ • Oryx\Mvc\Application │    │ • JsonHalResponder      │   │
+│  │ • PHP Templates     │        │                         │   │
 │  └─────────────────────┘        └─────────────────────────┘   │
 │                              │                                   │
 │  ┌────────────────────────────┴───────────────────────────┐    │
@@ -285,45 +286,57 @@ For complete API testing documentation including all endpoint references, curl e
 
 ---
 
-## 5. MVC Pattern (Vanilla PHP)
+## 5. MVC Pattern (Oryx\Mvc)
 
-**MVC uses NO external HTTP libraries** - pure PHP for maximum compatibility.
+**MVC uses Oryx\Mvc components for core HTTP handling and routing.**
 
-### 5.1 HTTP Layer (Vanilla)
+### 5.1 HTTP Layer (Oryx\Mvc)
 
 ```php
 // src/Http/Request.php
 namespace App\Http;
 
-class Request
-{
-    public function getMethod(): string { /* $_SERVER['REQUEST_METHOD'] */ }
-    public function getPath(): string { /* parse_url() */ }
-    public function get(string $key, $default = null) { /* $_GET */ }
-    public function post(string $key, $default = null) { /* $_POST */ }
-}
+use Oryx\Mvc\Http\Request as BaseRequest;
+
+class Request extends BaseRequest {}
 ```
 
 ```php
 // src/Http/Response.php
 namespace App\Http;
 
-class Response
-{
-    public function __construct(string $content, int $status = 200, array $headers = []);
-    public function send(): void { /* header() + echo */ }
-}
+use Oryx\Mvc\Http\Response as BaseResponse;
+
+class Response extends BaseResponse {}
 ```
 
 ```php
-// src/Http/Router.php
-namespace App\Http;
+// src/Routing/MvcRoutes.php
+namespace App\Routing;
 
-class Router
+use App\Http\Request;
+use App\Http\Response;
+use Oryx\Mvc\Application as MvcApplicationRouter;
+use App\View\ViewRenderer;
+// ... (other use statements)
+
+class MvcRoutes
 {
-    public function get(string $path, callable $handler): void;
-    public function post(string $path, callable $handler): void;
-    public function dispatch(Request $request): ?Response;
+    private MvcApplicationRouter $router;
+    // ...
+    public function __construct(..., ViewRenderer $view)
+    {
+        $this->router = new MvcApplicationRouter($view); // Oryx\Mvc\Application is the router
+        // ...
+    }
+    // ...
+    private function register(): void
+    {
+        $this->router->get('/', function (Request $req) { // App\Http\Request
+            return new Response($this->view->renderWithLayout('home', [...])); // App\Http\Response
+        });
+        // ...
+    }
 }
 ```
 
@@ -335,15 +348,17 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use Oryx\Mvc\AbstractController;
 use Doctrine\ORM\EntityManagerInterface;
 
-class UserController
+class UserController extends AbstractController
 {
     private EntityManagerInterface $em;
     private UserRepository $repository;
 
     public function __construct(EntityManagerInterface $em)
     {
+        parent::__construct(); // Call parent constructor if needed
         $this->em = $em;
         $this->repository = new UserRepository($em);
     }
@@ -385,30 +400,36 @@ class UserController
 }
 ```
 
-### 5.3 MVC Application
+### 5.3 MVC Application (Main Entry Point)
 
 ```php
 // src/App/MvcApplication.php
 namespace App;
 
-use App\Http\Request;
-use App\Http\Response;
-use App\Http\Router;
+use App\Http\Request; // Still uses App\Http\Request
+use App\Http\Response; // Still uses App\Http\Response
+use App\Routing\MvcRoutes;
 use App\View\ViewRenderer;
-use Doctrine\ORM\EntityManager;
+use Oryx\ORM\EntityManager;
+// ... (other use statements)
 
 class MvcApplication
 {
+    private MvcRoutes $mvcRoutes;
+    // ...
     public function __construct(EntityManager $em)
     {
-        $this->router = new Router();
-        $this->view = new ViewRenderer();
+        // ...
+        $this->mvcRoutes = new MvcRoutes(
+            $em,
+            // ... all dependencies
+        );
     }
 
     public function run(): void
     {
-        $request = new Request();
-        $response = $this->router->dispatch($request);
+        $request = new Request($_SERVER); // App\Http\Request
+        $response = $this->mvcRoutes->getRouter()->dispatch($request); // Dispatches to MvcRoutes
         $response->send();
     }
 }
@@ -438,119 +459,24 @@ Maršrutai atskirti nuo Kernelio į `App\Routing\*Routes` klases - lengviau tvar
 // src/App/Kernel.php
 namespace App;
 
-class Kernel
-{
-    private AdrRoutes $adrRoutes;
+use App\Routing\AdrRoutes;
+use App\Routing\MvcRoutes;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http.Message\ResponseInterface;
+// ... (other use statements)
 
-    public function __construct(string $environment = 'dev')
-    {
-        $this->adrRoutes = new AdrRoutes();
-    }
-
-    public function handle(ServerRequestInterface $request): ResponseInterface
-    {
-        return $this->adrRoutes->getRouter()->dispatch($request);
-    }
-}
-```
-
-```php
-// src/Routing/AdrRoutes.php
-namespace App\Routing;
-
-use League\Route\Router;
-use League\Route\Strategy\JsonStrategy;
-use Laminas\Diactoros\ResponseFactory;
-
-class AdrRoutes
-{
-    private Router $router;
-
-    public function __construct()
-    {
-        $this->router = new Router();
-        $this->router->setStrategy(new JsonStrategy(new ResponseFactory()));
-        $this->register();
-    }
-
-    public function getRouter(): Router
-    {
-        return $this->router;
-    }
-
-    private function register(): void
-    {
-        $this->router->map('GET', '/api/health', fn() => new JsonResponse(['status' => 'ok']));
-        $this->router->map('GET', '/api/users', [ListAction::class, '__invoke']);
-        // ... kiti maršrutai
-    }
-}
-```
-
-**MVC Routes atskirai:**
-```php
-// src/Routing/MvcRoutes.php
-namespace App\Routing;
-
-use App\Http\Router;
-use App\Http\Request;
-use App\Http\Response;
-use App\View\ViewRenderer;
-use App\Controller\UserController;
-use Doctrine\ORM\EntityManager;
-
-class MvcRoutes
-{
-    private Router $router;
-    private array $controllers;
-    private ViewRenderer $view;
-
-    public function __construct(EntityManager $em)
-    {
-        $this->router = new Router();
-        $this->view = new ViewRenderer();
-        $this->controllers = [
-            'user' => new UserController($em),
-        ];
-        $this->register();
-    }
-
-    public function getRouter(): Router
-    {
-        return $this->router;
-    }
-
-    private function register(): void
-    {
-        $this->router->get('/', function (Request $req) {
-            return new Response($this->view->render('home'));
-        });
-
-        $this->router->get('/users', function (Request $req) {
-            $data = $this->controllers['user']->index();
-            return new Response($this->view->render('users/index', $data));
-        });
-
-        $this->router->get('/users/{id}', function (Request $req, array $params) {
-            $user = $this->controllers['user']->show((int) $params['id']);
-            return new Response($this->view->render('users/show', ['user' => $user]));
-        });
-    }
-}
-```
-
-**Abiejų routing'ų sujungimas Kernel'yje:**
-```php
-// src/App/Kernel.php
 class Kernel
 {
     private AdrRoutes $adrRoutes;
     private MvcRoutes $mvcRoutes;
-
+    // ...
     public function __construct(EntityManager $em)
     {
-        $this->adrRoutes = new AdrRoutes();
-        $this->mvcRoutes = new MvcRoutes($em);
+        $this->adrRoutes = new AdrRoutes($this->container);
+        $this->mvcRoutes = new MvcRoutes(
+            $em,
+            // ... all dependencies
+        );
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -560,7 +486,7 @@ class Kernel
             return $this->adrRoutes->getRouter()->dispatch($request);
         }
         // MVC maršrutai (HTML)
-        return $this->mvcRoutes->getRouter()->dispatch($request);
+        return $this->mvcRoutes->getRouter()->dispatch(new \App\Http\Request($_SERVER));
     }
 }
 ```
@@ -575,8 +501,8 @@ use App\Fixture\FixtureLoader;
 use App\Entity\User;
 use League\Fractal\Manager;
 use League\Fractal\Resource\Collection;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http.Message\ResponseInterface;
+use Psr\Http.Message\ServerRequestInterface;
 
 class ListAction
 {
@@ -688,7 +614,7 @@ class JsonHalResponder
 | `PATCH` | `/api/groups/{id}` | PatchAction | `200 + HAL resource` | Partial update |
 | `DELETE` | `/api/groups/{id}` | DeleteAction | `204 No Content` | Delete group |
 
-> **Full API Testing Guide:** See [TESTER.md](./TESTER.md) for complete request/response specimens, Postman collection, and validation examples.
+> **Full API Testing Guide:** See [TESTER.MD](./TESTER.MD) for complete request/response specimens, Postman collection, and validation examples.
 
 ### 7.2 HAL+JSON: Codinga API atsakus
 
@@ -1085,10 +1011,10 @@ public function testListActionReturnsHalJson(): void
 // src/Middleware/SecurityMiddleware.php
 namespace App\Middleware;
 
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
+use Psr\Http.Server\MiddlewareInterface;
+use Psr\Http.Server\RequestHandlerInterface;
+use Psr\Http.Message\ServerRequestInterface;
+use Psr\Http.Message\ResponseInterface;
 
 class SecurityMiddleware implements MiddlewareInterface
 {
@@ -1268,7 +1194,7 @@ class CrashLogger
 ### 12.5 Kernel Crash Handling
 
 ```php
-// src/Kernel.php
+// src/App/Kernel.php
 set_error_handler(function ($severity, $message, $file, $line) {
     if ($severity === E_ERROR) {
         $crashLogger = LoggerFactory::createCrashLogger();
@@ -1309,7 +1235,7 @@ The PWA manifest defines how your app appears when installed:
   "name": "Oryx ORM App",
   "short_name": "OryxApp",
   "description": "Full-stack ORM with ADR pattern",
-  "start_url": "/",
+  "start_url" => "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4A90E2",
@@ -1416,7 +1342,7 @@ app:
 
 orm:
   proxy_dir: ${ORM_PROXY_DIR:-/tmp/orm/proxies}
-  proxy_namespace: ${ORM_PROXY_NAMESPACE:-Oryx\\ORM\\Proxy}
+  proxy_namespace: ${ORM_PROXY_NAMESPACE:-Oryx\ORM\Proxy}
 ```
 
 ### 14.5 Variable Substitution Syntax
@@ -1935,7 +1861,7 @@ $dispatcher->addListener('async.' . EntityCreated::class, [
 ```php
 // EntityCreated
 [
-    'entityClass' => 'App\\Entity\\User',
+    'entityClass' => 'App\Entity\User',
     'entityId' => '550e8400-e29b-41d4-a716-446655440000',
     'data' => [
         'email' => 'user@example.com',
@@ -1947,7 +1873,7 @@ $dispatcher->addListener('async.' . EntityCreated::class, [
 
 // EntityUpdated
 [
-    'entityClass' => 'App\\Entity\\User',
+    'entityClass' => 'App\Entity\User',
     'entityId' => '550e8400-e29b-41d4-a716-446655440000',
     'changes' => [
         'email' => ['old@example.com', 'new@example.com'],
@@ -2146,8 +2072,6 @@ var/storage/
     └── permanent_config_789
 ```
 
-Filenames are URL-safe versions of the cache key (slashes/backslashes replaced with underscores).
-
 ### 23.5 Database Schema
 
 The `file_cache` table is created automatically via migrations:
@@ -2211,7 +2135,7 @@ phpunit.xml             # PHPUnit configuration
 auth.json               # Private repository auth
 ```
 
-### 24.5 Why These Are Ignored
+### 24.5 Why These Is Ignored
 
 - **Dependencies**: `/vendor/` managed by Composer
 - **Logs**: `/var/log/` contains runtime application logs
@@ -2384,3 +2308,4 @@ composer install --no-interaction --prefer-dist
 ---
 
 *"The best architecture is the one that fits your needs."* — Unknown
+ your needs."* — Unknown
