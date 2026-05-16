@@ -7,11 +7,13 @@ namespace App;
 use App\Container\EventServiceProvider;
 use App\Container\FlysystemServiceProvider;
 use App\Container\MvcServiceProvider;
+use App\Command\CommandBusInterface;
+use App\Dto\DtoFactory;
 use App\Form\GroupForm;
 use App\Form\UserForm;
-use App\Http\Request;
-use App\Http\Response;
-
+use GuzzleHttp\Psr7\ServerRequest;
+use League\Route\Http\Exception\NotFoundException;
+use Prototype\Mvc\Http\RequestHandler;
 use App\View\ViewRenderer;
 use App\View\Helper\FormHelper;
 use App\Routing\MvcRoutes;
@@ -80,14 +82,14 @@ class MvcApplication
             'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',
         ]);
 
-        $request = new Request();
-        $response = $this->mvcRoutes->getRouter()->dispatch($request);
+        $request = ServerRequest::fromGlobals();
 
-        if ($response) {
-            $response->send();
-        } else {
+        try {
+            $response = $this->mvcRoutes->getRouter()->dispatch($request);
+            RequestHandler::emit($response);
+        } catch (NotFoundException $e) {
             http_response_code(404);
             echo $this->view->render('error/404', ['message' => 'Page not found']);
         }
     }
-
+}

@@ -9,7 +9,6 @@ use App\Controller\GroupController;
 use App\Controller\UserController;
 use App\Db;
 use App\Dto\DtoFactory;
-use Oryx\Mvc\Router;
 use App\View\ViewRenderer;
 use App\Logger\LoggerFactory;
 use App\Logger\CrashLogger;
@@ -50,7 +49,6 @@ class MvcServiceProvider extends AbstractServiceProvider
         Db::class,
         CacheUnion::class,
         FilesystemOperator::class,
-        Router::class,
         ViewRenderer::class,
         UserController::class,
         GroupController::class,
@@ -136,7 +134,6 @@ class MvcServiceProvider extends AbstractServiceProvider
             return new CommandBus($middleware);
         });
 
-        $container->add(Router::class);
         $container->add(ViewRenderer::class);
 
         $container->add(UserController::class)->addArgument(EntityManager::class)->addArgument(CommandBus::class)->addArgument(DtoFactory::class)->addArgument(LoggerInterface::class);

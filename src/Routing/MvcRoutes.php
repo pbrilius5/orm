@@ -6,9 +6,9 @@ namespace App\Routing;
 
 use App\Controller\UserController;
 use App\Dto\DtoFactory;
-use Oryx\Mvc\Application as MvcApplicationRouter; // Use Oryx\Mvc\Application as the router
-use Oryx\Mvc\Request;
-use Oryx\Mvc\Response;
+use Prototype\Mvc\Application;
+use Psr\Http\Message\ServerRequestInterface;
+use GuzzleHttp\Psr7\Response;
 use App\View\ViewRenderer;
 use Oryx\ORM\EntityManager;
 use League\Tactician\CommandBus;
@@ -23,7 +23,7 @@ use App\Controller\GroupController;
 
 class MvcRoutes
 {
-    private MvcApplicationRouter $router; // Updated property type
+    private Application $router;
     private array $controllers;
     private ViewRenderer $view;
     private ServiceManager $laminasSm;
@@ -39,7 +39,7 @@ class MvcRoutes
         PhpDiContainer $phpDiContainer
     ) {
         $this->view = $view;
-        $this->router = new MvcApplicationRouter($this->view); // Instantiated MvcApplicationRouter
+        $this->router = new Application();
         $this->controllers = [
             'user' => new UserController($em, $commandBus, $dtoFactory, $logger),
             'group' => new GroupController($em, $commandBus, $dtoFactory, $logger),
@@ -49,40 +49,39 @@ class MvcRoutes
         $this->register();
     }
 
-    public function getRouter(): MvcApplicationRouter // Updated return type
+    public function getRouter(): \League\Route\Router
     {
-        return $this->router;
+        return $this->router->getRouter();
     }
 
     private function register(): void
     {
-        $this->router->get('/', function (Request $req) {
-            return new Response($this->view->renderWithLayout('home', [
+        $this->router->get('/', function (ServerRequestInterface $req) {
+            return new Response(200, [], $this->view->renderWithLayout('home', [
                 'title' => 'Oryx ORM - MVC Application',
                 'description' => 'Full-stack ORM with MVC pattern',
                 'breadcrumbs' => [['label' => 'Home', 'url' => '/']],
             ]));
         });
 
-        // User Routes
-        $this->router->get('/users', function (Request $req) {
+        $this->router->get('/users', function (ServerRequestInterface $req) {
             $controller = $this->controllers['user'];
             $data = $controller->index();
             $data['breadcrumbs'] = [
                 ['label' => 'Home', 'url' => '/'],
                 ['label' => 'Users', 'url' => '/users'],
             ];
-            return new Response($this->view->renderWithLayout('users/index', $data));
+            return new Response(200, [], $this->view->renderWithLayout('users/index', $data));
         });
 
-        $this->router->get('/users/create', function (Request $req) {
+        $this->router->get('/users/create', function (ServerRequestInterface $req) {
             $controller = $this->controllers['user'];
             $workGroupMap = $this->phpDiContainer->get(WorkGroupMapInterface::class);
             $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
             $form->setWorkGroups($controller->getWorkGroups());
             $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
             $form->setAttribute('action', '/users/create');
-            return new Response($this->view->renderWithLayout('users/create', [
+            return new Response(200, [], $this->view->renderWithLayout('users/create', [
                 'form' => $form,
                 'formHelper' => FormHelper::class,
                 'breadcrumbs' => [
@@ -93,17 +92,18 @@ class MvcRoutes
             ]));
         });
 
-        $this->router->post('/users/create', function (Request $req) {
+        $this->router->post('/users/create', function (ServerRequestInterface $req) {
             $controller = $this->controllers['user'];
             $workGroupMap = $this->phpDiContainer->get(WorkGroupMapInterface::class);
             $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
             $form->setWorkGroups($controller->getWorkGroups());
             $form->setDefaultGamificationRole(\App\Entity\WizardRole::NAME);
-            $form->setData($req->all());
+            $data = array_merge((array) $req->getParsedBody(), $req->getQueryParams());
+            $form->setData($data);
 
             if ($form->isValid()) {
                 try {
-                    $controller->create($req->all());
+                    $controller->create($data);
                     header('Location: /users');
                     exit;
                 } catch (\InvalidArgumentException $e) {
@@ -111,8 +111,8 @@ class MvcRoutes
                 }
             }
 
-            $form->setData($req->all());
-            return new Response($this->view->renderWithLayout('users/create', [
+            $form->setData($data);
+            return new Response(422, [], $this->view->renderWithLayout('users/create', [
                 'form' => $form,
                 'formHelper' => FormHelper::class,
                 'breadcrumbs' => [
@@ -120,16 +120,16 @@ class MvcRoutes
                     ['label' => 'Users', 'url' => '/users'],
                     ['label' => 'Create', 'url' => '/users/create'],
                 ],
-            ]), 422);
+            ]));
         });
 
-        $this->router->get('/users/{id}', function (Request $req, array $params) {
+        $this->router->get('/users/{id}', function (ServerRequestInterface $req, array $params) {
             $controller = $this->controllers['user'];
             $user = $controller->show($params['id']);
             if (!$user) {
-                return new Response('User not found', 404);
+                return new Response(404, [], 'User not found');
             }
-            return new Response($this->view->renderWithLayout('users/show', [
+            return new Response(200, [], $this->view->renderWithLayout('users/show', [
                 'user' => $user,
                 'breadcrumbs' => [
                     ['label' => 'Home', 'url' => '/'],
@@ -139,18 +139,18 @@ class MvcRoutes
             ]));
         });
 
-        $this->router->get('/users/{id}/delete', function (Request $req, array $params) {
+        $this->router->get('/users/{id}/delete', function (ServerRequestInterface $req, array $params) {
             $controller = $this->controllers['user'];
             $controller->delete($params['id']);
             header('Location: /users');
             exit;
         });
 
-        $this->router->get('/users/{id}/edit', function (Request $req, array $params) {
+        $this->router->get('/users/{id}/edit', function (ServerRequestInterface $req, array $params) {
             $controller = $this->controllers['user'];
             $user = $controller->show($params['id']);
             if (!$user) {
-                return new Response('User not found', 404);
+                return new Response(404, [], 'User not found');
             }
             $workGroupMap = $this->phpDiContainer->get(WorkGroupMapInterface::class);
             $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
@@ -166,7 +166,7 @@ class MvcRoutes
                     $form->get('work_group')->setValue($discriminator);
                 }
             }
-            return new Response($this->view->renderWithLayout('users/edit', [
+            return new Response(200, [], $this->view->renderWithLayout('users/edit', [
                 'user' => $user,
                 'form' => $form,
                 'formHelper' => FormHelper::class,
@@ -179,24 +179,25 @@ class MvcRoutes
             ]));
         });
 
-        $this->router->post('/users/{id}/edit', function (Request $req, array $params) {
+        $this->router->post('/users/{id}/edit', function (ServerRequestInterface $req, array $params) {
             $controller = $this->controllers['user'];
             $workGroupMap = $this->phpDiContainer->get(WorkGroupMapInterface::class);
             $form = new UserForm(null, [], $this->laminasSm, $workGroupMap);
             $form->setWorkGroups($controller->getWorkGroups());
-            $form->setData($req->all());
+            $data = array_merge((array) $req->getParsedBody(), $req->getQueryParams());
+            $form->setData($data);
 
             if ($form->isValid()) {
-                $controller->update($params['id'], $req->all());
+                $controller->update($params['id'], $data);
                 if (!$user = $controller->show($params['id'])) {
-                    return new Response('User not found', 404);
+                    return new Response(404, [], 'User not found');
                 }
                 header('Location: /users');
                 exit;
             }
 
             $user = $controller->show($params['id']);
-            return new Response($this->view->renderWithLayout('users/edit', [
+            return new Response(422, [], $this->view->renderWithLayout('users/edit', [
                 'user' => $user,
                 'form' => $form,
                 'formHelper' => FormHelper::class,
@@ -206,25 +207,24 @@ class MvcRoutes
                     ['label' => '#' . $user->getId(), 'url' => '/users/' . $user->getId()],
                     ['label' => 'Edit', 'url' => '/users/' . $user->getId() . '/edit'],
                 ],
-            ]), 422);
+            ]));
         });
 
-        // Group Routes
-        $this->router->get('/groups', function (Request $req) {
+        $this->router->get('/groups', function (ServerRequestInterface $req) {
             $controller = $this->controllers['group'];
-            $search = $req->get('search') ?? null;
+            $search = $req->getQueryParams()['search'] ?? null;
             $data = $controller->index($search);
             $data['breadcrumbs'] = [
                 ['label' => 'Home', 'url' => '/'],
                 ['label' => 'Groups', 'url' => '/groups'],
             ];
-            return new Response($this->view->renderWithLayout('groups/index', $data));
+            return new Response(200, [], $this->view->renderWithLayout('groups/index', $data));
         });
 
-        $this->router->get('/groups/create', function (Request $req) {
+        $this->router->get('/groups/create', function (ServerRequestInterface $req) {
             $form = new GroupForm(null, [], $this->laminasSm);
             $form->setAttribute('action', '/groups/create');
-            return new Response($this->view->renderWithLayout('groups/create', [
+            return new Response(200, [], $this->view->renderWithLayout('groups/create', [
                 'form' => $form,
                 'formHelper' => FormHelper::class,
                 'breadcrumbs' => [
@@ -235,18 +235,19 @@ class MvcRoutes
             ]));
         });
 
-        $this->router->post('/groups/create', function (Request $req) {
+        $this->router->post('/groups/create', function (ServerRequestInterface $req) {
             $form = new GroupForm(null, [], $this->laminasSm);
-            $form->setData($req->all());
+            $data = array_merge((array) $req->getParsedBody(), $req->getQueryParams());
+            $form->setData($data);
 
             if ($form->isValid()) {
                 $controller = $this->controllers['group'];
-                $controller->create($req->all());
+                $controller->create($data);
                 header('Location: /groups');
                 exit;
             }
 
-            return new Response($this->view->renderWithLayout('groups/create', [
+            return new Response(422, [], $this->view->renderWithLayout('groups/create', [
                 'form' => $form,
                 'formHelper' => FormHelper::class,
                 'breadcrumbs' => [
@@ -254,16 +255,16 @@ class MvcRoutes
                     ['label' => 'Groups', 'url' => '/groups'],
                     ['label' => 'Create', 'url' => '/groups/create'],
                 ],
-            ]), 422);
+            ]));
         });
 
-        $this->router->get('/groups/{id}', function (Request $req, array $params) {
+        $this->router->get('/groups/{id}', function (ServerRequestInterface $req, array $params) {
             $controller = $this->controllers['group'];
             $group = $controller->show((int) $params['id']);
             if (!$group) {
-                return new Response('Group not found', 404);
+                return new Response(404, [], 'Group not found');
             }
-            return new Response($this->view->renderWithLayout('groups/show', [
+            return new Response(200, [], $this->view->renderWithLayout('groups/show', [
                 'group' => $group,
                 'breadcrumbs' => [
                     ['label' => 'Home', 'url' => '/'],
@@ -273,22 +274,22 @@ class MvcRoutes
             ]));
         });
 
-        $this->router->get('/groups/{id}/delete', function (Request $req, array $params) {
+        $this->router->get('/groups/{id}/delete', function (ServerRequestInterface $req, array $params) {
             $controller = $this->controllers['group'];
             $controller->delete((int) $params['id']);
             header('Location: /groups');
             exit;
         });
 
-        $this->router->get('/groups/{id}/edit', function (Request $req, array $params) {
+        $this->router->get('/groups/{id}/edit', function (ServerRequestInterface $req, array $params) {
             $controller = $this->controllers['group'];
             $group = $controller->show((int) $params['id']);
             if (!$group) {
-                return new Response('Group not found', 404);
+                return new Response(404, [], 'Group not found');
             }
             $form = new GroupForm(null, [], $this->laminasSm);
             $form->setAttribute('action', '/groups/' . $group->getId() . '/edit');
-            return new Response($this->view->renderWithLayout('groups/edit', [
+            return new Response(200, [], $this->view->renderWithLayout('groups/edit', [
                 'group' => $group,
                 'form' => $form,
                 'formHelper' => FormHelper::class,
@@ -301,15 +302,16 @@ class MvcRoutes
             ]));
         });
 
-        $this->router->post('/groups/{id}/edit', function (Request $req, array $params) {
+        $this->router->post('/groups/{id}/edit', function (ServerRequestInterface $req, array $params) {
             $form = new GroupForm(null, [], $this->laminasSm);
-            $form->setData($req->all());
+            $data = array_merge((array) $req->getParsedBody(), $req->getQueryParams());
+            $form->setData($data);
 
             if ($form->isValid()) {
                 $controller = $this->controllers['group'];
-                $group = $controller->update((int) $params['id'], $req->all());
+                $group = $controller->update((int) $params['id'], $data);
                 if (!$group) {
-                    return new Response('Group not found', 404);
+                    return new Response(404, [], 'Group not found');
                 }
                 header('Location: /groups');
                 exit;
@@ -317,7 +319,7 @@ class MvcRoutes
 
             $controller = $this->controllers['group'];
             $group = $controller->show((int) $params['id']);
-            return new Response($this->view->renderWithLayout('groups/edit', [
+            return new Response(422, [], $this->view->renderWithLayout('groups/edit', [
                 'group' => $group,
                 'form' => $form,
                 'formHelper' => FormHelper::class,
@@ -327,7 +329,7 @@ class MvcRoutes
                     ['label' => '#' . $group->getId(), 'url' => '/groups/' . $group->getId()],
                     ['label' => 'Edit', 'url' => '/groups/' . $group->getId() . '/edit'],
                 ],
-            ]), 422);
+            ]));
         });
     }
 }
